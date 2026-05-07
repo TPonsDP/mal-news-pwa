@@ -81,7 +81,7 @@ ${COLUMNISTS_GUIDE}`,
 CRÍTICO: Si solo encuentras 8 piezas reales y frescas de mundo, devuelve 8 — NO rellenes hasta 14 con genéricas. Mejor 20 piezas reales que 28 mediocres.
  
 Cada pieza debe llevar campo "publishedDate" con la fecha real del artículo. URLs permalink directos. Devuelve SOLO JSON con las 4 claves: worldNews, worldOpinion, energy, legal (más date).`,
-    maxUses: 20,
+    maxUses: 10,
   },
   spain: {
     label: 'España + Opinión España',
@@ -111,7 +111,7 @@ ${COLUMNISTS_GUIDE}`,
 CRÍTICO: Si solo encuentras 5 columnas firmadas publicadas hoy, devuelve 5 — NO rellenes hasta 9 incluyendo columnas de ayer o editoriales sin firma.
  
 Cada pieza debe llevar campo "publishedDate". URLs permalink directos. Devuelve SOLO JSON con las 2 claves: spainNews, spainOpinion (más date).`,
-    maxUses: 20,
+    maxUses: 10,
   },
 };
  
