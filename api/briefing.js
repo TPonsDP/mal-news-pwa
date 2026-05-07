@@ -134,18 +134,18 @@ export default async function handler(req, res) {
         model: 'claude-sonnet-4-6',
         max_tokens: 16000,
         system: SYSTEM_NEWS,
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 50 }],
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 25 }],
         messages: [{
           role: 'user',
-          content: `Hoy es ${todayShort}. Genera el briefing MAL NEWS completo con las 47 piezas:
-- 14 noticias mundo (7 IZQ + 7 DER, ≥7 regiones)
-- 6 opinión mundo (3 IZQ + 3 DER, solo medios internacionales)
-- 4 energía (Brent obligatorio si hay movimiento)
-- 4 legal (internacional + España)
-- 10 noticias España
-- 9 opinión España (publicadas HOY, máx 3 mismo medio, mín 5 medios)
+          content: `Hoy es ${todayShort}. Genera el briefing MAL NEWS reducido con 25 piezas en este formato exacto:
+- 8 piezas worldNews (4 lean=left + 4 lean=right, ≥4 regiones)
+- 3 piezas worldOpinion (solo medios internacionales no españoles)
+- 2 piezas energy
+- 2 piezas legal
+- 5 piezas spainNews
+- 5 piezas spainOpinion (publicadas HOY, mín 3 medios distintos, sin editoriales)
 
-URLs directas reales obligatorias en TODAS las piezas. Devuelve SOLO el JSON.`,
+URLs directas reales obligatorias en TODAS las piezas. Devuelve SOLO el JSON con las 6 claves del esquema.`,
         }],
       }),
     });
