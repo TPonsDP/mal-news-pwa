@@ -1,7 +1,8 @@
-import { useState } from 'react';
-
+import { useState, useEffect } from 'react';
+ 
 const RECIPIENT = 'tonipons91@gmail.com';
-
+const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Tier 1 de Anthropic
+ 
 const BRAND = {
   greenDark: '#0d5c36',
   greenLight: '#1a8a52',
@@ -12,7 +13,7 @@ const BRAND = {
   leftBlue: '#60A5FA',
   rightRed: '#F87171',
 };
-
+ 
 const SOURCE_COLORS = {
   BBC: '#FF8B8B', Reuters: '#FFB347', Guardian: '#7DD3FC', FT: '#FBBF77', AP: '#FCA5A5',
   NYT: '#FCA5A5', 'Le Monde': '#7DD3FC', Economist: '#F87171', WSJ: '#FED7AA', Bloomberg: '#FBBF77',
@@ -26,7 +27,7 @@ const SOURCE_COLORS = {
   'La Gaceta': '#FECACA', almendron: '#93C5FD', enriquedans: '#A5F3FC',
   default: BRAND.gold,
 };
-
+ 
 function getSourceColor(source) {
   if (!source) return SOURCE_COLORS.default;
   for (const key in SOURCE_COLORS) {
@@ -34,7 +35,7 @@ function getSourceColor(source) {
   }
   return SOURCE_COLORS.default;
 }
-
+ 
 function MalNewsLogo({ maxWidth = 420 }) {
   return (
     <svg viewBox="0 0 400 200" width="100%" style={{ maxWidth, height: 'auto', display: 'block', margin: '0 auto', filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.25))' }} xmlns="http://www.w3.org/2000/svg">
@@ -84,7 +85,7 @@ function MalNewsLogo({ maxWidth = 420 }) {
     </svg>
   );
 }
-
+ 
 function LeanBadge({ lean }) {
   if (!lean) return null;
   const isLeft = lean === 'left';
@@ -102,7 +103,7 @@ function LeanBadge({ lean }) {
     </span>
   );
 }
-
+ 
 function RegionBadge({ region }) {
   if (!region) return null;
   return (
@@ -114,12 +115,12 @@ function RegionBadge({ region }) {
     }}>{region}</span>
   );
 }
-
+ 
 function NewsCard({ item, index }) {
   const labelText = item.author ? `${item.author} · ${item.source || ''}` : (item.source || '');
   const colorKey = item.author || item.source;
   const accent = getSourceColor(colorKey);
-
+ 
   return (
     <div style={{
       background: 'rgba(255,255,255,0.06)',
@@ -161,7 +162,7 @@ function NewsCard({ item, index }) {
     </div>
   );
 }
-
+ 
 function Section({ title, icon, items, color, count }) {
   return (
     <div style={{ marginBottom: '26px' }}>
@@ -176,42 +177,64 @@ function Section({ title, icon, items, color, count }) {
     </div>
   );
 }
-
+ 
 export default function App() {
+  // Estado por sección — cada botón gestiona su propia carga independiente
   const [intlData, setIntlData] = useState(null);
-  const [intlStatus, setIntlStatus] = useState('idle');
+  const [intlStatus, setIntlStatus] = useState('idle'); // idle | loading | done | error
   const [intlError, setIntlError] = useState('');
-
+ 
   const [spainData, setSpainData] = useState(null);
   const [spainStatus, setSpainStatus] = useState('idle');
   const [spainError, setSpainError] = useState('');
-
+ 
   const [emailStatus, setEmailStatus] = useState('idle');
-
+ 
+  // Cooldown global compartido entre los dos botones — evita el rate_limit_error 429 de Anthropic Tier 1
+  const [nextAllowedAt, setNextAllowedAt] = useState(0);
+  const [cooldownLeft, setCooldownLeft] = useState(0);
+ 
+  useEffect(() => {
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((nextAllowedAt - Date.now()) / 1000));
+      setCooldownLeft(remaining);
+    };
+    tick();
+    const interval = setInterval(tick, 500);
+    return () => clearInterval(interval);
+  }, [nextAllowedAt]);
+ 
+  const isInCooldown = cooldownLeft > 0;
+ 
   const today = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const todayShort = new Date().toLocaleDateString('es-ES');
-
+ 
   async function fetchSection(section) {
+    if (Date.now() < nextAllowedAt) return; // Salvaguarda — el botón debería estar deshabilitado en este caso
+ 
     const setData = section === 'international' ? setIntlData : setSpainData;
     const setStatus = section === 'international' ? setIntlStatus : setSpainStatus;
     const setError = section === 'international' ? setIntlError : setSpainError;
-
+ 
+    // Activa cooldown global de 150 seg desde AHORA
+    setNextAllowedAt(Date.now() + COOLDOWN_MS);
+ 
     setStatus('loading');
     setError('');
     setData(null);
-
+ 
     try {
       const res = await fetch('/api/briefing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: todayShort, section }),
       });
-
+ 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
         throw new Error(err.error || `HTTP ${res.status}`);
       }
-
+ 
       const data = await res.json();
       if (!data.briefing) throw new Error('Respuesta sin briefing');
       setData(data.briefing);
@@ -221,7 +244,28 @@ export default function App() {
       setError(err.message || 'Error desconocido');
     }
   }
-
+ 
+  function sendEmail() {
+    if (!intlData && !spainData) return;
+    const merged = mergeBriefings();
+    const subject = `🕊️ MAL NEWS — Briefing ${todayShort}`;
+    const body = buildEmailPlainText(merged);
+    const mailtoUrl = `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+ 
+    try {
+      const a = document.createElement('a');
+      a.href = mailtoUrl;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setEmailStatus('sent');
+    } catch (err) {
+      setEmailStatus('error');
+    }
+  }
+ 
   function mergeBriefings() {
     return {
       date: (intlData?.date || spainData?.date || todayShort),
@@ -233,12 +277,12 @@ export default function App() {
       spainOpinion: spainData?.spainOpinion || [],
     };
   }
-
+ 
   function buildEmailPlainText(b) {
     const leanLabel = (lean) => lean === 'left' ? '[IZQ ◀]' : lean === 'right' ? '[DER ▶]' : '';
     const sep = '─'.repeat(50);
     const dsep = '═'.repeat(50);
-
+ 
     const section = (title, items) => {
       if (!items?.length) return '';
       const rows = items.map(i => {
@@ -254,7 +298,7 @@ export default function App() {
       }).join('\n\n');
       return `\n${title.toUpperCase()} (${items.length})\n${sep}\n\n${rows}\n`;
     };
-
+ 
     return [
       `MAL NEWS — Briefing ${b.date || todayShort}`,
       `Tu briefing diario · ${totalPieces} piezas`,
@@ -270,58 +314,41 @@ export default function App() {
       '',
     ].join('\n');
   }
-
-  function sendEmail() {
-    if (!intlData && !spainData) return;
-    const merged = mergeBriefings();
-    const subject = `🕊️ MAL NEWS — Briefing ${todayShort}`;
-    const body = buildEmailPlainText(merged);
-    const mailtoUrl = `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
-    try {
-      const a = document.createElement('a');
-      a.href = mailtoUrl;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setEmailStatus('sent');
-    } catch (err) {
-      setEmailStatus('error');
-    }
-  }
-
+ 
   const merged = mergeBriefings();
   const totalPieces =
     (merged.worldNews?.length || 0) + (merged.worldOpinion?.length || 0) +
     (merged.energy?.length || 0) + (merged.legal?.length || 0) +
     (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0);
-
+ 
   const intlSections = intlData ? [
     { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: '#7DD3FC', count: 14 },
     { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: '#A5F3FC', count: 6 },
     { title: 'Energía', icon: '⚡', items: intlData.energy, color: BRAND.gold, count: 4 },
     { title: 'Legal', icon: '⚖️', items: intlData.legal, color: '#CBD5E1', count: 4 },
   ] : [];
-
+ 
   const spainSections = spainData ? [
     { title: 'España', icon: '🇪🇸', items: spainData.spainNews, color: '#FED7AA', count: 10 },
     { title: 'Opinión España', icon: '✒️', items: spainData.spainOpinion, color: BRAND.gold, count: 9 },
   ] : [];
-
-  const intlBtnLabel =
-    intlStatus === 'loading' ? '🔍 Buscando internacional…' :
-    intlStatus === 'done' ? '🔄 Recargar internacional' :
-    '🌍 Generar internacional (28)';
-
-  const spainBtnLabel =
-    spainStatus === 'loading' ? '🔍 Buscando España…' :
-    spainStatus === 'done' ? '🔄 Recargar España' :
-    '🇪🇸 Generar España (19)';
-
+ 
+  const intlBtnLabel = (() => {
+    if (intlStatus === 'loading') return '🔍 Buscando internacional…';
+    if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
+    if (intlStatus === 'done') return '🔄 Recargar internacional';
+    return '🌍 Generar internacional (28)';
+  })();
+ 
+  const spainBtnLabel = (() => {
+    if (spainStatus === 'loading') return '🔍 Buscando España…';
+    if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
+    if (spainStatus === 'done') return '🔄 Recargar España';
+    return '🇪🇸 Generar España (19)';
+  })();
+ 
   const hasAnyData = intlData || spainData;
-
+ 
   return (
     <div style={{
       minHeight: '100vh',
@@ -342,13 +369,13 @@ export default function App() {
         .mal-cta:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(240,192,64,0.5) !important; }
         .mal-cta-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.14) !important; border-color: ${BRAND.gold} !important; color: ${BRAND.gold} !important; }
       `}</style>
-
+ 
       <div style={{
         position: 'fixed', top: 0, right: 0, width: '60%', height: '40%',
         background: 'radial-gradient(ellipse at top right, rgba(240,192,64,0.08) 0%, transparent 70%)',
         pointerEvents: 'none', zIndex: 0,
       }} />
-
+ 
       <div style={{ position: 'relative', zIndex: 1, maxWidth: '780px', margin: '0 auto' }}>
         <div style={{ marginBottom: '18px', animation: 'fadeSlide 0.6s ease both' }}>
           <MalNewsLogo maxWidth={420} />
@@ -356,57 +383,59 @@ export default function App() {
             {today}
           </p>
         </div>
-
+ 
         <p style={{ margin: '0 0 18px', fontSize: '10px', color: BRAND.gold, letterSpacing: '0.18em', textAlign: 'center', fontStyle: 'italic', opacity: 0.85 }}>
           MUNDO · OPINIÓN INTL · ENERGÍA · LEGAL · ESPAÑA · OPINIÓN ESPAÑA
         </p>
-
+ 
         <div style={{ height: '1px', background: `linear-gradient(90deg, transparent 0%, ${BRAND.gold}66 50%, transparent 100%)`, margin: '0 0 24px' }} />
-
+ 
+        {/* DOS BOTONES: internacional + España */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
           <button
             className="mal-cta"
             onClick={() => fetchSection('international')}
-            disabled={intlStatus === 'loading'}
+            disabled={intlStatus === 'loading' || isInCooldown}
             style={{
               border: 'none', borderRadius: '10px', padding: '14px 24px',
               fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em',
-              cursor: intlStatus === 'loading' ? 'wait' : 'pointer',
+              cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Georgia', serif",
               background: intlStatus === 'loading'
                 ? `linear-gradient(90deg, ${BRAND.gold}, ${BRAND.goldDark}, ${BRAND.gold})`
                 : `linear-gradient(135deg, ${BRAND.gold} 0%, ${BRAND.goldDark} 100%)`,
               backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: BRAND.ink, opacity: intlStatus === 'loading' ? 0.85 : 1,
+              color: BRAND.ink, opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
               boxShadow: '0 4px 18px rgba(240,192,64,0.35)', textTransform: 'uppercase',
             }}
           >
             {intlBtnLabel}
           </button>
-
+ 
           <button
             className="mal-cta"
             onClick={() => fetchSection('spain')}
-            disabled={spainStatus === 'loading'}
+            disabled={spainStatus === 'loading' || isInCooldown}
             style={{
               border: 'none', borderRadius: '10px', padding: '14px 24px',
               fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em',
-              cursor: spainStatus === 'loading' ? 'wait' : 'pointer',
+              cursor: (spainStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Georgia', serif",
               background: spainStatus === 'loading'
                 ? `linear-gradient(90deg, ${BRAND.gold}, ${BRAND.goldDark}, ${BRAND.gold})`
                 : `linear-gradient(135deg, ${BRAND.gold} 0%, ${BRAND.goldDark} 100%)`,
               backgroundSize: spainStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: spainStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: BRAND.ink, opacity: spainStatus === 'loading' ? 0.85 : 1,
+              color: BRAND.ink, opacity: (spainStatus === 'loading' || isInCooldown) ? 0.65 : 1,
               boxShadow: '0 4px 18px rgba(240,192,64,0.35)', textTransform: 'uppercase',
             }}
           >
             {spainBtnLabel}
           </button>
         </div>
-
+ 
+        {/* Botón email aparece solo si hay al menos una sección */}
         {hasAnyData && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
             <button
@@ -424,7 +453,8 @@ export default function App() {
             </button>
           </div>
         )}
-
+ 
+        {/* Mensajes de loading individuales */}
         {intlStatus === 'loading' && (
           <p style={{ textAlign: 'center', color: BRAND.gold, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
             🌍 Volando a buscar 28 piezas internacionales…
@@ -435,7 +465,15 @@ export default function App() {
             🇪🇸 Volando a buscar 19 piezas españolas…
           </p>
         )}
-
+ 
+        {/* Mensaje de cooldown activo cuando NO hay carga en marcha */}
+        {isInCooldown && intlStatus !== 'loading' && spainStatus !== 'loading' && (
+          <p style={{ textAlign: 'center', color: 'rgba(240,236,227,0.55)', fontSize: '11px', marginBottom: '8px', fontStyle: 'italic' }}>
+            ⏳ Esperando {cooldownLeft}s antes de poder hacer otra llamada (rate limit Anthropic Tier 1)
+          </p>
+        )}
+ 
+        {/* Errores individuales */}
         {intlStatus === 'error' && (
           <div style={{ background: 'rgba(252,165,165,0.1)', border: '1px solid rgba(252,165,165,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', color: '#FCA5A5', fontSize: '11px' }}>
             ⚠️ Internacional: {intlError}
@@ -446,13 +484,13 @@ export default function App() {
             ⚠️ España: {spainError}
           </div>
         )}
-
+ 
         {emailStatus === 'sent' && (
           <div style={{ background: 'rgba(134,239,172,0.12)', border: '1px solid rgba(134,239,172,0.3)', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', color: '#86EFAC', fontSize: '12px', textAlign: 'center' }}>
             ✅ Email preparado en tu cliente con destino {RECIPIENT}. Revísalo y pulsa Enviar.
           </div>
         )}
-
+ 
         {hasAnyData && (
           <div style={{ textAlign: 'center', margin: '0 0 24px', padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <span style={{ fontSize: '11px', color: BRAND.gold, letterSpacing: '0.15em', fontWeight: '700' }}>
@@ -463,7 +501,8 @@ export default function App() {
             </span>
           </div>
         )}
-
+ 
+        {/* Render de las secciones disponibles */}
         {hasAnyData && (
           <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
             {[...intlSections, ...spainSections].map((s, i) => (
@@ -471,7 +510,7 @@ export default function App() {
             ))}
           </div>
         )}
-
+ 
         {!hasAnyData && intlStatus === 'idle' && spainStatus === 'idle' && (
           <div style={{ textAlign: 'center', padding: '32px 20px 12px', color: 'rgba(240,236,227,0.7)' }}>
             <div style={{ fontSize: '44px', marginBottom: '10px', opacity: 0.55, animation: 'float 3s ease-in-out infinite' }}>🕊️</div>
@@ -483,7 +522,7 @@ export default function App() {
             </p>
           </div>
         )}
-
+ 
         <div style={{ textAlign: 'center', marginTop: '44px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <p style={{ fontSize: '10px', color: 'rgba(240,236,227,0.4)', margin: 0, letterSpacing: '0.15em', fontStyle: 'italic' }}>
             MAL NEWS · {RECIPIENT}
@@ -496,3 +535,4 @@ export default function App() {
     </div>
   );
 }
+ 
