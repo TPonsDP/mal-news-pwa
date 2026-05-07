@@ -4,14 +4,26 @@ const RECIPIENT = 'tonipons91@gmail.com';
 const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Tier 1 de Anthropic
  
 const BRAND = {
-  greenDark: '#0d5c36',
-  greenLight: '#1a8a52',
-  gold: '#f0c040',
-  goldDark: '#d4a017',
-  cream: '#F0ECE3',
-  ink: '#08321e',
-  leftBlue: '#60A5FA',
-  rightRed: '#F87171',
+  // Fondo Sage muted (verde apagado, paleta tierra)
+  limeLight: '#D5DBC1',  // Sage claro
+  limeDark: '#B7C49E',   // Sage medio
+  // Azul marino Tailwind (blue-900) para textos y logo
+  navy: '#1E3A8A',
+  navyDeep: '#172554',   // blue-950 (aún más oscuro para acentos)
+  // Terracota para la fecha (alternativas comentadas para fácil swap)
+  orange: '#C2693C',     // Terracota (recomendada con sage)
+  // orange: '#E2725B',  // Terracota clásica más cálida
+  // orange: '#A0522D',  // Sienna (más marrón)
+  // orange: '#FF8C42',  // Mandarina vibrante
+  // orange: '#CC5500',  // Naranja quemado
+  // Fondo de tarjetas crema claro
+  card: '#FAF8F2',
+  cardSubtle: 'rgba(255,255,255,0.92)',
+  ink: '#1E3A8A',        // azul marino para texto principal
+  inkSoft: 'rgba(30,58,138,0.72)',
+  // Lean badges
+  leftBlue: '#3B82F6',
+  rightRed: '#EF4444',
 };
  
 const SOURCE_COLORS = {
@@ -25,7 +37,7 @@ const SOURCE_COLORS = {
   'Artículo 14': '#FED7AA', 'Agenda Pública': '#A5F3FC',
   ABC: '#FCA5A5', Mundo: '#FECACA', 'El País': '#93C5FD', 'El Español': '#FED7AA',
   'La Gaceta': '#FECACA', almendron: '#93C5FD', enriquedans: '#A5F3FC',
-  default: BRAND.gold,
+  default: BRAND.orange,
 };
  
 function getSourceColor(source) {
@@ -38,15 +50,15 @@ function getSourceColor(source) {
  
 function MalNewsLogo({ maxWidth = 420 }) {
   return (
-    <svg viewBox="0 0 400 200" width="100%" style={{ maxWidth, height: 'auto', display: 'block', margin: '0 auto', filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.25))' }} xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 400 200" width="100%" style={{ maxWidth, height: 'auto', display: 'block', margin: '0 auto', filter: 'drop-shadow(0 8px 24px rgba(30,58,138,0.25))' }} xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="malBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0d5c36" stopOpacity="1" />
-          <stop offset="100%" stopColor="#1a8a52" stopOpacity="1" />
+          <stop offset="0%" stopColor="#D5DBC1" stopOpacity="1" />
+          <stop offset="100%" stopColor="#B7C49E" stopOpacity="1" />
         </linearGradient>
         <linearGradient id="malWaveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.08" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.02" />
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.04" />
         </linearGradient>
         <filter id="malLogoGlow">
           <feGaussianBlur stdDeviation="2" result="coloredBlur" />
@@ -59,29 +71,29 @@ function MalNewsLogo({ maxWidth = 420 }) {
       <rect width="400" height="200" rx="16" fill="url(#malBgGrad)" />
       <ellipse cx="320" cy="30" rx="180" ry="80" fill="url(#malWaveGrad)" />
       <ellipse cx="80" cy="170" rx="150" ry="60" fill="url(#malWaveGrad)" />
-      <line x1="0" y1="100" x2="400" y2="100" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-      <line x1="200" y1="0" x2="200" y2="200" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+      <line x1="0" y1="100" x2="400" y2="100" stroke="rgba(30,58,138,0.06)" strokeWidth="1" />
+      <line x1="200" y1="0" x2="200" y2="200" stroke="rgba(30,58,138,0.06)" strokeWidth="1" />
       <g transform="translate(285, 62)" filter="url(#malLogoGlow)">
         <ellipse cx="0" cy="8" rx="18" ry="10" fill="white" opacity="0.95" />
         <circle cx="18" cy="2" r="9" fill="white" opacity="0.95" />
-        <polygon points="26,2 36,-1 26,5" fill="#f0c040" opacity="0.9" />
-        <circle cx="21" cy="1" r="2" fill="#0d5c36" />
+        <polygon points="26,2 36,-1 26,5" fill="#C2693C" opacity="0.95" />
+        <circle cx="21" cy="1" r="2" fill="#1E3A8A" />
         <circle cx="21.5" cy="0.5" r="0.6" fill="white" />
-        <path d="M -8,2 Q -40,-20 -75,-8 Q -55,0 -20,4 Z" fill="white" opacity="0.9" />
-        <path d="M -8,6 Q -45,-5 -72,10 Q -52,10 -18,8 Z" fill="rgba(255,255,255,0.7)" />
-        <path d="M 10,0 Q 35,-22 68,-12 Q 50,2 22,3 Z" fill="white" opacity="0.9" />
-        <path d="M 10,4 Q 38,-8 65,8 Q 46,8 20,6 Z" fill="rgba(255,255,255,0.7)" />
+        <path d="M -8,2 Q -40,-20 -75,-8 Q -55,0 -20,4 Z" fill="white" opacity="0.92" />
+        <path d="M -8,6 Q -45,-5 -72,10 Q -52,10 -18,8 Z" fill="rgba(255,255,255,0.75)" />
+        <path d="M 10,0 Q 35,-22 68,-12 Q 50,2 22,3 Z" fill="white" opacity="0.92" />
+        <path d="M 10,4 Q 38,-8 65,8 Q 46,8 20,6 Z" fill="rgba(255,255,255,0.75)" />
         <path d="M -16,12 Q -28,22 -24,30 Q -18,26 -12,18 Z" fill="white" opacity="0.85" />
         <path d="M -12,14 Q -20,28 -14,34 Q -8,28 -6,20 Z" fill="white" opacity="0.9" />
-        <line x1="2" y1="18" x2="0" y2="28" stroke="rgba(255,200,60,0.8)" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="6" y1="18" x2="8" y2="28" stroke="rgba(255,200,60,0.8)" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="2" y1="18" x2="0" y2="28" stroke="rgba(194,105,60,0.85)" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="6" y1="18" x2="8" y2="28" stroke="rgba(194,105,60,0.85)" strokeWidth="1.5" strokeLinecap="round" />
       </g>
-      <line x1="30" y1="148" x2="185" y2="148" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
-      <text x="30" y="110" fontFamily="'Georgia', 'Times New Roman', serif" fontSize="62" fontWeight="700" fill="white" letterSpacing="2" opacity="0.97">MAL</text>
-      <text x="30" y="143" fontFamily="'Georgia', 'Times New Roman', serif" fontSize="32" fontWeight="400" fill="rgba(255,255,255,0.85)" letterSpacing="12">NEWS</text>
-      <text x="30" y="168" fontFamily="'Georgia', serif" fontSize="11" fill="rgba(255,255,255,0.5)" letterSpacing="3" fontStyle="italic">Tu briefing diario</text>
-      <rect x="0" y="190" width="400" height="10" rx="0" fill="rgba(255,255,255,0.08)" />
-      <rect x="0" y="192" width="60" height="4" rx="0" fill="rgba(255,255,255,0.25)" />
+      <line x1="30" y1="148" x2="185" y2="148" stroke="rgba(30,58,138,0.4)" strokeWidth="1" />
+      <text x="30" y="110" fontFamily="'Verdana', 'Geneva', sans-serif" fontSize="58" fontWeight="700" fill="#1E3A8A" letterSpacing="2" opacity="0.97">MAL</text>
+      <text x="30" y="143" fontFamily="'Verdana', 'Geneva', sans-serif" fontSize="30" fontWeight="500" fill="rgba(30,58,138,0.85)" letterSpacing="10">NEWS</text>
+      <text x="30" y="168" fontFamily="'Verdana', sans-serif" fontSize="11" fill="rgba(30,58,138,0.55)" letterSpacing="3" fontStyle="italic">Tu briefing diario</text>
+      <rect x="0" y="190" width="400" height="10" rx="0" fill="rgba(30,58,138,0.08)" />
+      <rect x="0" y="192" width="60" height="4" rx="0" fill="rgba(194,105,60,0.45)" />
     </svg>
   );
 }
@@ -97,7 +109,7 @@ function LeanBadge({ lean }) {
       display: 'inline-flex', alignItems: 'center', gap: '3px',
       padding: '2px 7px', borderRadius: '10px',
       fontSize: '9px', fontWeight: '700', letterSpacing: '0.05em',
-      background: `${color}20`, color, border: `1px solid ${color}50`,
+      background: `${color}18`, color, border: `1px solid ${color}40`,
     }}>
       {symbol} {label}
     </span>
@@ -110,8 +122,8 @@ function RegionBadge({ region }) {
     <span style={{
       padding: '2px 7px', borderRadius: '10px',
       fontSize: '9px', fontWeight: '600', letterSpacing: '0.04em',
-      background: 'rgba(255,255,255,0.08)', color: 'rgba(240,236,227,0.75)',
-      border: '1px solid rgba(255,255,255,0.12)',
+      background: 'rgba(30,58,138,0.08)', color: 'rgba(30,58,138,0.7)',
+      border: '1px solid rgba(30,58,138,0.15)',
     }}>{region}</span>
   );
 }
@@ -123,12 +135,13 @@ function NewsCard({ item, index }) {
  
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.06)',
-      border: '1px solid rgba(255,255,255,0.10)',
-      borderLeft: `3px solid ${accent}`,
+      background: BRAND.cardSubtle,
+      border: '1px solid rgba(30,58,138,0.12)',
+      borderLeft: `4px solid ${accent}`,
       borderRadius: '8px',
       padding: '12px 14px',
       marginBottom: '8px',
+      boxShadow: '0 2px 8px rgba(30,58,138,0.08)',
       animation: `fadeSlide 0.4s ease ${Math.min(index * 0.04, 0.6)}s both`,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
@@ -137,26 +150,26 @@ function NewsCard({ item, index }) {
             <LeanBadge lean={item.lean} />
             <RegionBadge region={item.region} />
           </div>
-          <p style={{ margin: '0 0 5px', fontSize: '13px', fontFamily: "'Georgia', serif", fontWeight: '700', color: BRAND.cream, lineHeight: 1.35 }}>
+          <p style={{ margin: '0 0 5px', fontSize: '13px', fontFamily: "'Verdana', 'Geneva', sans-serif", fontWeight: '700', color: BRAND.ink, lineHeight: 1.35 }}>
             {item.title}
           </p>
-          <p style={{ margin: '0 0 6px', fontSize: '11.5px', color: 'rgba(240,236,227,0.72)', lineHeight: 1.5, fontFamily: "'Georgia', serif" }}>{item.summary}</p>
+          <p style={{ margin: '0 0 6px', fontSize: '11.5px', color: BRAND.inkSoft, lineHeight: 1.5, fontFamily: "'Verdana', 'Geneva', sans-serif" }}>{item.summary}</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <span style={{
               fontSize: '9.5px', fontWeight: '700', letterSpacing: '0.08em',
-              color: accent, textTransform: 'uppercase',
+              color: BRAND.navyDeep, textTransform: 'uppercase',
             }}>{labelText}</span>
             {item.url && (
               <a href={item.url} target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: '9.5px', color: 'rgba(240,236,227,0.5)', textDecoration: 'none', borderBottom: '1px dotted rgba(240,236,227,0.4)' }}>
+                style={{ fontSize: '9.5px', color: BRAND.orange, textDecoration: 'none', borderBottom: `1px dotted ${BRAND.orange}80`, fontWeight: '700' }}>
                 leer →
               </a>
             )}
           </div>
         </div>
         <span style={{
-          fontSize: '20px', fontWeight: '900', color: 'rgba(240,192,64,0.18)',
-          fontFamily: "'Georgia', serif", minWidth: '26px', textAlign: 'right', lineHeight: 1,
+          fontSize: '20px', fontWeight: '900', color: 'rgba(194,105,60,0.30)',
+          fontFamily: "'Verdana', 'Geneva', sans-serif", minWidth: '26px', textAlign: 'right', lineHeight: 1,
         }}>{String(item.rank).padStart(2, '0')}</span>
       </div>
     </div>
@@ -166,10 +179,10 @@ function NewsCard({ item, index }) {
 function Section({ title, icon, items, color, count }) {
   return (
     <div style={{ marginBottom: '26px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', borderBottom: `1px solid ${color}40`, paddingBottom: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', borderBottom: `2px solid ${color}80`, paddingBottom: '8px' }}>
         <span style={{ fontSize: '16px' }}>{icon}</span>
-        <h2 style={{ margin: 0, fontSize: '11px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', color, fontFamily: "'Georgia', serif", flex: 1 }}>{title}</h2>
-        <span style={{ fontSize: '10px', color: `${color}99`, fontFamily: "'Georgia', serif", fontStyle: 'italic' }}>
+        <h2 style={{ margin: 0, fontSize: '11px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', color: BRAND.navyDeep, fontFamily: "'Verdana', 'Geneva', sans-serif", flex: 1 }}>{title}</h2>
+        <span style={{ fontSize: '10px', color: BRAND.inkSoft, fontFamily: "'Verdana', 'Geneva', sans-serif", fontStyle: 'italic' }}>
           {items?.length || 0}{count ? ` / ${count}` : ''}
         </span>
       </div>
@@ -324,13 +337,13 @@ export default function App() {
   const intlSections = intlData ? [
     { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: '#7DD3FC', count: 14 },
     { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: '#A5F3FC', count: 6 },
-    { title: 'Energía', icon: '⚡', items: intlData.energy, color: BRAND.gold, count: 4 },
+    { title: 'Energía', icon: '⚡', items: intlData.energy, color: BRAND.orange, count: 4 },
     { title: 'Legal', icon: '⚖️', items: intlData.legal, color: '#CBD5E1', count: 4 },
   ] : [];
  
   const spainSections = spainData ? [
     { title: 'España', icon: '🇪🇸', items: spainData.spainNews, color: '#FED7AA', count: 10 },
-    { title: 'Opinión España', icon: '✒️', items: spainData.spainOpinion, color: BRAND.gold, count: 9 },
+    { title: 'Opinión España', icon: '✒️', items: spainData.spainOpinion, color: BRAND.orange, count: 9 },
   ] : [];
  
   const intlBtnLabel = (() => {
@@ -352,10 +365,10 @@ export default function App() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: `linear-gradient(135deg, ${BRAND.greenDark} 0%, ${BRAND.greenLight} 100%)`,
+      background: `linear-gradient(135deg, ${BRAND.limeLight} 0%, ${BRAND.limeDark} 100%)`,
       backgroundAttachment: 'fixed',
-      color: BRAND.cream,
-      fontFamily: "'Georgia', serif",
+      color: BRAND.ink,
+      fontFamily: "'Verdana', 'Geneva', sans-serif",
       padding: '20px 16px',
       paddingTop: 'max(20px, env(safe-area-inset-top))',
       paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
@@ -366,29 +379,29 @@ export default function App() {
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .mal-cta:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(240,192,64,0.5) !important; }
-        .mal-cta-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.14) !important; border-color: ${BRAND.gold} !important; color: ${BRAND.gold} !important; }
+        .mal-cta:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(194,105,60,0.45) !important; }
+        .mal-cta-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.14) !important; border-color: ${BRAND.orange} !important; color: ${BRAND.orange} !important; }
       `}</style>
  
       <div style={{
         position: 'fixed', top: 0, right: 0, width: '60%', height: '40%',
-        background: 'radial-gradient(ellipse at top right, rgba(240,192,64,0.08) 0%, transparent 70%)',
+        background: 'radial-gradient(ellipse at top right, rgba(194,105,60,0.12) 0%, transparent 70%)',
         pointerEvents: 'none', zIndex: 0,
       }} />
  
       <div style={{ position: 'relative', zIndex: 1, maxWidth: '780px', margin: '0 auto' }}>
         <div style={{ marginBottom: '18px', animation: 'fadeSlide 0.6s ease both' }}>
           <MalNewsLogo maxWidth={420} />
-          <p style={{ margin: '16px 0 0', fontSize: '10px', letterSpacing: '0.3em', color: 'rgba(240,236,227,0.6)', textTransform: 'uppercase', textAlign: 'center' }}>
+          <p style={{ margin: '16px 0 0', fontSize: '12px', letterSpacing: '0.3em', color: BRAND.orange, textTransform: 'uppercase', textAlign: 'center', fontWeight: '800', textShadow: '0 1px 2px rgba(30,58,138,0.15)' }}>
             {today}
           </p>
         </div>
  
-        <p style={{ margin: '0 0 18px', fontSize: '10px', color: BRAND.gold, letterSpacing: '0.18em', textAlign: 'center', fontStyle: 'italic', opacity: 0.85 }}>
+        <p style={{ margin: '0 0 18px', fontSize: '10px', color: BRAND.orange, letterSpacing: '0.18em', textAlign: 'center', fontStyle: 'italic', opacity: 0.85 }}>
           MUNDO · OPINIÓN INTL · ENERGÍA · LEGAL · ESPAÑA · OPINIÓN ESPAÑA
         </p>
  
-        <div style={{ height: '1px', background: `linear-gradient(90deg, transparent 0%, ${BRAND.gold}66 50%, transparent 100%)`, margin: '0 0 24px' }} />
+        <div style={{ height: '1px', background: `linear-gradient(90deg, transparent 0%, ${BRAND.orange}66 50%, transparent 100%)`, margin: '0 0 24px' }} />
  
         {/* DOS BOTONES: internacional + España */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
@@ -400,14 +413,14 @@ export default function App() {
               border: 'none', borderRadius: '10px', padding: '14px 24px',
               fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em',
               cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
-              transition: 'all 0.25s ease', fontFamily: "'Georgia', serif",
+              transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
               background: intlStatus === 'loading'
-                ? `linear-gradient(90deg, ${BRAND.gold}, ${BRAND.goldDark}, ${BRAND.gold})`
-                : `linear-gradient(135deg, ${BRAND.gold} 0%, ${BRAND.goldDark} 100%)`,
+                ? `linear-gradient(90deg, ${BRAND.orange}, ${BRAND.navy}, ${BRAND.orange})`
+                : `linear-gradient(135deg, ${BRAND.orange} 0%, ${BRAND.navy} 100%)`,
               backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
               color: BRAND.ink, opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 4px 18px rgba(240,192,64,0.35)', textTransform: 'uppercase',
+              boxShadow: '0 4px 18px rgba(194,105,60,0.40)', textTransform: 'uppercase',
             }}
           >
             {intlBtnLabel}
@@ -421,14 +434,14 @@ export default function App() {
               border: 'none', borderRadius: '10px', padding: '14px 24px',
               fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em',
               cursor: (spainStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
-              transition: 'all 0.25s ease', fontFamily: "'Georgia', serif",
+              transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
               background: spainStatus === 'loading'
-                ? `linear-gradient(90deg, ${BRAND.gold}, ${BRAND.goldDark}, ${BRAND.gold})`
-                : `linear-gradient(135deg, ${BRAND.gold} 0%, ${BRAND.goldDark} 100%)`,
+                ? `linear-gradient(90deg, ${BRAND.orange}, ${BRAND.navy}, ${BRAND.orange})`
+                : `linear-gradient(135deg, ${BRAND.orange} 0%, ${BRAND.navy} 100%)`,
               backgroundSize: spainStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: spainStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
               color: BRAND.ink, opacity: (spainStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 4px 18px rgba(240,192,64,0.35)', textTransform: 'uppercase',
+              boxShadow: '0 4px 18px rgba(194,105,60,0.40)', textTransform: 'uppercase',
             }}
           >
             {spainBtnLabel}
@@ -442,11 +455,11 @@ export default function App() {
               className="mal-cta-secondary"
               onClick={sendEmail}
               style={{
-                border: '1px solid rgba(240,236,227,0.4)', borderRadius: '8px',
-                padding: '10px 24px', fontSize: '12px', fontWeight: '600',
+                border: `1px solid ${BRAND.navy}50`, borderRadius: '8px',
+                padding: '10px 24px', fontSize: '12px', fontWeight: '700',
                 letterSpacing: '0.08em', cursor: 'pointer',
-                transition: 'all 0.2s ease', fontFamily: "'Georgia', serif",
-                background: 'rgba(255,255,255,0.06)', color: BRAND.cream,
+                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
+                background: 'rgba(255,255,255,0.85)', color: BRAND.ink,
               }}
             >
               {emailStatus === 'sent' ? '✓ Email preparado' : `📧 Abrir email a ${RECIPIENT}`}
@@ -456,19 +469,19 @@ export default function App() {
  
         {/* Mensajes de loading individuales */}
         {intlStatus === 'loading' && (
-          <p style={{ textAlign: 'center', color: BRAND.gold, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
+          <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
             🌍 Volando a buscar 28 piezas internacionales…
           </p>
         )}
         {spainStatus === 'loading' && (
-          <p style={{ textAlign: 'center', color: BRAND.gold, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
+          <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
             🇪🇸 Volando a buscar 19 piezas españolas…
           </p>
         )}
  
         {/* Mensaje de cooldown activo cuando NO hay carga en marcha */}
         {isInCooldown && intlStatus !== 'loading' && spainStatus !== 'loading' && (
-          <p style={{ textAlign: 'center', color: 'rgba(240,236,227,0.55)', fontSize: '11px', marginBottom: '8px', fontStyle: 'italic' }}>
+          <p style={{ textAlign: 'center', color: 'rgba(30,58,138,0.65)', fontSize: '11px', marginBottom: '8px', fontStyle: 'italic' }}>
             ⏳ Esperando {cooldownLeft}s antes de poder hacer otra llamada (rate limit Anthropic Tier 1)
           </p>
         )}
@@ -493,10 +506,10 @@ export default function App() {
  
         {hasAnyData && (
           <div style={{ textAlign: 'center', margin: '0 0 24px', padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <span style={{ fontSize: '11px', color: BRAND.gold, letterSpacing: '0.15em', fontWeight: '700' }}>
+            <span style={{ fontSize: '11px', color: BRAND.orange, letterSpacing: '0.15em', fontWeight: '700' }}>
               {totalPieces} / 47 PIEZAS
             </span>
-            <span style={{ fontSize: '10px', color: 'rgba(240,236,227,0.5)', marginLeft: '12px', fontStyle: 'italic' }}>
+            <span style={{ fontSize: '10px', color: 'rgba(30,58,138,0.55)', marginLeft: '12px', fontStyle: 'italic' }}>
               {merged.date}
             </span>
           </div>
@@ -512,22 +525,22 @@ export default function App() {
         )}
  
         {!hasAnyData && intlStatus === 'idle' && spainStatus === 'idle' && (
-          <div style={{ textAlign: 'center', padding: '32px 20px 12px', color: 'rgba(240,236,227,0.7)' }}>
+          <div style={{ textAlign: 'center', padding: '32px 20px 12px', color: 'rgba(30,58,138,0.75)' }}>
             <div style={{ fontSize: '44px', marginBottom: '10px', opacity: 0.55, animation: 'float 3s ease-in-out infinite' }}>🕊️</div>
-            <p style={{ fontSize: '13px', margin: 0, fontFamily: "'Georgia', serif", fontStyle: 'italic' }}>
+            <p style={{ fontSize: '13px', margin: 0, fontFamily: "'Verdana', 'Geneva', sans-serif", fontStyle: 'italic' }}>
               Pulsa los botones dorados para generar el briefing por secciones
             </p>
-            <p style={{ fontSize: '11px', margin: '8px 0 0', color: 'rgba(240,236,227,0.5)' }}>
+            <p style={{ fontSize: '11px', margin: '8px 0 0', color: 'rgba(30,58,138,0.55)' }}>
               Internacional: 14 mundo + 6 opinión + 4 energía + 4 legal · España: 10 noticias + 9 opinión
             </p>
           </div>
         )}
  
         <div style={{ textAlign: 'center', marginTop: '44px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <p style={{ fontSize: '10px', color: 'rgba(240,236,227,0.4)', margin: 0, letterSpacing: '0.15em', fontStyle: 'italic' }}>
+          <p style={{ fontSize: '10px', color: 'rgba(30,58,138,0.5)', margin: 0, letterSpacing: '0.15em', fontStyle: 'italic' }}>
             MAL NEWS · {RECIPIENT}
           </p>
-          <p style={{ fontSize: '9px', color: 'rgba(240,236,227,0.3)', margin: '4px 0 0', letterSpacing: '0.1em' }}>
+          <p style={{ fontSize: '9px', color: 'rgba(30,58,138,0.45)', margin: '4px 0 0', letterSpacing: '0.1em' }}>
             v2 · PWA · 47 piezas · split internacional/España
           </p>
         </div>
