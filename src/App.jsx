@@ -207,6 +207,10 @@ export default function App() {
   const [nextAllowedAt, setNextAllowedAt] = useState(0);
   const [cooldownLeft, setCooldownLeft] = useState(0);
 
+  // Fecha seleccionada (formato ISO YYYY-MM-DD para el input). Por defecto: hoy.
+  const todayIso = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(todayIso);
+
   useEffect(() => {
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((nextAllowedAt - Date.now()) / 1000));
@@ -219,8 +223,11 @@ export default function App() {
 
   const isInCooldown = cooldownLeft > 0;
 
-  const today = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const todayShort = new Date().toLocaleDateString('es-ES');
+  // Derivar formatos de fecha desde selectedDate
+  const dateObj = new Date(selectedDate + 'T12:00:00');
+  const today = dateObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const todayShort = dateObj.toLocaleDateString('es-ES');
+  const isPastDate = selectedDate !== todayIso;
 
   async function fetchSection(section) {
     if (Date.now() < nextAllowedAt) return; // Salvaguarda — el botón debería estar deshabilitado en este caso
@@ -402,6 +409,61 @@ export default function App() {
         </p>
 
         <div style={{ height: '1px', background: `linear-gradient(90deg, transparent 0%, ${BRAND.orange}66 50%, transparent 100%)`, margin: '0 0 24px' }} />
+
+        {/* Selector de fecha del briefing */}
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px',
+          marginBottom: '14px', flexWrap: 'wrap',
+          background: 'rgba(255,255,255,0.55)',
+          border: `1px solid ${BRAND.navy}25`,
+          borderRadius: '8px',
+          padding: '10px 14px',
+          boxShadow: '0 2px 8px rgba(30,58,138,0.06)',
+        }}>
+          <span style={{ fontSize: '11px', color: BRAND.navyDeep, fontWeight: '700', letterSpacing: '0.05em' }}>
+            📅 FECHA DEL BRIEFING:
+          </span>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            max={todayIso}
+            disabled={isInCooldown || intlStatus === 'loading' || spainStatus === 'loading'}
+            style={{
+              fontFamily: "'Verdana', 'Geneva', sans-serif",
+              fontSize: '12px',
+              padding: '4px 8px',
+              border: `1px solid ${BRAND.navy}40`,
+              borderRadius: '6px',
+              color: BRAND.ink,
+              background: 'white',
+              cursor: 'pointer',
+              fontWeight: '600',
+            }}
+          />
+          {isPastDate && (
+            <button
+              onClick={() => setSelectedDate(todayIso)}
+              disabled={isInCooldown || intlStatus === 'loading' || spainStatus === 'loading'}
+              style={{
+                fontFamily: "'Verdana', 'Geneva', sans-serif",
+                fontSize: '10px', fontWeight: '700',
+                padding: '4px 10px', borderRadius: '6px',
+                border: `1px solid ${BRAND.orange}`,
+                background: 'transparent', color: BRAND.orange,
+                cursor: 'pointer', letterSpacing: '0.05em',
+              }}
+            >
+              ↻ HOY
+            </button>
+          )}
+        </div>
+
+        {isPastDate && (
+          <p style={{ textAlign: 'center', color: BRAND.inkSoft, fontSize: '10px', marginBottom: '10px', fontStyle: 'italic' }}>
+            Briefing histórico — fechas antiguas pueden tener menos piezas y URLs rotas
+          </p>
+        )}
 
         {/* DOS BOTONES: internacional + España */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
