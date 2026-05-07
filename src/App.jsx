@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
- 
+
 const RECIPIENT = 'tonipons91@gmail.com';
 const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Tier 1 de Anthropic
- 
+
 const BRAND = {
   // Fondo Sage muted (verde apagado, paleta tierra)
   limeLight: '#D5DBC1',  // Sage claro
@@ -25,7 +25,7 @@ const BRAND = {
   leftBlue: '#3B82F6',
   rightRed: '#EF4444',
 };
- 
+
 const SOURCE_COLORS = {
   BBC: '#FF8B8B', Reuters: '#FFB347', Guardian: '#7DD3FC', FT: '#FBBF77', AP: '#FCA5A5',
   NYT: '#FCA5A5', 'Le Monde': '#7DD3FC', Economist: '#F87171', WSJ: '#FED7AA', Bloomberg: '#FBBF77',
@@ -39,7 +39,7 @@ const SOURCE_COLORS = {
   'La Gaceta': '#FECACA', almendron: '#93C5FD', enriquedans: '#A5F3FC',
   default: BRAND.orange,
 };
- 
+
 function getSourceColor(source) {
   if (!source) return SOURCE_COLORS.default;
   for (const key in SOURCE_COLORS) {
@@ -47,7 +47,7 @@ function getSourceColor(source) {
   }
   return SOURCE_COLORS.default;
 }
- 
+
 function MalNewsLogo({ maxWidth = 420 }) {
   return (
     <svg viewBox="0 0 400 200" width="100%" style={{ maxWidth, height: 'auto', display: 'block', margin: '0 auto', filter: 'drop-shadow(0 8px 24px rgba(30,58,138,0.25))' }} xmlns="http://www.w3.org/2000/svg">
@@ -97,7 +97,7 @@ function MalNewsLogo({ maxWidth = 420 }) {
     </svg>
   );
 }
- 
+
 function LeanBadge({ lean }) {
   if (!lean) return null;
   const isLeft = lean === 'left';
@@ -115,7 +115,7 @@ function LeanBadge({ lean }) {
     </span>
   );
 }
- 
+
 function RegionBadge({ region }) {
   if (!region) return null;
   return (
@@ -127,12 +127,12 @@ function RegionBadge({ region }) {
     }}>{region}</span>
   );
 }
- 
+
 function NewsCard({ item, index }) {
   const labelText = item.author ? `${item.author} · ${item.source || ''}` : (item.source || '');
   const colorKey = item.author || item.source;
   const accent = getSourceColor(colorKey);
- 
+
   return (
     <div style={{
       background: BRAND.cardSubtle,
@@ -175,7 +175,7 @@ function NewsCard({ item, index }) {
     </div>
   );
 }
- 
+
 function Section({ title, icon, items, color, count }) {
   return (
     <div style={{ marginBottom: '26px' }}>
@@ -190,23 +190,23 @@ function Section({ title, icon, items, color, count }) {
     </div>
   );
 }
- 
+
 export default function App() {
   // Estado por sección — cada botón gestiona su propia carga independiente
   const [intlData, setIntlData] = useState(null);
   const [intlStatus, setIntlStatus] = useState('idle'); // idle | loading | done | error
   const [intlError, setIntlError] = useState('');
- 
+
   const [spainData, setSpainData] = useState(null);
   const [spainStatus, setSpainStatus] = useState('idle');
   const [spainError, setSpainError] = useState('');
- 
+
   const [emailStatus, setEmailStatus] = useState('idle');
- 
+
   // Cooldown global compartido entre los dos botones — evita el rate_limit_error 429 de Anthropic Tier 1
   const [nextAllowedAt, setNextAllowedAt] = useState(0);
   const [cooldownLeft, setCooldownLeft] = useState(0);
- 
+
   useEffect(() => {
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((nextAllowedAt - Date.now()) / 1000));
@@ -216,38 +216,38 @@ export default function App() {
     const interval = setInterval(tick, 500);
     return () => clearInterval(interval);
   }, [nextAllowedAt]);
- 
+
   const isInCooldown = cooldownLeft > 0;
- 
+
   const today = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const todayShort = new Date().toLocaleDateString('es-ES');
- 
+
   async function fetchSection(section) {
     if (Date.now() < nextAllowedAt) return; // Salvaguarda — el botón debería estar deshabilitado en este caso
- 
+
     const setData = section === 'international' ? setIntlData : setSpainData;
     const setStatus = section === 'international' ? setIntlStatus : setSpainStatus;
     const setError = section === 'international' ? setIntlError : setSpainError;
- 
+
     // Activa cooldown global de 150 seg desde AHORA
     setNextAllowedAt(Date.now() + COOLDOWN_MS);
- 
+
     setStatus('loading');
     setError('');
     setData(null);
- 
+
     try {
       const res = await fetch('/api/briefing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date: todayShort, section }),
       });
- 
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
         throw new Error(err.error || `HTTP ${res.status}`);
       }
- 
+
       const data = await res.json();
       if (!data.briefing) throw new Error('Respuesta sin briefing');
       setData(data.briefing);
@@ -257,14 +257,14 @@ export default function App() {
       setError(err.message || 'Error desconocido');
     }
   }
- 
+
   function sendEmail() {
     if (!intlData && !spainData) return;
     const merged = mergeBriefings();
     const subject = `🕊️ MAL NEWS — Briefing ${todayShort}`;
     const body = buildEmailPlainText(merged);
     const mailtoUrl = `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
- 
+
     try {
       const a = document.createElement('a');
       a.href = mailtoUrl;
@@ -278,7 +278,7 @@ export default function App() {
       setEmailStatus('error');
     }
   }
- 
+
   function mergeBriefings() {
     return {
       date: (intlData?.date || spainData?.date || todayShort),
@@ -290,12 +290,12 @@ export default function App() {
       spainOpinion: spainData?.spainOpinion || [],
     };
   }
- 
+
   function buildEmailPlainText(b) {
     const leanLabel = (lean) => lean === 'left' ? '[IZQ ◀]' : lean === 'right' ? '[DER ▶]' : '';
     const sep = '─'.repeat(50);
     const dsep = '═'.repeat(50);
- 
+
     const section = (title, items) => {
       if (!items?.length) return '';
       const rows = items.map(i => {
@@ -311,7 +311,7 @@ export default function App() {
       }).join('\n\n');
       return `\n${title.toUpperCase()} (${items.length})\n${sep}\n\n${rows}\n`;
     };
- 
+
     return [
       `MAL NEWS — Briefing ${b.date || todayShort}`,
       `Tu briefing diario · ${totalPieces} piezas`,
@@ -327,41 +327,41 @@ export default function App() {
       '',
     ].join('\n');
   }
- 
+
   const merged = mergeBriefings();
   const totalPieces =
     (merged.worldNews?.length || 0) + (merged.worldOpinion?.length || 0) +
     (merged.energy?.length || 0) + (merged.legal?.length || 0) +
     (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0);
- 
+
   const intlSections = intlData ? [
-    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: '#7DD3FC', count: 14 },
+    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: '#7DD3FC', count: 16 },
     { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: '#A5F3FC', count: 6 },
-    { title: 'Energía', icon: '⚡', items: intlData.energy, color: BRAND.orange, count: 4 },
-    { title: 'Legal', icon: '⚖️', items: intlData.legal, color: '#CBD5E1', count: 4 },
+    { title: 'Energía', icon: '⚡', items: intlData.energy, color: BRAND.orange, count: 2 },
+    { title: 'Legal', icon: '⚖️', items: intlData.legal, color: '#CBD5E1', count: 2 },
   ] : [];
- 
+
   const spainSections = spainData ? [
     { title: 'España', icon: '🇪🇸', items: spainData.spainNews, color: '#FED7AA', count: 10 },
     { title: 'Opinión España', icon: '✒️', items: spainData.spainOpinion, color: BRAND.orange, count: 9 },
   ] : [];
- 
+
   const intlBtnLabel = (() => {
     if (intlStatus === 'loading') return '🔍 Buscando internacional…';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (intlStatus === 'done') return '🔄 Recargar internacional';
-    return '🌍 Generar internacional (28)';
+    return '🌍 Generar internacional (26)';
   })();
- 
+
   const spainBtnLabel = (() => {
     if (spainStatus === 'loading') return '🔍 Buscando España…';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainStatus === 'done') return '🔄 Recargar España';
     return '🇪🇸 Generar España (19)';
   })();
- 
+
   const hasAnyData = intlData || spainData;
- 
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -382,13 +382,13 @@ export default function App() {
         .mal-cta:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(194,105,60,0.45) !important; }
         .mal-cta-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.14) !important; border-color: ${BRAND.orange} !important; color: ${BRAND.orange} !important; }
       `}</style>
- 
+
       <div style={{
         position: 'fixed', top: 0, right: 0, width: '60%', height: '40%',
         background: 'radial-gradient(ellipse at top right, rgba(194,105,60,0.12) 0%, transparent 70%)',
         pointerEvents: 'none', zIndex: 0,
       }} />
- 
+
       <div style={{ position: 'relative', zIndex: 1, maxWidth: '780px', margin: '0 auto' }}>
         <div style={{ marginBottom: '18px', animation: 'fadeSlide 0.6s ease both' }}>
           <MalNewsLogo maxWidth={420} />
@@ -396,13 +396,13 @@ export default function App() {
             {today}
           </p>
         </div>
- 
+
         <p style={{ margin: '0 0 18px', fontSize: '10px', color: BRAND.orange, letterSpacing: '0.18em', textAlign: 'center', fontStyle: 'italic', opacity: 0.85 }}>
           MUNDO · OPINIÓN INTL · ENERGÍA · LEGAL · ESPAÑA · OPINIÓN ESPAÑA
         </p>
- 
+
         <div style={{ height: '1px', background: `linear-gradient(90deg, transparent 0%, ${BRAND.orange}66 50%, transparent 100%)`, margin: '0 0 24px' }} />
- 
+
         {/* DOS BOTONES: internacional + España */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
           <button
@@ -425,7 +425,7 @@ export default function App() {
           >
             {intlBtnLabel}
           </button>
- 
+
           <button
             className="mal-cta"
             onClick={() => fetchSection('spain')}
@@ -447,7 +447,7 @@ export default function App() {
             {spainBtnLabel}
           </button>
         </div>
- 
+
         {/* Botón email aparece solo si hay al menos una sección */}
         {hasAnyData && (
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
@@ -466,11 +466,11 @@ export default function App() {
             </button>
           </div>
         )}
- 
+
         {/* Mensajes de loading individuales */}
         {intlStatus === 'loading' && (
           <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            🌍 Volando a buscar 28 piezas internacionales…
+            🌍 Volando a buscar 26 piezas internacionales…
           </p>
         )}
         {spainStatus === 'loading' && (
@@ -478,14 +478,14 @@ export default function App() {
             🇪🇸 Volando a buscar 19 piezas españolas…
           </p>
         )}
- 
+
         {/* Mensaje de cooldown activo cuando NO hay carga en marcha */}
         {isInCooldown && intlStatus !== 'loading' && spainStatus !== 'loading' && (
           <p style={{ textAlign: 'center', color: 'rgba(30,58,138,0.65)', fontSize: '11px', marginBottom: '8px', fontStyle: 'italic' }}>
             ⏳ Esperando {cooldownLeft}s antes de poder hacer otra llamada (rate limit Anthropic Tier 1)
           </p>
         )}
- 
+
         {/* Errores individuales */}
         {intlStatus === 'error' && (
           <div style={{ background: 'rgba(252,165,165,0.1)', border: '1px solid rgba(252,165,165,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', color: '#FCA5A5', fontSize: '11px' }}>
@@ -497,13 +497,13 @@ export default function App() {
             ⚠️ España: {spainError}
           </div>
         )}
- 
+
         {emailStatus === 'sent' && (
           <div style={{ background: 'rgba(134,239,172,0.12)', border: '1px solid rgba(134,239,172,0.3)', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', color: '#86EFAC', fontSize: '12px', textAlign: 'center' }}>
             ✅ Email preparado en tu cliente con destino {RECIPIENT}. Revísalo y pulsa Enviar.
           </div>
         )}
- 
+
         {hasAnyData && (
           <div style={{ textAlign: 'center', margin: '0 0 24px', padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <span style={{ fontSize: '11px', color: BRAND.orange, letterSpacing: '0.15em', fontWeight: '700' }}>
@@ -514,7 +514,7 @@ export default function App() {
             </span>
           </div>
         )}
- 
+
         {/* Render de las secciones disponibles */}
         {hasAnyData && (
           <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
@@ -523,7 +523,7 @@ export default function App() {
             ))}
           </div>
         )}
- 
+
         {!hasAnyData && intlStatus === 'idle' && spainStatus === 'idle' && (
           <div style={{ textAlign: 'center', padding: '32px 20px 12px', color: 'rgba(30,58,138,0.75)' }}>
             <div style={{ fontSize: '44px', marginBottom: '10px', opacity: 0.55, animation: 'float 3s ease-in-out infinite' }}>🕊️</div>
@@ -531,11 +531,11 @@ export default function App() {
               Pulsa los botones dorados para generar el briefing por secciones
             </p>
             <p style={{ fontSize: '11px', margin: '8px 0 0', color: 'rgba(30,58,138,0.55)' }}>
-              Internacional: 14 mundo + 6 opinión + 4 energía + 4 legal · España: 10 noticias + 9 opinión
+              Internacional: 16 mundo + 6 opinión + 2 energía + 2 legal · España: 10 noticias + 9 opinión
             </p>
           </div>
         )}
- 
+
         <div style={{ textAlign: 'center', marginTop: '44px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <p style={{ fontSize: '10px', color: 'rgba(30,58,138,0.5)', margin: 0, letterSpacing: '0.15em', fontStyle: 'italic' }}>
             MAL NEWS · {RECIPIENT}
@@ -548,4 +548,3 @@ export default function App() {
     </div>
   );
 }
- 
