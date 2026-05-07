@@ -122,6 +122,7 @@ mal-news-pwa/
 │   ├── App.jsx                  # UI completa (no hace API calls a anthropic.com)
 │   └── main.jsx
 ├── index.html
+
 ├── package.json
 ├── vite.config.js
 └── vercel.json                  # maxDuration 60s para la función
