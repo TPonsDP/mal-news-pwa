@@ -72,15 +72,17 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 4 claves, NO incluyas spainNews ni spai
 }
 
 ${COLUMNISTS_GUIDE}`,
-    user: (today) => `Hoy es ${today}. Genera SOLO la parte internacional del briefing MAL NEWS con piezas publicadas en las últimas 48 horas:
+    user: (today) => `FECHA DE REFERENCIA: ${today}. Genera SOLO la parte internacional del briefing MAL NEWS con piezas publicadas en las 48 horas previas a esa fecha (incluyendo el día de referencia):
 - HASTA 16 noticias mundo (equilibrio IZQ/DER, ≥4 regiones distintas)
 - HASTA 6 opinión mundo firmada con evento concreto detrás (no análisis evergreen)
-- HASTA 2 energía (Brent obligatorio si hay movimiento hoy)
-- HASTA 2 legal (sentencias/decisiones del día, internacional o España)
+- HASTA 2 energía (Brent obligatorio si hay movimiento ese día)
+- HASTA 2 legal (sentencias/decisiones, internacional o España)
 
 CRÍTICO: Si solo encuentras 8 piezas reales y frescas de mundo, devuelve 8 — NO rellenes hasta 16 con genéricas. Mejor 18 piezas reales que 26 mediocres.
 
-Cada pieza debe llevar campo "publishedDate" con la fecha real del artículo. URLs permalink directos. Devuelve SOLO JSON con las 4 claves: worldNews, worldOpinion, energy, legal (más date).`,
+Si la fecha de referencia es muy antigua (>1 mes), es esperable encontrar menos material verificable — devuelve lo que puedas con URL real.
+
+Cada pieza debe llevar campo "publishedDate" con la fecha real del artículo (debe estar dentro de las 48h previas a la fecha de referencia). URLs permalink directos. Devuelve SOLO JSON con las 4 claves: worldNews, worldOpinion, energy, legal (más date).`,
     maxUses: 10,
   },
   spain: {
@@ -104,14 +106,16 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas worldNews, worldO
 }
 
 ${COLUMNISTS_GUIDE}`,
-    user: (today) => `Hoy es ${today}. Genera SOLO la parte de España del briefing MAL NEWS con piezas de las últimas 48 horas:
-- HASTA 10 noticias España (evento concreto del día)
-- HASTA 9 columnas opinión firmadas publicadas HOY (sin editoriales, máx 3 mismo medio, mín 5 medios)
+    user: (today) => `FECHA DE REFERENCIA: ${today}. Genera SOLO la parte de España del briefing MAL NEWS con piezas publicadas en las 48 horas previas a esa fecha (incluyendo el día de referencia):
+- HASTA 10 noticias España (eventos concretos de esos días)
+- HASTA 9 columnas opinión firmadas publicadas EN LA FECHA DE REFERENCIA o el día anterior (sin editoriales, máx 3 mismo medio, mín 5 medios)
 
-CRÍTICO: Si solo encuentras 5 columnas firmadas publicadas hoy, devuelve 5 — NO rellenes hasta 9 incluyendo columnas de ayer o editoriales sin firma.
+CRÍTICO: Si solo encuentras 5 columnas firmadas publicadas en la fecha de referencia, devuelve 5 — NO rellenes hasta 9 incluyendo columnas más antiguas o editoriales sin firma.
 
-Cada pieza debe llevar campo "publishedDate". URLs permalink directos. Devuelve SOLO JSON con las 2 claves: spainNews, spainOpinion (más date).`,
-    maxUses: 10,
+Si la fecha de referencia es muy antigua (>1 mes), es esperable encontrar menos material verificable — devuelve lo que puedas con URL real.
+
+Cada pieza debe llevar campo "publishedDate" (debe estar dentro de las 48h previas a la fecha de referencia). URLs permalink directos. Devuelve SOLO JSON con las 2 claves: spainNews, spainOpinion (más date).`,
+    maxUses: 12,
   },
 };
 
