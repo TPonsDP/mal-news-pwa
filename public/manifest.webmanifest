@@ -1,0 +1,33 @@
+{
+  "name": "MAL NEWS — Briefing diario",
+  "short_name": "MAL NEWS",
+  "description": "Tu briefing diario de 47 piezas: mundo, opinión, energía, legal, España.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d5c36",
+  "theme_color": "#0d5c36",
+  "lang": "es",
+  "categories": ["news", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

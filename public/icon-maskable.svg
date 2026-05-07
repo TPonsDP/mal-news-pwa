@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d5c36"/>
+      <stop offset="100%" stop-color="#1a8a52"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fondo a sangre completa (Android puede recortar bordes) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <ellipse cx="420" cy="80" rx="240" ry="110" fill="url(#wave)"/>
+  <ellipse cx="100" cy="430" rx="200" ry="80" fill="url(#wave)"/>
+
+  <!-- CONTENIDO dentro de safe zone (círculo radio 205 desde el centro 256,256) -->
+  <g transform="translate(0, 30)">
+    <!-- Gaviota -->
+    <g transform="translate(256, 195) scale(0.85)" opacity="0.95">
+      <ellipse cx="0" cy="6" rx="22" ry="12" fill="white"/>
+      <circle cx="22" cy="-2" r="11" fill="white"/>
+      <polygon points="32,-2 46,-6 32,4" fill="#f0c040"/>
+      <circle cx="25" cy="-3" r="2.5" fill="#0d5c36"/>
+      <circle cx="25.5" cy="-3.5" r="0.8" fill="white"/>
+      <path d="M -10,0 Q -50,-26 -92,-10 Q -68,2 -24,5 Z" fill="white" opacity="0.95"/>
+      <path d="M -10,5 Q -56,-6 -88,12 Q -64,12 -22,9 Z" fill="rgba(255,255,255,0.7)"/>
+      <path d="M 12,-2 Q 44,-28 84,-15 Q 62,2 26,3 Z" fill="white" opacity="0.95"/>
+      <path d="M 12,3 Q 46,-10 80,10 Q 56,10 24,7 Z" fill="rgba(255,255,255,0.7)"/>
+    </g>
+
+    <!-- MAL más cerca del centro -->
+    <text x="256" y="305" font-family="Georgia, 'Times New Roman', serif" font-size="96" font-weight="700"
+          fill="white" text-anchor="middle" letter-spacing="4">MAL</text>
+
+    <line x1="180" y1="325" x2="332" y2="325" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+
+    <!-- NEWS -->
+    <text x="256" y="372" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="400"
+          fill="rgba(255,255,255,0.9)" text-anchor="middle" letter-spacing="14">NEWS</text>
+  </g>
+</svg>
