@@ -458,18 +458,18 @@ export default function App() {
   ] : [];
 
   const intlBtnLabel = (() => {
-    if (intlStatus === 'loading') return '🔍 Buscando internacional…';
+    if (intlStatus === 'loading') return '🔍 Buscando internacional...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (intlStatus === 'done') return '🔄 Recargar internacional';
     return '🌍 Generar internacional (24)';
   })();
 
   const spainOpinionBtnLabel = (() => {
-    if (spainOpinionStatus === 'loading') return '🔍 Buscando opinión España…';
+    if (spainOpinionStatus === 'loading') return '🔍 Buscando opinión España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainOpinionStatus === 'done') return '🔄 Recargar opinión España';
     return '✍️ Opinión España (10)';
   })();
 
   const spainNewsBtnLabel = (() => {
-    if (spainNewsStatus === 'loading') return '🔍 Buscando notici
+    if (spainNewsStatus === 'loading') return '🔍 Buscando no
