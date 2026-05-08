@@ -80,38 +80,59 @@ Si solo encuentras 8 noticias mundo verificables, devuelve 8 — NO rellenes has
 Cada pieza debe llevar campo "publishedDate". URLs permalink directos. Devuelve SOLO JSON con las 3 claves: worldOpinion, worldNews, legal (más date). NO incluyas energy.`,
     maxUses: 10,
   },
-  spain: {
-    label: 'España + Opinión España',
-    system: `Eres mi editor de noticias personal de élite. Tu tarea es buscar en web noticias de las ÚLTIMAS 48H y devolver un briefing parcial MAL NEWS de hasta 20 piezas en 2 secciones españolas. Las COLUMNAS DE OPINIÓN son la parte más valiosa del briefing — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con análisis genérico o columnas viejas.
+  spainNews: {
+    label: 'Noticias España',
+    system: `Eres mi editor de noticias personal de élite. Tu tarea es buscar en web noticias de España publicadas en las ÚLTIMAS 48H y devolver hasta 10 piezas con eventos concretos del día.
 
 ${RULES_BASE}
 
-ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas worldNews, worldOpinion, energy ni legal):
+ESQUEMA JSON EXACTO (devuelve SOLO esta clave, NO incluyas opinión ni nada más):
+{
+  "date": "DD/MM/YYYY",
+  "spainNews": [
+    /* HASTA 10 piezas con evento concreto del día (votación, declaración, sentencia, dato económico, suceso).
+       Fuentes: Vozpópuli, The Objective, Libertad Digital, VilaWeb, El Diario, El Debate, Artículo 14, Agenda Pública, El Confidencial, ABC, El País, El Mundo, La Razón. */
+    {"rank": 1, "title": "...", "summary": "...", "source": "...", "url": "...", "publishedDate": "2026-05-07"}
+  ]
+}`,
+    user: (today) => `FECHA DE REFERENCIA: ${today}. Genera SOLO la parte de NOTICIAS de España (sin opinión) del briefing MAL NEWS con piezas publicadas en las 48 horas previas a esa fecha (incluyendo el día de referencia):
+- HASTA 10 noticias España con eventos concretos (votaciones, sentencias, datos económicos, declaraciones políticas, sucesos)
+
+CRÍTICO: Si solo encuentras 6 noticias verificables, devuelve 6 — NO rellenes con genéricas.
+
+Si la fecha de referencia es muy antigua (>1 mes), devuelve menos piezas pero con URL real.
+
+Cada pieza debe llevar campo "publishedDate". URLs permalink directos. Devuelve SOLO JSON con la clave spainNews (más date).`,
+    maxUses: 8,
+  },
+
+  spainOpinion: {
+    label: 'Opinión España',
+    system: `Eres mi editor de opinión personal de élite. Tu tarea es buscar en web COLUMNAS FIRMADAS de opinión española publicadas en las ÚLTIMAS 48H y devolver hasta 10 piezas. Esta es LA PARTE MÁS VALIOSA del briefing — busca con esmero columnas de los principales columnistas españoles.
+
+${RULES_BASE}
+
+ESQUEMA JSON EXACTO (devuelve SOLO esta clave, NO incluyas noticias ni nada más):
 {
   "date": "DD/MM/YYYY",
   "spainOpinion": [
-    /* HASTA 10 piezas — PRIORITARIAS. Columnas FIRMADAS publicadas HOY (no ayer, no editoriales). Máx 3 mismo medio, mín 5 medios distintos. */
+    /* HASTA 10 piezas. Columnas FIRMADAS publicadas en la fecha de referencia o el día anterior. NO editoriales sin firma. Máx 3 columnas del mismo medio, mín 5 medios distintos. */
     {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "...", "url": "...", "publishedDate": "2026-05-07"}
-  ],
-  "spainNews": [
-    /* HASTA 10 piezas con evento concreto del día (votación, declaración, sentencia, dato económico, suceso).
-       Fuentes: Vozpópuli, The Objective, Libertad Digital, VilaWeb, El Diario, El Debate, Artículo 14, Agenda Pública. */
-    {"rank": 1, "title": "...", "summary": "...", "source": "...", "url": "...", "publishedDate": "2026-05-07"}
   ]
 }
 
 ${COLUMNISTS_GUIDE}`,
-    user: (today) => `FECHA DE REFERENCIA: ${today}. Genera SOLO la parte de España del briefing MAL NEWS con piezas publicadas en las 48 horas previas a esa fecha (incluyendo el día de referencia):
-- HASTA 10 columnas opinión PRIORITARIAS firmadas, publicadas EN LA FECHA DE REFERENCIA o el día anterior (sin editoriales, máx 3 mismo medio, mín 5 medios)
-- HASTA 10 noticias España (eventos concretos de esos días)
+    user: (today) => `FECHA DE REFERENCIA: ${today}. Genera SOLO la sección de OPINIÓN ESPAÑA del briefing MAL NEWS:
+- HASTA 10 columnas firmadas publicadas EN LA FECHA DE REFERENCIA o el día anterior
+- Sin editoriales sin firma
+- Máx 3 columnas del mismo medio
+- Mín 5 medios distintos
 
-CRÍTICO: Las columnas de opinión son la parte que más quiero — dedica búsquedas a esto antes que a las noticias. Consulta el guide de columnistas y prioriza los que correspondan al día de la semana de la fecha de referencia. Si solo encuentras 6 columnas firmadas reales, devuelve 6 — NO rellenes hasta 10 incluyendo editoriales sin firma o columnas más antiguas.
+CRÍTICO: Esta es la parte más importante del briefing — busca con esmero. Consulta el guide de columnistas y prioriza los que publican el día de la semana correspondiente a la fecha de referencia. Si solo encuentras 6 columnas firmadas reales, devuelve 6 — NO rellenes con editoriales sin firma o columnas más antiguas.
 
-Si solo encuentras 5 noticias verificables, devuelve 5 — NO rellenes con genéricas.
+Si la fecha de referencia es muy antigua (>1 mes), devuelve menos piezas pero con URL real.
 
-Si la fecha de referencia es muy antigua (>1 mes), es esperable encontrar menos material verificable — devuelve lo que puedas con URL real.
-
-Cada pieza debe llevar campo "publishedDate". URLs permalink directos. Devuelve SOLO JSON con las 2 claves: spainOpinion, spainNews (más date).`,
+Cada pieza debe llevar campo "publishedDate", "author" y "source". URLs permalink directos. Devuelve SOLO JSON con la clave spainOpinion (más date).`,
     maxUses: 12,
   },
 };
