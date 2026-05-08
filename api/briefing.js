@@ -68,14 +68,17 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 3 claves, NO incluyas energy, spainNews
 }
 
 ${COLUMNISTS_GUIDE}`,
-    user: (today) => `FECHA DE REFERENCIA: ${today}. Genera SOLO la parte internacional del briefing MAL NEWS con piezas publicadas en las 48 horas previas a esa fecha (incluyendo el día de referencia):
+    user: (today, todayFull, requestTime) => `FECHA DE REFERENCIA: ${todayFull || today}
+HORA ACTUAL DE LA PETICIÓN: ${requestTime}
+
+Genera SOLO la parte internacional del briefing MAL NEWS con piezas publicadas en las 48 horas previas a la fecha de referencia (incluyendo el día de referencia):
 - HASTA 6 opinión mundo PRIORITARIA: columnas firmadas con evento concreto detrás (no análisis evergreen). Dedica búsquedas a esto antes que a las noticias
 - HASTA 16 noticias mundo (equilibrio IZQ/DER, ≥4 regiones distintas)
 - HASTA 2 legal (sentencias/decisiones, internacional o España)
 
-CRÍTICO: Las columnas de opinión son la parte que más quiero — busca con esmero en NYT, FT, Le Monde, Economist, Project Syndicate, Foreign Affairs, Spectator, Atlantic. Si solo encuentras 4 columnas reales y frescas, devuelve 4 — pero pon esfuerzo en encontrarlas.
+CRÍTICO: Las columnas de opinión son la parte que más quiero - busca con esmero en NYT, FT, Le Monde, Economist, Project Syndicate, Foreign Affairs, Spectator, Atlantic. Si solo encuentras 4 columnas reales y frescas, devuelve 4.
 
-Si solo encuentras 8 noticias mundo verificables, devuelve 8 — NO rellenes hasta 16 con genéricas.
+Si solo encuentras 8 noticias mundo verificables, devuelve 8 - NO rellenes hasta 16 con genéricas.
 
 Cada pieza debe llevar campo "publishedDate". URLs permalink directos. Devuelve SOLO JSON con las 3 claves: worldOpinion, worldNews, legal (más date). NO incluyas energy.`,
     maxUses: 10,
@@ -95,10 +98,17 @@ ESQUEMA JSON EXACTO (devuelve SOLO esta clave, NO incluyas opinión ni nada más
     {"rank": 1, "title": "...", "summary": "...", "source": "...", "url": "...", "publishedDate": "2026-05-07"}
   ]
 }`,
-    user: (today) => `FECHA DE REFERENCIA: ${today}. Genera SOLO la parte de NOTICIAS de España (sin opinión) del briefing MAL NEWS con piezas publicadas en las 48 horas previas a esa fecha (incluyendo el día de referencia):
+    user: (today, todayFull, requestTime) => `FECHA DE REFERENCIA: ${todayFull || today}
+HORA ACTUAL DE LA PETICIÓN: ${requestTime}
+
+Genera SOLO la parte de NOTICIAS de España (sin opinión) del briefing MAL NEWS con piezas publicadas EN la fecha de referencia (priorizando) o el día anterior:
 - HASTA 10 noticias España con eventos concretos (votaciones, sentencias, datos económicos, declaraciones políticas, sucesos)
 
-CRÍTICO: Si solo encuentras 6 noticias verificables, devuelve 6 — NO rellenes con genéricas.
+REGLAS:
+- Prioriza noticias publicadas EN la fecha de referencia. Solo incluye del día anterior si son eventos relevantes que continúan o si la fecha es temprana.
+- Si la hora actual es temprana (<11:00) y la fecha de referencia es HOY, es esperable encontrar pocas noticias del día - devuelve las que haya, complementa con últimas horas del día anterior si aplica.
+
+CRÍTICO: Si solo encuentras 6 noticias verificables, devuelve 6 - NO rellenes con genéricas.
 
 Si la fecha de referencia es muy antigua (>1 mes), devuelve menos piezas pero con URL real.
 
@@ -122,17 +132,26 @@ ESQUEMA JSON EXACTO (devuelve SOLO esta clave, NO incluyas noticias ni nada más
 }
 
 ${COLUMNISTS_GUIDE}`,
-    user: (today) => `FECHA DE REFERENCIA: ${today}. Genera SOLO la sección de OPINIÓN ESPAÑA del briefing MAL NEWS:
-- HASTA 10 columnas firmadas publicadas EN LA FECHA DE REFERENCIA o el día anterior
-- Sin editoriales sin firma
-- Máx 3 columnas del mismo medio
-- Mín 5 medios distintos
+    user: (today, todayFull, requestTime) => `FECHA DE REFERENCIA: ${todayFull || today}
+HORA ACTUAL DE LA PETICIÓN: ${requestTime}
 
-CRÍTICO: Esta es la parte más importante del briefing — busca con esmero. Consulta el guide de columnistas y prioriza los que publican el día de la semana correspondiente a la fecha de referencia. Si solo encuentras 6 columnas firmadas reales, devuelve 6 — NO rellenes con editoriales sin firma o columnas más antiguas.
+Genera SOLO la sección de OPINIÓN ESPAÑA del briefing MAL NEWS:
+- HASTA 10 columnas firmadas publicadas EXCLUSIVAMENTE en la fecha de referencia (NO en días anteriores).
+- Sin editoriales sin firma. Máx 3 columnas del mismo medio. Mín 5 medios distintos.
+
+REGLAS ESTRICTAS DE FECHA:
+- SOLO devuelve columnas con publishedDate EXACTAMENTE igual a la fecha de referencia.
+- NUNCA incluyas columnas del día anterior o de fechas previas. Mejor devolver 3 columnas reales de hoy que 10 incluyendo días pasados.
+- Si la fecha de referencia es HOY y la hora actual es temprana (antes de las 11:00), es esperable encontrar pocas columnas indexadas — devuelve solo las que haya, NUNCA suplementes con columnas viejas.
+- Si la hora actual es de tarde-noche (>17:00), todas las columnas del día deberían estar indexadas — busca con más insistencia.
+
+Consulta el guide de columnistas y prioriza los que publican el día de la semana correspondiente a la fecha de referencia.
+
+CRÍTICO: Si solo encuentras 4 columnas firmadas publicadas hoy, devuelve 4 — NO rellenes con editoriales sin firma o columnas más antiguas.
 
 Si la fecha de referencia es muy antigua (>1 mes), devuelve menos piezas pero con URL real.
 
-Cada pieza debe llevar campo "publishedDate", "author" y "source". URLs permalink directos. Devuelve SOLO JSON con la clave spainOpinion (más date).`,
+Cada pieza debe llevar campo "publishedDate", "author" y "source". El publishedDate DEBE coincidir con la fecha de referencia. URLs permalink directos. Devuelve SOLO JSON con la clave spainOpinion (más date).`,
     maxUses: 12,
   },
 };
@@ -195,8 +214,10 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Falta ANTHROPIC_API_KEY en variables de entorno de Vercel' });
   }
 
-  const { date, section } = req.body || {};
+  const { date, dateFull, requestTime, section } = req.body || {};
   const todayShort = date || new Date().toLocaleDateString('es-ES');
+  const todayFull = dateFull || todayShort;
+  const nowTime = requestTime || 'no especificada';
 
   if (!section || !SECTIONS[section]) {
     return res.status(400).json({
@@ -221,7 +242,7 @@ export default async function handler(req, res) {
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: cfg.maxUses }],
         messages: [{
           role: 'user',
-          content: cfg.user(todayShort),
+          content: cfg.user(todayShort, todayFull, nowTime),
         }],
       }),
     });
@@ -248,4 +269,4 @@ export default async function handler(req, res) {
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Error desconocido' });
   }
-}
+         }
