@@ -269,7 +269,7 @@ function Section({ title, icon, items, color, count, descriptor, type }) {
 }
 
 export default function App() {
-  // Estado por sección — cada botón gestiona su propia carga independiente
+  // Estado por sección - cada botón gestiona su propia carga independiente
   const [intlData, setIntlData] = useState(null);
   const [intlStatus, setIntlStatus] = useState('idle'); // idle | loading | done | error
   const [intlError, setIntlError] = useState('');
@@ -284,7 +284,7 @@ export default function App() {
 
   const [emailStatus, setEmailStatus] = useState('idle');
 
-  // Cooldown global compartido entre los TRES botones — evita el rate_limit_error 429 de Anthropic Tier 1
+  // Cooldown global compartido entre los TRES botones - evita el rate_limit_error 429 de Anthropic Tier 1
   const [nextAllowedAt, setNextAllowedAt] = useState(0);
   const [cooldownLeft, setCooldownLeft] = useState(0);
 
@@ -327,11 +327,20 @@ export default function App() {
     setError('');
     setData(null);
 
+    // Construye contexto de hora actual real (independiente de la fecha seleccionada)
+    const now = new Date();
+    const requestTime = now.toLocaleString('es-ES', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    });
+    // dateFull = fecha de referencia con día de la semana
+    const dateFull = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
     try {
       const res = await fetch('/api/briefing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: todayShort, section }),
+        body: JSON.stringify({ date: todayShort, dateFull, requestTime, section }),
       });
 
       if (!res.ok) {
@@ -352,7 +361,7 @@ export default function App() {
   function sendEmail() {
     if (!intlData && !spainNewsData && !spainOpinionData) return;
     const merged = mergeBriefings();
-    const subject = `🕊️ MAL NEWS — Briefing ${todayShort}`;
+    const subject = `🕊️ MAL NEWS - Briefing ${todayShort}`;
     const body = buildEmailPlainText(merged);
     const mailtoUrl = `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
@@ -383,8 +392,8 @@ export default function App() {
 
   function buildEmailPlainText(b) {
     const leanLabel = (lean) => lean === 'left' ? '[IZQ ◀]' : lean === 'right' ? '[DER ▶]' : '';
-    const sep = '─'.repeat(50);
-    const dsep = '═'.repeat(50);
+    const sep = '-'.repeat(50);
+    const dsep = '='.repeat(50);
 
     const section = (title, items) => {
       if (!items?.length) return '';
@@ -403,7 +412,7 @@ export default function App() {
     };
 
     return [
-      `MAL NEWS — Briefing ${b.date || todayShort}`,
+      `MAL NEWS - Briefing ${b.date || todayShort}`,
       `Tu briefing diario · ${totalPieces} piezas`,
       dsep,
       section('🌍 Mundo', b.worldNews),
@@ -424,7 +433,7 @@ export default function App() {
     (merged.energy?.length || 0) + (merged.legal?.length || 0) +
     (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0);
 
-  // Colores por sección — Paleta C (Vibrante saturada) ACTIVA
+  // Colores por sección - Paleta C (Vibrante saturada) ACTIVA
   // Si quieres cambiar, descomenta una de las paletas alternativas abajo y comenta esta
   const SECTION_COLORS = {
     worldOpinion: '#1D4ED8',  // Royal blue
@@ -433,9 +442,9 @@ export default function App() {
     spainOpinion: '#BE185D',  // Rose dark
     spainNews:    '#9A3412',  // Orange dark
   };
-  // Paleta A — Magazine editorial (default original):
+  // Paleta A - Magazine editorial (default original):
   // const SECTION_COLORS = { worldOpinion: '#3730A3', worldNews: '#0F766E', legal: '#475569', spainOpinion: '#9F1239', spainNews: '#C2410C' };
-  // Paleta B — Vintage sobria:
+  // Paleta B - Vintage sobria:
   // const SECTION_COLORS = { worldOpinion: '#172554', worldNews: '#14532D', legal: '#44403C', spainOpinion: '#7F1D1D', spainNews: '#9A3412' };
 
   const intlSections = intlData ? [
@@ -458,21 +467,19 @@ export default function App() {
   ] : [];
 
   const intlBtnLabel = (() => {
-    if (intlStatus === 'loading') return '🔍 Buscando internacional...';
+    if (intlStatus === 'loading') return 'Buscando internacional...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
-    if (intlStatus === 'done') return '🔄 Recargar internacional';
-    return '🌍 Generar internacional (24)';
-  })();
+    if (
 
-  const spainOpinionBtnLabel = (() => {
-    if (spainOpinionStatus === 'loading') return '🔍 Buscando opinión España...';
+      const spainOpinionBtnLabel = (() => {
+    if (spainOpinionStatus === 'loading') return 'Buscando opinión España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainOpinionStatus === 'done') return '🔄 Recargar opinión España';
     return '✍️ Opinión España (10)';
   })();
 
-const spainNewsBtnLabel = (() => {
-    if (spainNewsStatus === 'loading') return '🔍 Buscando noticias España...';
+  const spainNewsBtnLabel = (() => {
+    if (spainNewsStatus === 'loading') return 'Buscando noticias España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainNewsStatus === 'done') return '🔄 Recargar noticias España';
     return '🇪🇸 Noticias España (10)';
@@ -573,7 +580,7 @@ const spainNewsBtnLabel = (() => {
 
         {isPastDate && (
           <p style={{ textAlign: 'center', color: BRAND.inkSoft, fontSize: '10px', marginBottom: '10px', fontStyle: 'italic' }}>
-            Briefing histórico — fechas antiguas pueden tener menos piezas y URLs rotas
+            Briefing histórico - fechas antiguas pueden tener menos piezas y URLs rotas
           </p>
         )}
 
@@ -720,7 +727,7 @@ const spainNewsBtnLabel = (() => {
           </div>
         )}
 
-        {/* Render de las secciones disponibles — orden: internacional, opinión España, noticias España */}
+        {/* Render de las secciones disponibles - orden: internacional, opinión España, noticias España */}
         {hasAnyData && (
           <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
             {[...intlSections, ...spainOpinionSections, ...spainNewsSections].map((s, i) => (
@@ -752,4 +759,4 @@ const spainNewsBtnLabel = (() => {
       </div>
     </div>
   );
-      }
+            }
