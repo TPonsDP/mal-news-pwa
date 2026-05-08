@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+  import { useState, useEffect } from 'react';
 
 const RECIPIENT = 'tonipons91@gmail.com';
 const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Tier 1 de Anthropic
@@ -128,65 +128,142 @@ function RegionBadge({ region }) {
   );
 }
 
-function NewsCard({ item, index }) {
-  const labelText = item.author ? `${item.author} · ${item.source || ''}` : (item.source || '');
-  const colorKey = item.author || item.source;
-  const accent = getSourceColor(colorKey);
+// Helper: deriva nombre del día de la semana en español desde fecha ISO
+function getDayOfWeek(isoDate) {
+  if (!isoDate) return '';
+  try {
+    const d = new Date(isoDate + 'T12:00:00');
+    return d.toLocaleDateString('es-ES', { weekday: 'long' });
+  } catch (_) { return ''; }
+}
+
+function NewsCard({ item, index, sectionColor, type }) {
+  const isOpinion = type === 'opinion';
+  const dayOfWeek = getDayOfWeek(item.publishedDate);
+
+  // Línea de byline: distinta para opinion vs news
+  let byline = '';
+  if (isOpinion && item.author) {
+    byline = `${item.author}${item.source ? ` (${item.source}${dayOfWeek ? ` · ${dayOfWeek}` : ''})` : ''}`;
+  } else {
+    const parts = [item.source].filter(Boolean);
+    if (item.region) parts.push(item.region);
+    if (dayOfWeek) parts.push(dayOfWeek);
+    byline = parts.join(' · ');
+  }
 
   return (
     <div style={{
-      background: BRAND.cardSubtle,
-      border: '1px solid rgba(30,58,138,0.12)',
-      borderLeft: `4px solid ${accent}`,
-      borderRadius: '8px',
-      padding: '12px 14px',
-      marginBottom: '8px',
-      boxShadow: '0 2px 8px rgba(30,58,138,0.08)',
-      animation: `fadeSlide 0.4s ease ${Math.min(index * 0.04, 0.6)}s both`,
+      background: BRAND.card,
+      borderLeft: `4px solid ${sectionColor}`,
+      borderRadius: '0 6px 6px 0',
+      padding: '10px 14px',
+      marginBottom: '5px',
+      boxShadow: '0 1px 3px rgba(30,58,138,0.06)',
+      animation: `fadeSlide 0.35s ease ${Math.min(index * 0.03, 0.5)}s both`,
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
-            <LeanBadge lean={item.lean} />
-            <RegionBadge region={item.region} />
-          </div>
-          <p style={{ margin: '0 0 5px', fontSize: '13px', fontFamily: "'Verdana', 'Geneva', sans-serif", fontWeight: '700', color: BRAND.ink, lineHeight: 1.35 }}>
-            {item.title}
-          </p>
-          <p style={{ margin: '0 0 6px', fontSize: '11.5px', color: BRAND.inkSoft, lineHeight: 1.5, fontFamily: "'Verdana', 'Geneva', sans-serif" }}>{item.summary}</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <span style={{
-              fontSize: '9.5px', fontWeight: '700', letterSpacing: '0.08em',
-              color: BRAND.navyDeep, textTransform: 'uppercase',
-            }}>{labelText}</span>
-            {item.url && (
-              <a href={item.url} target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: '9.5px', color: BRAND.orange, textDecoration: 'none', borderBottom: `1px dotted ${BRAND.orange}80`, fontWeight: '700' }}>
-                leer →
-              </a>
-            )}
-          </div>
-        </div>
-        <span style={{
-          fontSize: '20px', fontWeight: '900', color: 'rgba(194,105,60,0.30)',
-          fontFamily: "'Verdana', 'Geneva', sans-serif", minWidth: '26px', textAlign: 'right', lineHeight: 1,
-        }}>{String(item.rank).padStart(2, '0')}</span>
+      {/* Línea de byline con ⭐ + autor/fuente + ✅ */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
+        fontSize: '11px', color: BRAND.navyDeep, fontWeight: '700',
+        letterSpacing: '0.02em', marginBottom: '6px',
+        fontFamily: "'Verdana', 'Geneva', sans-serif",
+      }}>
+        <span style={{ fontSize: '13px' }}>⭐</span>
+        <span style={{ flex: 1, minWidth: 0 }}>{byline}</span>
+        {item.url && <span style={{ fontSize: '13px' }}>✅</span>}
+        <LeanBadge lean={item.lean} />
+      </div>
+
+      {/* Título */}
+      <h3 style={{
+        margin: '0 0 4px',
+        fontSize: isOpinion ? '14px' : '13px',
+        fontFamily: "'Verdana', 'Geneva', sans-serif",
+        fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
+      }}>
+        {item.title}
+      </h3>
+
+      {/* Resumen */}
+      <p style={{
+        margin: '0 0 6px', fontSize: '11.5px',
+        color: BRAND.inkSoft, lineHeight: 1.5,
+        fontFamily: "'Verdana', 'Geneva', sans-serif",
+        fontStyle: isOpinion ? 'italic' : 'normal',
+      }}>
+        {item.summary}
+      </p>
+
+      {/* Footer */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '9.5px', color: BRAND.inkSoft, opacity: 0.75 }}>
+        {item.publishedDate && (
+          <span style={{ fontFamily: "'Verdana', 'Geneva', sans-serif", fontStyle: 'italic' }}>
+            {item.publishedDate}
+          </span>
+        )}
+        {item.url && (
+          <a href={item.url} target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: '10px', color: sectionColor, textDecoration: 'none', borderBottom: `1px dotted ${sectionColor}80`, fontWeight: '700', marginLeft: 'auto' }}>
+            leer →
+          </a>
+        )}
       </div>
     </div>
   );
 }
 
-function Section({ title, icon, items, color, count }) {
+function Section({ title, icon, items, color, count, descriptor, type }) {
+  const realCount = items?.length || 0;
+  const itemLabel = type === 'opinion' ? (realCount === 1 ? 'COLUMNA' : 'COLUMNAS') : (realCount === 1 ? 'PIEZA' : 'PIEZAS');
+
   return (
-    <div style={{ marginBottom: '26px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', borderBottom: `2px solid ${color}80`, paddingBottom: '8px' }}>
-        <span style={{ fontSize: '16px' }}>{icon}</span>
-        <h2 style={{ margin: 0, fontSize: '11px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', color: BRAND.navyDeep, fontFamily: "'Verdana', 'Geneva', sans-serif", flex: 1 }}>{title}</h2>
-        <span style={{ fontSize: '10px', color: BRAND.inkSoft, fontFamily: "'Verdana', 'Geneva', sans-serif", fontStyle: 'italic' }}>
-          {items?.length || 0}{count ? ` / ${count}` : ''}
-        </span>
+    <div style={{ marginBottom: '20px' }}>
+      {/* Bloque de cabecera de sección */}
+      <div style={{
+        background: color,
+        color: 'white',
+        padding: '14px 18px',
+        borderRadius: '8px 8px 0 0',
+        boxShadow: '0 2px 8px rgba(30,58,138,0.15)',
+      }}>
+        <div style={{
+          display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap',
+          fontFamily: "'Verdana', 'Geneva', sans-serif",
+          fontSize: '15px', fontWeight: '800',
+          letterSpacing: '0.05em', textTransform: 'uppercase',
+        }}>
+          <span style={{ fontSize: '17px' }}>{icon}</span>
+          <span>{title}</span>
+          <span style={{ opacity: 0.85 }}>· {realCount} {itemLabel}</span>
+        </div>
+        {descriptor && (
+          <p style={{
+            margin: '6px 0 0', fontSize: '11px', opacity: 0.92,
+            fontFamily: "'Verdana', 'Geneva', sans-serif",
+            lineHeight: 1.45, letterSpacing: '0.01em',
+          }}>
+            {descriptor}
+          </p>
+        )}
       </div>
-      {items?.map((item, i) => <NewsCard key={i} item={item} index={i} />)}
+
+      {/* Items */}
+      <div style={{
+        background: 'rgba(255,255,255,0.4)',
+        padding: '8px 8px 4px',
+        borderRadius: '0 0 8px 8px',
+        border: `1px solid ${color}30`,
+        borderTop: 'none',
+      }}>
+        {realCount === 0 ? (
+          <p style={{ margin: '12px', color: BRAND.inkSoft, fontSize: '11px', fontStyle: 'italic', textAlign: 'center' }}>
+            Sin piezas disponibles para esta sección
+          </p>
+        ) : (
+          items.map((item, i) => <NewsCard key={i} item={item} index={i} sectionColor={color} type={type} />)
+        )}
+      </div>
     </div>
   );
 }
@@ -341,23 +418,41 @@ export default function App() {
     (merged.energy?.length || 0) + (merged.legal?.length || 0) +
     (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0);
 
+  // Colores por sección — Paleta C (Vibrante saturada) ACTIVA
+  // Si quieres cambiar, descomenta una de las paletas alternativas abajo y comenta esta
+  const SECTION_COLORS = {
+    worldOpinion: '#1D4ED8',  // Royal blue
+    worldNews:    '#047857',  // Emerald
+    legal:        '#334155',  // Charcoal
+    spainOpinion: '#BE185D',  // Rose dark
+    spainNews:    '#9A3412',  // Orange dark
+  };
+  // Paleta A — Magazine editorial (default original):
+  // const SECTION_COLORS = { worldOpinion: '#3730A3', worldNews: '#0F766E', legal: '#475569', spainOpinion: '#9F1239', spainNews: '#C2410C' };
+  // Paleta B — Vintage sobria:
+  // const SECTION_COLORS = { worldOpinion: '#172554', worldNews: '#14532D', legal: '#44403C', spainOpinion: '#7F1D1D', spainNews: '#9A3412' };
+
   const intlSections = intlData ? [
-    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: '#7DD3FC', count: 16 },
-    { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: '#A5F3FC', count: 6 },
-    { title: 'Energía', icon: '⚡', items: intlData.energy, color: BRAND.orange, count: 2 },
-    { title: 'Legal', icon: '⚖️', items: intlData.legal, color: '#CBD5E1', count: 2 },
+    { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, count: 6, type: 'opinion',
+      descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto' },
+    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, count: 16, type: 'news',
+      descriptor: '≥4 regiones · equilibrio IZQ/DER · publicadas en últimas 48h' },
+    { title: 'Legal', icon: '⚖️', items: intlData.legal, color: SECTION_COLORS.legal, count: 2, type: 'news',
+      descriptor: 'Sentencias y decisiones del día · internacional + España' },
   ] : [];
 
   const spainSections = spainData ? [
-    { title: 'España', icon: '🇪🇸', items: spainData.spainNews, color: '#FED7AA', count: 10 },
-    { title: 'Opinión España', icon: '✒️', items: spainData.spainOpinion, color: BRAND.orange, count: 9 },
+    { title: 'Opinión España', icon: '✍️', items: spainData.spainOpinion, color: SECTION_COLORS.spainOpinion, count: 10, type: 'opinion',
+      descriptor: 'Columnas firmadas · sin editoriales · 5+ medios · publicadas hoy o ayer' },
+    { title: 'España', icon: '🇪🇸', items: spainData.spainNews, color: SECTION_COLORS.spainNews, count: 10, type: 'news',
+      descriptor: 'Eventos concretos · prensa española · publicadas últimas 48h' },
   ] : [];
 
   const intlBtnLabel = (() => {
     if (intlStatus === 'loading') return '🔍 Buscando internacional…';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (intlStatus === 'done') return '🔄 Recargar internacional';
-    return '🌍 Generar internacional (26)';
+    return '🌍 Generar internacional (24)';
   })();
 
   const spainBtnLabel = (() => {
@@ -532,7 +627,7 @@ export default function App() {
         {/* Mensajes de loading individuales */}
         {intlStatus === 'loading' && (
           <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            🌍 Volando a buscar 26 piezas internacionales…
+            🌍 Volando a buscar 24 piezas internacionales…
           </p>
         )}
         {spainStatus === 'loading' && (
@@ -593,7 +688,7 @@ export default function App() {
               Pulsa los botones dorados para generar el briefing por secciones
             </p>
             <p style={{ fontSize: '11px', margin: '8px 0 0', color: 'rgba(30,58,138,0.55)' }}>
-              Internacional: 16 mundo + 6 opinión + 2 energía + 2 legal · España: 10 noticias + 9 opinión
+              Internacional: 6 opinión + 16 mundo + 2 legal · España: 10 opinión + 10 noticias
             </p>
           </div>
         )}
