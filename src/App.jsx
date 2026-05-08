@@ -469,7 +469,9 @@ export default function App() {
   const intlBtnLabel = (() => {
     if (intlStatus === 'loading') return 'Buscando internacional...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
-    if (
+    if (intlStatus === 'done') return 'Recargar internacional';
+    return 'Generar internacional (24)';
+  })();
 
       const spainOpinionBtnLabel = (() => {
     if (spainOpinionStatus === 'loading') return 'Buscando opinión España...';
