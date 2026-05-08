@@ -1,4 +1,4 @@
-  import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 const RECIPIENT = 'tonipons91@gmail.com';
 const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Tier 1 de Anthropic
@@ -274,13 +274,17 @@ export default function App() {
   const [intlStatus, setIntlStatus] = useState('idle'); // idle | loading | done | error
   const [intlError, setIntlError] = useState('');
 
-  const [spainData, setSpainData] = useState(null);
-  const [spainStatus, setSpainStatus] = useState('idle');
-  const [spainError, setSpainError] = useState('');
+  const [spainNewsData, setSpainNewsData] = useState(null);
+  const [spainNewsStatus, setSpainNewsStatus] = useState('idle');
+  const [spainNewsError, setSpainNewsError] = useState('');
+
+  const [spainOpinionData, setSpainOpinionData] = useState(null);
+  const [spainOpinionStatus, setSpainOpinionStatus] = useState('idle');
+  const [spainOpinionError, setSpainOpinionError] = useState('');
 
   const [emailStatus, setEmailStatus] = useState('idle');
 
-  // Cooldown global compartido entre los dos botones — evita el rate_limit_error 429 de Anthropic Tier 1
+  // Cooldown global compartido entre los TRES botones — evita el rate_limit_error 429 de Anthropic Tier 1
   const [nextAllowedAt, setNextAllowedAt] = useState(0);
   const [cooldownLeft, setCooldownLeft] = useState(0);
 
@@ -307,13 +311,16 @@ export default function App() {
   const isPastDate = selectedDate !== todayIso;
 
   async function fetchSection(section) {
-    if (Date.now() < nextAllowedAt) return; // Salvaguarda — el botón debería estar deshabilitado en este caso
+    if (Date.now() < nextAllowedAt) return;
 
-    const setData = section === 'international' ? setIntlData : setSpainData;
-    const setStatus = section === 'international' ? setIntlStatus : setSpainStatus;
-    const setError = section === 'international' ? setIntlError : setSpainError;
+    const setters = {
+      international:  { setData: setIntlData,         setStatus: setIntlStatus,         setError: setIntlError },
+      spainNews:      { setData: setSpainNewsData,    setStatus: setSpainNewsStatus,    setError: setSpainNewsError },
+      spainOpinion:   { setData: setSpainOpinionData, setStatus: setSpainOpinionStatus, setError: setSpainOpinionError },
+    };
+    const { setData, setStatus, setError } = setters[section] || {};
+    if (!setData) return;
 
-    // Activa cooldown global de 150 seg desde AHORA
     setNextAllowedAt(Date.now() + COOLDOWN_MS);
 
     setStatus('loading');
@@ -343,7 +350,7 @@ export default function App() {
   }
 
   function sendEmail() {
-    if (!intlData && !spainData) return;
+    if (!intlData && !spainNewsData && !spainOpinionData) return;
     const merged = mergeBriefings();
     const subject = `🕊️ MAL NEWS — Briefing ${todayShort}`;
     const body = buildEmailPlainText(merged);
@@ -365,13 +372,12 @@ export default function App() {
 
   function mergeBriefings() {
     return {
-      date: (intlData?.date || spainData?.date || todayShort),
+      date: (intlData?.date || spainOpinionData?.date || spainNewsData?.date || todayShort),
       worldNews: intlData?.worldNews || [],
       worldOpinion: intlData?.worldOpinion || [],
-      energy: intlData?.energy || [],
       legal: intlData?.legal || [],
-      spainNews: spainData?.spainNews || [],
-      spainOpinion: spainData?.spainOpinion || [],
+      spainNews: spainNewsData?.spainNews || [],
+      spainOpinion: spainOpinionData?.spainOpinion || [],
     };
   }
 
@@ -441,10 +447,13 @@ export default function App() {
       descriptor: 'Sentencias y decisiones del día · internacional + España' },
   ] : [];
 
-  const spainSections = spainData ? [
-    { title: 'Opinión España', icon: '✍️', items: spainData.spainOpinion, color: SECTION_COLORS.spainOpinion, count: 10, type: 'opinion',
+  const spainOpinionSections = spainOpinionData ? [
+    { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, count: 10, type: 'opinion',
       descriptor: 'Columnas firmadas · sin editoriales · 5+ medios · publicadas hoy o ayer' },
-    { title: 'España', icon: '🇪🇸', items: spainData.spainNews, color: SECTION_COLORS.spainNews, count: 10, type: 'news',
+  ] : [];
+
+  const spainNewsSections = spainNewsData ? [
+    { title: 'España', icon: '🇪🇸', items: spainNewsData.spainNews, color: SECTION_COLORS.spainNews, count: 10, type: 'news',
       descriptor: 'Eventos concretos · prensa española · publicadas últimas 48h' },
   ] : [];
 
@@ -455,253 +464,12 @@ export default function App() {
     return '🌍 Generar internacional (24)';
   })();
 
-  const spainBtnLabel = (() => {
-    if (spainStatus === 'loading') return '🔍 Buscando España…';
+  const spainOpinionBtnLabel = (() => {
+    if (spainOpinionStatus === 'loading') return '🔍 Buscando opinión España…';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
-    if (spainStatus === 'done') return '🔄 Recargar España';
-    return '🇪🇸 Generar España (19)';
+    if (spainOpinionStatus === 'done') return '🔄 Recargar opinión España';
+    return '✍️ Opinión España (10)';
   })();
 
-  const hasAnyData = intlData || spainData;
-
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: `linear-gradient(135deg, ${BRAND.limeLight} 0%, ${BRAND.limeDark} 100%)`,
-      backgroundAttachment: 'fixed',
-      color: BRAND.ink,
-      fontFamily: "'Verdana', 'Geneva', sans-serif",
-      padding: '20px 16px',
-      paddingTop: 'max(20px, env(safe-area-inset-top))',
-      paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-      position: 'relative',
-    }}>
-      <style>{`
-        @keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .mal-cta:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(194,105,60,0.45) !important; }
-        .mal-cta-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.14) !important; border-color: ${BRAND.orange} !important; color: ${BRAND.orange} !important; }
-      `}</style>
-
-      <div style={{
-        position: 'fixed', top: 0, right: 0, width: '60%', height: '40%',
-        background: 'radial-gradient(ellipse at top right, rgba(194,105,60,0.12) 0%, transparent 70%)',
-        pointerEvents: 'none', zIndex: 0,
-      }} />
-
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '780px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '18px', animation: 'fadeSlide 0.6s ease both' }}>
-          <MalNewsLogo maxWidth={420} />
-          <p style={{ margin: '16px 0 0', fontSize: '12px', letterSpacing: '0.3em', color: BRAND.orange, textTransform: 'uppercase', textAlign: 'center', fontWeight: '800', textShadow: '0 1px 2px rgba(30,58,138,0.15)' }}>
-            {today}
-          </p>
-        </div>
-
-        <p style={{ margin: '0 0 18px', fontSize: '10px', color: BRAND.orange, letterSpacing: '0.18em', textAlign: 'center', fontStyle: 'italic', opacity: 0.85 }}>
-          MUNDO · OPINIÓN INTL · ENERGÍA · LEGAL · ESPAÑA · OPINIÓN ESPAÑA
-        </p>
-
-        <div style={{ height: '1px', background: `linear-gradient(90deg, transparent 0%, ${BRAND.orange}66 50%, transparent 100%)`, margin: '0 0 24px' }} />
-
-        {/* Selector de fecha del briefing */}
-        <div style={{
-          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px',
-          marginBottom: '14px', flexWrap: 'wrap',
-          background: 'rgba(255,255,255,0.55)',
-          border: `1px solid ${BRAND.navy}25`,
-          borderRadius: '8px',
-          padding: '10px 14px',
-          boxShadow: '0 2px 8px rgba(30,58,138,0.06)',
-        }}>
-          <span style={{ fontSize: '11px', color: BRAND.navyDeep, fontWeight: '700', letterSpacing: '0.05em' }}>
-            📅 FECHA DEL BRIEFING:
-          </span>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            max={todayIso}
-            disabled={isInCooldown || intlStatus === 'loading' || spainStatus === 'loading'}
-            style={{
-              fontFamily: "'Verdana', 'Geneva', sans-serif",
-              fontSize: '12px',
-              padding: '4px 8px',
-              border: `1px solid ${BRAND.navy}40`,
-              borderRadius: '6px',
-              color: BRAND.ink,
-              background: 'white',
-              cursor: 'pointer',
-              fontWeight: '600',
-            }}
-          />
-          {isPastDate && (
-            <button
-              onClick={() => setSelectedDate(todayIso)}
-              disabled={isInCooldown || intlStatus === 'loading' || spainStatus === 'loading'}
-              style={{
-                fontFamily: "'Verdana', 'Geneva', sans-serif",
-                fontSize: '10px', fontWeight: '700',
-                padding: '4px 10px', borderRadius: '6px',
-                border: `1px solid ${BRAND.orange}`,
-                background: 'transparent', color: BRAND.orange,
-                cursor: 'pointer', letterSpacing: '0.05em',
-              }}
-            >
-              ↻ HOY
-            </button>
-          )}
-        </div>
-
-        {isPastDate && (
-          <p style={{ textAlign: 'center', color: BRAND.inkSoft, fontSize: '10px', marginBottom: '10px', fontStyle: 'italic' }}>
-            Briefing histórico — fechas antiguas pueden tener menos piezas y URLs rotas
-          </p>
-        )}
-
-        {/* DOS BOTONES: internacional + España */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
-          <button
-            className="mal-cta"
-            onClick={() => fetchSection('international')}
-            disabled={intlStatus === 'loading' || isInCooldown}
-            style={{
-              border: 'none', borderRadius: '10px', padding: '14px 24px',
-              fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em',
-              cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
-              transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-              background: intlStatus === 'loading'
-                ? `linear-gradient(90deg, ${BRAND.orange}, ${BRAND.navy}, ${BRAND.orange})`
-                : `linear-gradient(135deg, ${BRAND.orange} 0%, ${BRAND.navy} 100%)`,
-              backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
-              animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: BRAND.ink, opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 4px 18px rgba(194,105,60,0.40)', textTransform: 'uppercase',
-            }}
-          >
-            {intlBtnLabel}
-          </button>
-
-          <button
-            className="mal-cta"
-            onClick={() => fetchSection('spain')}
-            disabled={spainStatus === 'loading' || isInCooldown}
-            style={{
-              border: 'none', borderRadius: '10px', padding: '14px 24px',
-              fontSize: '12px', fontWeight: '700', letterSpacing: '0.08em',
-              cursor: (spainStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
-              transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-              background: spainStatus === 'loading'
-                ? `linear-gradient(90deg, ${BRAND.orange}, ${BRAND.navy}, ${BRAND.orange})`
-                : `linear-gradient(135deg, ${BRAND.orange} 0%, ${BRAND.navy} 100%)`,
-              backgroundSize: spainStatus === 'loading' ? '200% 100%' : '100% 100%',
-              animation: spainStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: BRAND.ink, opacity: (spainStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 4px 18px rgba(194,105,60,0.40)', textTransform: 'uppercase',
-            }}
-          >
-            {spainBtnLabel}
-          </button>
-        </div>
-
-        {/* Botón email aparece solo si hay al menos una sección */}
-        {hasAnyData && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-            <button
-              className="mal-cta-secondary"
-              onClick={sendEmail}
-              style={{
-                border: `1px solid ${BRAND.navy}50`, borderRadius: '8px',
-                padding: '10px 24px', fontSize: '12px', fontWeight: '700',
-                letterSpacing: '0.08em', cursor: 'pointer',
-                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-                background: 'rgba(255,255,255,0.85)', color: BRAND.ink,
-              }}
-            >
-              {emailStatus === 'sent' ? '✓ Email preparado' : `📧 Abrir email a ${RECIPIENT}`}
-            </button>
-          </div>
-        )}
-
-        {/* Mensajes de loading individuales */}
-        {intlStatus === 'loading' && (
-          <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            🌍 Volando a buscar 24 piezas internacionales…
-          </p>
-        )}
-        {spainStatus === 'loading' && (
-          <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            🇪🇸 Volando a buscar 19 piezas españolas…
-          </p>
-        )}
-
-        {/* Mensaje de cooldown activo cuando NO hay carga en marcha */}
-        {isInCooldown && intlStatus !== 'loading' && spainStatus !== 'loading' && (
-          <p style={{ textAlign: 'center', color: 'rgba(30,58,138,0.65)', fontSize: '11px', marginBottom: '8px', fontStyle: 'italic' }}>
-            ⏳ Esperando {cooldownLeft}s antes de poder hacer otra llamada (rate limit Anthropic Tier 1)
-          </p>
-        )}
-
-        {/* Errores individuales */}
-        {intlStatus === 'error' && (
-          <div style={{ background: 'rgba(252,165,165,0.1)', border: '1px solid rgba(252,165,165,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', color: '#FCA5A5', fontSize: '11px' }}>
-            ⚠️ Internacional: {intlError}
-          </div>
-        )}
-        {spainStatus === 'error' && (
-          <div style={{ background: 'rgba(252,165,165,0.1)', border: '1px solid rgba(252,165,165,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', color: '#FCA5A5', fontSize: '11px' }}>
-            ⚠️ España: {spainError}
-          </div>
-        )}
-
-        {emailStatus === 'sent' && (
-          <div style={{ background: 'rgba(134,239,172,0.12)', border: '1px solid rgba(134,239,172,0.3)', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', color: '#86EFAC', fontSize: '12px', textAlign: 'center' }}>
-            ✅ Email preparado en tu cliente con destino {RECIPIENT}. Revísalo y pulsa Enviar.
-          </div>
-        )}
-
-        {hasAnyData && (
-          <div style={{ textAlign: 'center', margin: '0 0 24px', padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <span style={{ fontSize: '11px', color: BRAND.orange, letterSpacing: '0.15em', fontWeight: '700' }}>
-              {totalPieces} / 47 PIEZAS
-            </span>
-            <span style={{ fontSize: '10px', color: 'rgba(30,58,138,0.55)', marginLeft: '12px', fontStyle: 'italic' }}>
-              {merged.date}
-            </span>
-          </div>
-        )}
-
-        {/* Render de las secciones disponibles */}
-        {hasAnyData && (
-          <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
-            {[...intlSections, ...spainSections].map((s, i) => (
-              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} count={s.count} />
-            ))}
-          </div>
-        )}
-
-        {!hasAnyData && intlStatus === 'idle' && spainStatus === 'idle' && (
-          <div style={{ textAlign: 'center', padding: '32px 20px 12px', color: 'rgba(30,58,138,0.75)' }}>
-            <div style={{ fontSize: '44px', marginBottom: '10px', opacity: 0.55, animation: 'float 3s ease-in-out infinite' }}>🕊️</div>
-            <p style={{ fontSize: '13px', margin: 0, fontFamily: "'Verdana', 'Geneva', sans-serif", fontStyle: 'italic' }}>
-              Pulsa los botones dorados para generar el briefing por secciones
-            </p>
-            <p style={{ fontSize: '11px', margin: '8px 0 0', color: 'rgba(30,58,138,0.55)' }}>
-              Internacional: 6 opinión + 16 mundo + 2 legal · España: 10 opinión + 10 noticias
-            </p>
-          </div>
-        )}
-
-        <div style={{ textAlign: 'center', marginTop: '44px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <p style={{ fontSize: '10px', color: 'rgba(30,58,138,0.5)', margin: 0, letterSpacing: '0.15em', fontStyle: 'italic' }}>
-            MAL NEWS · {RECIPIENT}
-          </p>
-          <p style={{ fontSize: '9px', color: 'rgba(30,58,138,0.45)', margin: '4px 0 0', letterSpacing: '0.1em' }}>
-            v2 · PWA · 47 piezas · split internacional/España
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+  const spainNewsBtnLabel = (() => {
+    if (spainNewsStatus === 'loading') return '🔍 Buscando notici
