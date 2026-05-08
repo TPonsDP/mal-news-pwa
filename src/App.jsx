@@ -471,5 +471,285 @@ export default function App() {
     return '✍️ Opinión España (10)';
   })();
 
-  const spainNewsBtnLabel = (() => {
-    if (spainNewsStatus === 'loading') return '🔍 Buscando no
+const spainNewsBtnLabel = (() => {
+    if (spainNewsStatus === 'loading') return '🔍 Buscando noticias España...';
+    if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
+    if (spainNewsStatus === 'done') return '🔄 Recargar noticias España';
+    return '🇪🇸 Noticias España (10)';
+  })();
+
+  const hasAnyData = intlData || spainNewsData || spainOpinionData;
+  const anyLoading = intlStatus === 'loading' || spainNewsStatus === 'loading' || spainOpinionStatus === 'loading';
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: `linear-gradient(135deg, ${BRAND.limeLight} 0%, ${BRAND.limeDark} 100%)`,
+      backgroundAttachment: 'fixed',
+      color: BRAND.ink,
+      fontFamily: "'Verdana', 'Geneva', sans-serif",
+      padding: '20px 16px',
+      paddingTop: 'max(20px, env(safe-area-inset-top))',
+      paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+      position: 'relative',
+    }}>
+      <style>{`
+        @keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .mal-cta:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(194,105,60,0.45) !important; }
+        .mal-cta-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.14) !important; border-color: ${BRAND.orange} !important; color: ${BRAND.orange} !important; }
+      `}</style>
+
+      <div style={{
+        position: 'fixed', top: 0, right: 0, width: '60%', height: '40%',
+        background: 'radial-gradient(ellipse at top right, rgba(194,105,60,0.12) 0%, transparent 70%)',
+        pointerEvents: 'none', zIndex: 0,
+      }} />
+
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: '780px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '18px', animation: 'fadeSlide 0.6s ease both' }}>
+          <MalNewsLogo maxWidth={420} />
+          <p style={{ margin: '16px 0 0', fontSize: '12px', letterSpacing: '0.3em', color: BRAND.orange, textTransform: 'uppercase', textAlign: 'center', fontWeight: '800', textShadow: '0 1px 2px rgba(30,58,138,0.15)' }}>
+            {today}
+          </p>
+        </div>
+
+        <p style={{ margin: '0 0 18px', fontSize: '10px', color: BRAND.orange, letterSpacing: '0.18em', textAlign: 'center', fontStyle: 'italic', opacity: 0.85 }}>
+          MUNDO · OPINIÓN INTL · ENERGÍA · LEGAL · ESPAÑA · OPINIÓN ESPAÑA
+        </p>
+
+        <div style={{ height: '1px', background: `linear-gradient(90deg, transparent 0%, ${BRAND.orange}66 50%, transparent 100%)`, margin: '0 0 24px' }} />
+
+        {/* Selector de fecha del briefing */}
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px',
+          marginBottom: '14px', flexWrap: 'wrap',
+          background: 'rgba(255,255,255,0.55)',
+          border: `1px solid ${BRAND.navy}25`,
+          borderRadius: '8px',
+          padding: '10px 14px',
+          boxShadow: '0 2px 8px rgba(30,58,138,0.06)',
+        }}>
+          <span style={{ fontSize: '11px', color: BRAND.navyDeep, fontWeight: '700', letterSpacing: '0.05em' }}>
+            📅 FECHA DEL BRIEFING:
+          </span>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            max={todayIso}
+            disabled={isInCooldown || anyLoading}
+            style={{
+              fontFamily: "'Verdana', 'Geneva', sans-serif",
+              fontSize: '12px',
+              padding: '4px 8px',
+              border: `1px solid ${BRAND.navy}40`,
+              borderRadius: '6px',
+              color: BRAND.ink,
+              background: 'white',
+              cursor: 'pointer',
+              fontWeight: '600',
+            }}
+          />
+          {isPastDate && (
+            <button
+              onClick={() => setSelectedDate(todayIso)}
+              disabled={isInCooldown || anyLoading}
+              style={{
+                fontFamily: "'Verdana', 'Geneva', sans-serif",
+                fontSize: '10px', fontWeight: '700',
+                padding: '4px 10px', borderRadius: '6px',
+                border: `1px solid ${BRAND.orange}`,
+                background: 'transparent', color: BRAND.orange,
+                cursor: 'pointer', letterSpacing: '0.05em',
+              }}
+            >
+              ↻ HOY
+            </button>
+          )}
+        </div>
+
+        {isPastDate && (
+          <p style={{ textAlign: 'center', color: BRAND.inkSoft, fontSize: '10px', marginBottom: '10px', fontStyle: 'italic' }}>
+            Briefing histórico — fechas antiguas pueden tener menos piezas y URLs rotas
+          </p>
+        )}
+
+        {/* TRES BOTONES: internacional + opinión España + noticias España */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+          <button
+            className="mal-cta"
+            onClick={() => fetchSection('international')}
+            disabled={intlStatus === 'loading' || isInCooldown}
+            style={{
+              border: 'none', borderRadius: '10px', padding: '12px 18px',
+              fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em',
+              cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
+              transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
+              background: intlStatus === 'loading'
+                ? `linear-gradient(90deg, ${BRAND.orange}, ${BRAND.navy}, ${BRAND.orange})`
+                : `linear-gradient(135deg, ${BRAND.orange} 0%, ${BRAND.navy} 100%)`,
+              backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
+              animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
+              color: BRAND.ink, opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
+              boxShadow: '0 4px 18px rgba(194,105,60,0.40)', textTransform: 'uppercase',
+            }}
+          >
+            {intlBtnLabel}
+          </button>
+
+          <button
+            className="mal-cta"
+            onClick={() => fetchSection('spainOpinion')}
+            disabled={spainOpinionStatus === 'loading' || isInCooldown}
+            style={{
+              border: 'none', borderRadius: '10px', padding: '12px 18px',
+              fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em',
+              cursor: (spainOpinionStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
+              transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
+              background: spainOpinionStatus === 'loading'
+                ? `linear-gradient(90deg, ${BRAND.orange}, ${BRAND.navy}, ${BRAND.orange})`
+                : `linear-gradient(135deg, ${BRAND.orange} 0%, ${BRAND.navy} 100%)`,
+              backgroundSize: spainOpinionStatus === 'loading' ? '200% 100%' : '100% 100%',
+              animation: spainOpinionStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
+              color: BRAND.ink, opacity: (spainOpinionStatus === 'loading' || isInCooldown) ? 0.65 : 1,
+              boxShadow: '0 4px 18px rgba(194,105,60,0.40)', textTransform: 'uppercase',
+            }}
+          >
+            {spainOpinionBtnLabel}
+          </button>
+
+          <button
+            className="mal-cta"
+            onClick={() => fetchSection('spainNews')}
+            disabled={spainNewsStatus === 'loading' || isInCooldown}
+            style={{
+              border: 'none', borderRadius: '10px', padding: '12px 18px',
+              fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em',
+              cursor: (spainNewsStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
+              transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
+              background: spainNewsStatus === 'loading'
+                ? `linear-gradient(90deg, ${BRAND.orange}, ${BRAND.navy}, ${BRAND.orange})`
+                : `linear-gradient(135deg, ${BRAND.orange} 0%, ${BRAND.navy} 100%)`,
+              backgroundSize: spainNewsStatus === 'loading' ? '200% 100%' : '100% 100%',
+              animation: spainNewsStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
+              color: BRAND.ink, opacity: (spainNewsStatus === 'loading' || isInCooldown) ? 0.65 : 1,
+              boxShadow: '0 4px 18px rgba(194,105,60,0.40)', textTransform: 'uppercase',
+            }}
+          >
+            {spainNewsBtnLabel}
+          </button>
+        </div>
+
+        {/* Botón email aparece solo si hay al menos una sección */}
+        {hasAnyData && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+            <button
+              className="mal-cta-secondary"
+              onClick={sendEmail}
+              style={{
+                border: `1px solid ${BRAND.navy}50`, borderRadius: '8px',
+                padding: '10px 24px', fontSize: '12px', fontWeight: '700',
+                letterSpacing: '0.08em', cursor: 'pointer',
+                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
+                background: 'rgba(255,255,255,0.85)', color: BRAND.ink,
+              }}
+            >
+              {emailStatus === 'sent' ? '✓ Email preparado' : `📧 Abrir email a ${RECIPIENT}`}
+            </button>
+          </div>
+        )}
+
+        {/* Mensajes de loading individuales */}
+        {intlStatus === 'loading' && (
+          <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
+            🌍 Buscando 24 piezas internacionales...
+          </p>
+        )}
+        {spainOpinionStatus === 'loading' && (
+          <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
+            ✍️ Buscando 10 columnas de opinión España...
+          </p>
+        )}
+        {spainNewsStatus === 'loading' && (
+          <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
+            🇪🇸 Buscando 10 noticias España...
+          </p>
+        )}
+
+        {/* Mensaje de cooldown activo cuando NO hay carga en marcha */}
+        {isInCooldown && !anyLoading && (
+          <p style={{ textAlign: 'center', color: 'rgba(30,58,138,0.65)', fontSize: '11px', marginBottom: '8px', fontStyle: 'italic' }}>
+            ⏳ Esperando {cooldownLeft}s antes de poder hacer otra llamada (rate limit Anthropic Tier 1)
+          </p>
+        )}
+
+        {/* Errores individuales */}
+        {intlStatus === 'error' && (
+          <div style={{ background: 'rgba(252,165,165,0.1)', border: '1px solid rgba(252,165,165,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', color: '#dc2626', fontSize: '11px' }}>
+            ⚠️ Internacional: {intlError}
+          </div>
+        )}
+        {spainOpinionStatus === 'error' && (
+          <div style={{ background: 'rgba(252,165,165,0.1)', border: '1px solid rgba(252,165,165,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', color: '#dc2626', fontSize: '11px' }}>
+            ⚠️ Opinión España: {spainOpinionError}
+          </div>
+        )}
+        {spainNewsStatus === 'error' && (
+          <div style={{ background: 'rgba(252,165,165,0.1)', border: '1px solid rgba(252,165,165,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', color: '#dc2626', fontSize: '11px' }}>
+            ⚠️ Noticias España: {spainNewsError}
+          </div>
+        )}
+
+        {emailStatus === 'sent' && (
+          <div style={{ background: 'rgba(134,239,172,0.12)', border: '1px solid rgba(134,239,172,0.3)', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', color: '#15803D', fontSize: '12px', textAlign: 'center' }}>
+            ✅ Email preparado en tu cliente con destino {RECIPIENT}. Revísalo y pulsa Enviar.
+          </div>
+        )}
+
+        {hasAnyData && (
+          <div style={{ textAlign: 'center', margin: '0 0 24px', padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <span style={{ fontSize: '11px', color: BRAND.orange, letterSpacing: '0.15em', fontWeight: '700' }}>
+              {totalPieces} / 44 PIEZAS
+            </span>
+            <span style={{ fontSize: '10px', color: 'rgba(30,58,138,0.55)', marginLeft: '12px', fontStyle: 'italic' }}>
+              {merged.date}
+            </span>
+          </div>
+        )}
+
+        {/* Render de las secciones disponibles — orden: internacional, opinión España, noticias España */}
+        {hasAnyData && (
+          <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
+            {[...intlSections, ...spainOpinionSections, ...spainNewsSections].map((s, i) => (
+              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} count={s.count} descriptor={s.descriptor} type={s.type} />
+            ))}
+          </div>
+        )}
+
+        {!hasAnyData && intlStatus === 'idle' && spainOpinionStatus === 'idle' && spainNewsStatus === 'idle' && (
+          <div style={{ textAlign: 'center', padding: '32px 20px 12px', color: 'rgba(30,58,138,0.75)' }}>
+            <div style={{ fontSize: '44px', marginBottom: '10px', opacity: 0.55, animation: 'float 3s ease-in-out infinite' }}>🕊️</div>
+            <p style={{ fontSize: '13px', margin: 0, fontFamily: "'Verdana', 'Geneva', sans-serif", fontStyle: 'italic' }}>
+              Pulsa los botones para generar cada sección
+            </p>
+            <p style={{ fontSize: '11px', margin: '8px 0 0', color: 'rgba(30,58,138,0.55)' }}>
+              Internacional: 6 opinión + 16 mundo + 2 legal · Opinión España: 10 · Noticias España: 10
+            </p>
+          </div>
+        )}
+
+        <div style={{ textAlign: 'center', marginTop: '44px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+          <p style={{ fontSize: '10px', color: 'rgba(30,58,138,0.5)', margin: 0, letterSpacing: '0.15em', fontStyle: 'italic' }}>
+            MAL NEWS · {RECIPIENT}
+          </p>
+          <p style={{ fontSize: '9px', color: 'rgba(30,58,138,0.45)', margin: '4px 0 0', letterSpacing: '0.1em' }}>
+            v3 · PWA · 44 piezas · split intl / opinión España / noticias España
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+      }
