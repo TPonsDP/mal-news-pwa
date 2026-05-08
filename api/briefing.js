@@ -45,25 +45,21 @@ D1. Devuelve ÚNICAMENTE JSON válido sin markdown, sin bloques de código, sin 
 const SECTIONS = {
   international: {
     label: 'Internacional + Energía + Legal',
-    system: `Eres mi editor de noticias personal de élite. Tu tarea es buscar en web noticias de las ÚLTIMAS 48H y devolver un briefing parcial MAL NEWS de hasta 26 piezas en 4 secciones internacionales. Es preferible devolver menos piezas frescas y verificadas que rellenar con análisis genérico.
+    system: `Eres mi editor de noticias personal de élite. Tu tarea es buscar en web noticias de las ÚLTIMAS 48H y devolver un briefing parcial MAL NEWS de hasta 24 piezas en 3 secciones internacionales. Las COLUMNAS DE OPINIÓN son la parte más valiosa del briefing — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con análisis genérico.
 
 ${RULES_BASE}
 
-ESQUEMA JSON EXACTO (devuelve SOLO estas 4 claves, NO incluyas spainNews ni spainOpinion):
+ESQUEMA JSON EXACTO (devuelve SOLO estas 3 claves, NO incluyas energy, spainNews ni spainOpinion):
 {
   "date": "DD/MM/YYYY",
+  "worldOpinion": [
+    /* HASTA 6 piezas — PRIORITARIAS. Columnas firmadas publicadas en últimas 48h con un evento concreto detrás (no análisis evergreen). Solo medios internacionales no españoles. Distribuye entre IZQ y DER. */
+    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "NYT|FT|Le Monde|Economist|...", "lean": "left|right", "url": "https://...", "publishedDate": "2026-05-07"}
+  ],
   "worldNews": [
     /* HASTA 16 piezas, pero menos si no hay tantas frescas. Equilibrio left/right.
        Cobertura: EEUU, Europa, Oriente Medio, India/Asia, África, LATAM, Australia */
     {"rank": 1, "title": "...", "summary": "2-3 frases con dato/nombre/cifra concreta", "source": "BBC|Reuters|...", "region": "EEUU|Europa|Oriente Medio|Asia|África|LATAM|Australia", "lean": "left", "url": "https://...", "publishedDate": "2026-05-07"}
-  ],
-  "worldOpinion": [
-    /* HASTA 6 piezas, columnas firmadas publicadas en últimas 48h con un evento concreto detrás (no análisis evergreen). Solo medios internacionales no españoles. */
-    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "NYT|FT|Le Monde|Economist|...", "lean": "left|right", "url": "https://...", "publishedDate": "2026-05-07"}
-  ],
-  "energy": [
-    /* HASTA 2 piezas. Fuentes: Reuters Energy, Bloomberg Energy, S&P Global, Argus, tradingeconomics.com, EIA, IEA. Brent obligatorio si hay movimiento. */
-    {"rank": 1, "title": "...", "summary": "...", "source": "...", "url": "...", "publishedDate": "2026-05-07"}
   ],
   "legal": [
     /* HASTA 2 piezas jurídicas con sentencia, decisión o caso concreto del día. Internacional: Law360, American Lawyer, GCR, MLex, Justia. España: El Derecho, Expansión Jurídico, Aranzadi. */
@@ -73,48 +69,49 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 4 claves, NO incluyas spainNews ni spai
 
 ${COLUMNISTS_GUIDE}`,
     user: (today) => `FECHA DE REFERENCIA: ${today}. Genera SOLO la parte internacional del briefing MAL NEWS con piezas publicadas en las 48 horas previas a esa fecha (incluyendo el día de referencia):
+- HASTA 6 opinión mundo PRIORITARIA: columnas firmadas con evento concreto detrás (no análisis evergreen). Dedica búsquedas a esto antes que a las noticias
 - HASTA 16 noticias mundo (equilibrio IZQ/DER, ≥4 regiones distintas)
-- HASTA 6 opinión mundo firmada con evento concreto detrás (no análisis evergreen)
-- HASTA 2 energía (Brent obligatorio si hay movimiento ese día)
 - HASTA 2 legal (sentencias/decisiones, internacional o España)
 
-CRÍTICO: Si solo encuentras 8 piezas reales y frescas de mundo, devuelve 8 — NO rellenes hasta 16 con genéricas. Mejor 18 piezas reales que 26 mediocres.
+CRÍTICO: Las columnas de opinión son la parte que más quiero — busca con esmero en NYT, FT, Le Monde, Economist, Project Syndicate, Foreign Affairs, Spectator, Atlantic. Si solo encuentras 4 columnas reales y frescas, devuelve 4 — pero pon esfuerzo en encontrarlas.
 
-Si la fecha de referencia es muy antigua (>1 mes), es esperable encontrar menos material verificable — devuelve lo que puedas con URL real.
+Si solo encuentras 8 noticias mundo verificables, devuelve 8 — NO rellenes hasta 16 con genéricas.
 
-Cada pieza debe llevar campo "publishedDate" con la fecha real del artículo (debe estar dentro de las 48h previas a la fecha de referencia). URLs permalink directos. Devuelve SOLO JSON con las 4 claves: worldNews, worldOpinion, energy, legal (más date).`,
+Cada pieza debe llevar campo "publishedDate". URLs permalink directos. Devuelve SOLO JSON con las 3 claves: worldOpinion, worldNews, legal (más date). NO incluyas energy.`,
     maxUses: 10,
   },
   spain: {
     label: 'España + Opinión España',
-    system: `Eres mi editor de noticias personal de élite. Tu tarea es buscar en web noticias de las ÚLTIMAS 48H y devolver un briefing parcial MAL NEWS de hasta 19 piezas en 2 secciones españolas. Es preferible devolver menos piezas frescas y verificadas que rellenar con análisis genérico o columnas viejas.
+    system: `Eres mi editor de noticias personal de élite. Tu tarea es buscar en web noticias de las ÚLTIMAS 48H y devolver un briefing parcial MAL NEWS de hasta 20 piezas en 2 secciones españolas. Las COLUMNAS DE OPINIÓN son la parte más valiosa del briefing — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con análisis genérico o columnas viejas.
 
 ${RULES_BASE}
 
 ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas worldNews, worldOpinion, energy ni legal):
 {
   "date": "DD/MM/YYYY",
+  "spainOpinion": [
+    /* HASTA 10 piezas — PRIORITARIAS. Columnas FIRMADAS publicadas HOY (no ayer, no editoriales). Máx 3 mismo medio, mín 5 medios distintos. */
+    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "...", "url": "...", "publishedDate": "2026-05-07"}
+  ],
   "spainNews": [
     /* HASTA 10 piezas con evento concreto del día (votación, declaración, sentencia, dato económico, suceso).
        Fuentes: Vozpópuli, The Objective, Libertad Digital, VilaWeb, El Diario, El Debate, Artículo 14, Agenda Pública. */
     {"rank": 1, "title": "...", "summary": "...", "source": "...", "url": "...", "publishedDate": "2026-05-07"}
-  ],
-  "spainOpinion": [
-    /* HASTA 9 columnas FIRMADAS publicadas HOY (no ayer, no editoriales). Máx 3 mismo medio, mín 5 medios. */
-    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "...", "url": "...", "publishedDate": "2026-05-07"}
   ]
 }
 
 ${COLUMNISTS_GUIDE}`,
     user: (today) => `FECHA DE REFERENCIA: ${today}. Genera SOLO la parte de España del briefing MAL NEWS con piezas publicadas en las 48 horas previas a esa fecha (incluyendo el día de referencia):
+- HASTA 10 columnas opinión PRIORITARIAS firmadas, publicadas EN LA FECHA DE REFERENCIA o el día anterior (sin editoriales, máx 3 mismo medio, mín 5 medios)
 - HASTA 10 noticias España (eventos concretos de esos días)
-- HASTA 9 columnas opinión firmadas publicadas EN LA FECHA DE REFERENCIA o el día anterior (sin editoriales, máx 3 mismo medio, mín 5 medios)
 
-CRÍTICO: Si solo encuentras 5 columnas firmadas publicadas en la fecha de referencia, devuelve 5 — NO rellenes hasta 9 incluyendo columnas más antiguas o editoriales sin firma.
+CRÍTICO: Las columnas de opinión son la parte que más quiero — dedica búsquedas a esto antes que a las noticias. Consulta el guide de columnistas y prioriza los que correspondan al día de la semana de la fecha de referencia. Si solo encuentras 6 columnas firmadas reales, devuelve 6 — NO rellenes hasta 10 incluyendo editoriales sin firma o columnas más antiguas.
+
+Si solo encuentras 5 noticias verificables, devuelve 5 — NO rellenes con genéricas.
 
 Si la fecha de referencia es muy antigua (>1 mes), es esperable encontrar menos material verificable — devuelve lo que puedas con URL real.
 
-Cada pieza debe llevar campo "publishedDate" (debe estar dentro de las 48h previas a la fecha de referencia). URLs permalink directos. Devuelve SOLO JSON con las 2 claves: spainNews, spainOpinion (más date).`,
+Cada pieza debe llevar campo "publishedDate". URLs permalink directos. Devuelve SOLO JSON con las 2 claves: spainOpinion, spainNews (más date).`,
     maxUses: 12,
   },
 };
