@@ -141,16 +141,80 @@ function NewsCard({ item, index, sectionColor, type }) {
   const isOpinion = type === 'opinion';
   const dayOfWeek = getDayOfWeek(item.publishedDate);
 
-  // Línea de byline: distinta para opinion vs news
-  let byline = '';
-  if (isOpinion && item.author) {
-    byline = `${item.author}${item.source ? ` (${item.source}${dayOfWeek ? ` · ${dayOfWeek}` : ''})` : ''}`;
-  } else {
-    const parts = [item.source].filter(Boolean);
-    if (item.region) parts.push(item.region);
-    if (dayOfWeek) parts.push(dayOfWeek);
-    byline = parts.join(' · ');
+  // Variante OPINION simplificada: titulo + 2 lineas resumen + autor.medio.dia
+  if (isOpinion) {
+    const meta = [item.author, item.source, dayOfWeek].filter(Boolean).join(' \u00B7 ');
+
+    return (
+      <div style={{
+        background: BRAND.card,
+        borderLeft: `4px solid ${sectionColor}`,
+        borderRadius: '0 6px 6px 0',
+        padding: '10px 14px',
+        marginBottom: '5px',
+        boxShadow: '0 1px 3px rgba(30,58,138,0.06)',
+        animation: `fadeSlide 0.35s ease ${Math.min(index * 0.03, 0.5)}s both`,
+      }}>
+        {/* Titulo (clickable si hay URL) */}
+        {item.url ? (
+          <a href={item.url} target="_blank" rel="noopener noreferrer"
+            style={{ textDecoration: 'none', color: 'inherit' }}>
+            <h3 style={{
+              margin: '0 0 5px',
+              fontSize: '14px',
+              fontFamily: "'Verdana', 'Geneva', sans-serif",
+              fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
+              cursor: 'pointer',
+            }}>
+              {item.title}
+            </h3>
+          </a>
+        ) : (
+          <h3 style={{
+            margin: '0 0 5px',
+            fontSize: '14px',
+            fontFamily: "'Verdana', 'Geneva', sans-serif",
+            fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
+          }}>
+            {item.title}
+          </h3>
+        )}
+
+        {/* Resumen recortado a 2 lineas */}
+        {item.summary && (
+          <p style={{
+            margin: '0 0 6px', fontSize: '11.5px',
+            color: BRAND.inkSoft, lineHeight: 1.45,
+            fontFamily: "'Verdana', 'Geneva', sans-serif",
+            fontStyle: 'italic',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {item.summary}
+          </p>
+        )}
+
+        {/* autor . medio . dia */}
+        <div style={{
+          fontSize: '10.5px', color: BRAND.navyDeep, fontWeight: '700',
+          letterSpacing: '0.02em', opacity: 0.85,
+          fontFamily: "'Verdana', 'Geneva', sans-serif",
+        }}>
+          {meta}
+        </div>
+      </div>
+    );
   }
+
+  // Variante NEWS (original con linea de byline, lean badge, etc.)
+  let byline = '';
+  const parts = [item.source].filter(Boolean);
+  if (item.region) parts.push(item.region);
+  if (dayOfWeek) parts.push(dayOfWeek);
+  byline = parts.join(' \u00B7 ');
 
   return (
     <div style={{
@@ -162,23 +226,21 @@ function NewsCard({ item, index, sectionColor, type }) {
       boxShadow: '0 1px 3px rgba(30,58,138,0.06)',
       animation: `fadeSlide 0.35s ease ${Math.min(index * 0.03, 0.5)}s both`,
     }}>
-      {/* Línea de byline con ⭐ + autor/fuente + ✅ */}
+      {/* Linea de byline */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
         fontSize: '11px', color: BRAND.navyDeep, fontWeight: '700',
         letterSpacing: '0.02em', marginBottom: '6px',
         fontFamily: "'Verdana', 'Geneva', sans-serif",
       }}>
-        <span style={{ fontSize: '13px' }}>⭐</span>
         <span style={{ flex: 1, minWidth: 0 }}>{byline}</span>
-        {item.url && <span style={{ fontSize: '13px' }}>✅</span>}
         <LeanBadge lean={item.lean} />
       </div>
 
-      {/* Título */}
+      {/* Titulo */}
       <h3 style={{
         margin: '0 0 4px',
-        fontSize: isOpinion ? '14px' : '13px',
+        fontSize: '13px',
         fontFamily: "'Verdana', 'Geneva', sans-serif",
         fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
       }}>
@@ -190,7 +252,6 @@ function NewsCard({ item, index, sectionColor, type }) {
         margin: '0 0 6px', fontSize: '11.5px',
         color: BRAND.inkSoft, lineHeight: 1.5,
         fontFamily: "'Verdana', 'Geneva', sans-serif",
-        fontStyle: isOpinion ? 'italic' : 'normal',
       }}>
         {item.summary}
       </p>
@@ -205,7 +266,7 @@ function NewsCard({ item, index, sectionColor, type }) {
         {item.url && (
           <a href={item.url} target="_blank" rel="noopener noreferrer"
             style={{ fontSize: '10px', color: sectionColor, textDecoration: 'none', borderBottom: `1px dotted ${sectionColor}80`, fontWeight: '700', marginLeft: 'auto' }}>
-            leer →
+            leer
           </a>
         )}
       </div>
@@ -325,7 +386,8 @@ export default function App() {
 
     setStatus('loading');
     setError('');
-    setData(null);
+    // NO limpiamos setData aquí: mantenemos las noticias antiguas visibles durante la nueva carga.
+    // Se reemplazarán solo cuando lleguen las nuevas (en setData(data.briefing)).
 
     // Construye contexto de hora actual real (independiente de la fecha seleccionada)
     const now = new Date();
@@ -379,6 +441,39 @@ export default function App() {
     }
   }
 
+  // Abre el briefing en una pestaña nueva como HTML estilizado
+  // Desde ahí el usuario puede Ctrl+A, Ctrl+C y pegar en Gmail (Gmail conserva formato)
+  function openHtmlView() {
+    if (!intlData && !spainNewsData && !spainOpinionData) return;
+    const merged = mergeBriefings();
+    const html = buildHtml(merged);
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      newWindow.document.open();
+      newWindow.document.write(html);
+      newWindow.document.close();
+    }
+  }
+
+  // Descarga el briefing como archivo .html en el dispositivo del usuario
+  // El archivo es autocontenido (CSS inline) y se puede abrir, archivar, adjuntar, imprimir
+  function downloadHtml() {
+    if (!intlData && !spainNewsData && !spainOpinionData) return;
+    const merged = mergeBriefings();
+    const html = buildHtml(merged);
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    // Nombre tipo: mal-news-2026-05-09.html
+    const safeName = (todayShort || 'briefing').replace(/\//g, '-');
+    a.download = `mal-news-${safeName}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   function mergeBriefings() {
     return {
       date: (intlData?.date || spainOpinionData?.date || spainNewsData?.date || todayShort),
@@ -388,6 +483,101 @@ export default function App() {
       spainNews: spainNewsData?.spainNews || [],
       spainOpinion: spainOpinionData?.spainOpinion || [],
     };
+  }
+
+  // Construye HTML formateado y autocontenido (CSS inline para compatibilidad email)
+  function buildHtml(b) {
+    const escape = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const SECTION_COLORS_LOCAL = {
+      worldOpinion: '#1D4ED8', worldNews: '#047857', legal: '#334155',
+      spainOpinion: '#BE185D', spainNews: '#9A3412',
+    };
+
+    const getDay = (iso) => {
+      if (!iso) return '';
+      try {
+        return new Date(iso + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long' });
+      } catch (_) { return ''; }
+    };
+
+    const card = (item, color, isOpinion) => {
+      const meta = isOpinion
+        ? [item.author, item.source, getDay(item.publishedDate)].filter(Boolean).join(' &middot; ')
+        : [item.source, item.region, getDay(item.publishedDate)].filter(Boolean).join(' &middot; ');
+      const summaryStyle = isOpinion ? 'font-style:italic;' : '';
+      const link = item.url
+        ? `<div style="margin-top:6px;font-size:11px;"><a href="${escape(item.url)}" style="color:${color};text-decoration:none;border-bottom:1px dotted ${color};font-weight:700;">leer &rarr;</a></div>`
+        : '';
+      return `
+        <div style="background:#FAF8F2;border-left:4px solid ${color};border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:6px;font-family:Verdana,Geneva,sans-serif;">
+          <div style="font-size:13px;font-weight:700;color:#172554;line-height:1.3;margin-bottom:4px;">${escape(item.title)}</div>
+          <div style="font-size:11.5px;color:rgba(30,58,138,0.72);line-height:1.45;${summaryStyle}margin-bottom:5px;">${escape(item.summary)}</div>
+          <div style="font-size:10.5px;color:rgba(30,58,138,0.85);font-weight:700;">${meta}</div>
+          ${link}
+        </div>`;
+    };
+
+    const section = (title, icon, items, colorKey, descriptor, isOpinion) => {
+      if (!items?.length) return '';
+      const color = SECTION_COLORS_LOCAL[colorKey];
+      const itemLabel = isOpinion ? (items.length === 1 ? 'COLUMNA' : 'COLUMNAS') : (items.length === 1 ? 'PIEZA' : 'PIEZAS');
+      const itemsHtml = items.map(i => card(i, color, isOpinion)).join('');
+      return `
+        <div style="margin-bottom:24px;">
+          <div style="background:${color};color:white;padding:14px 18px;border-radius:8px 8px 0 0;font-family:Verdana,Geneva,sans-serif;">
+            <div style="font-size:15px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;">
+              ${icon} ${escape(title)} &middot; ${items.length} ${itemLabel}
+            </div>
+            <div style="font-size:11px;opacity:0.92;margin-top:6px;">${escape(descriptor)}</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.4);padding:8px 8px 4px;border-radius:0 0 8px 8px;border:1px solid ${color}30;border-top:none;">
+            ${itemsHtml}
+          </div>
+        </div>`;
+    };
+
+    const total = (b.worldOpinion?.length || 0) + (b.worldNews?.length || 0) + (b.legal?.length || 0)
+                + (b.spainOpinion?.length || 0) + (b.spainNews?.length || 0);
+
+    return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>MAL NEWS - ${escape(b.date || todayShort)}</title>
+<style>
+  body { margin:0; padding:24px; background:linear-gradient(135deg,#D5DBC1 0%,#B7C49E 100%); font-family:Verdana,Geneva,sans-serif; color:#1E3A8A; }
+  .container { max-width:780px; margin:0 auto; }
+  .header { text-align:center; margin-bottom:24px; padding:20px; background:rgba(255,255,255,0.6); border-radius:12px; }
+  .logo { font-size:32px; font-weight:800; color:#1E3A8A; letter-spacing:2px; margin:0; }
+  .date { font-size:12px; letter-spacing:0.3em; color:#C2693C; text-transform:uppercase; font-weight:800; margin:8px 0 0; }
+  .total { font-size:11px; color:#C2693C; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
+  .footer { text-align:center; margin-top:32px; padding:16px; font-size:10px; color:rgba(30,58,138,0.55); letter-spacing:0.15em; font-style:italic; border-top:1px solid rgba(30,58,138,0.15); }
+  .copy-hint { background:#FFF7ED; border:1px solid #C2693C; border-radius:8px; padding:12px 16px; margin-bottom:20px; font-size:12px; color:#9A3412; text-align:center; }
+  @media print { .copy-hint { display:none; } body { background:white; } }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="copy-hint">
+      💡 <strong>Copia para email:</strong> Ctrl+A &rarr; Ctrl+C &rarr; pega en Gmail (conserva formato). O imprime con Ctrl+P para PDF.
+    </div>
+    <div class="header">
+      <h1 class="logo">MAL NEWS</h1>
+      <p class="date">${escape(b.date || todayShort)}</p>
+      <p class="total">${total} PIEZAS</p>
+    </div>
+    ${section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true)}
+    ${section('Mundo', '🌍', b.worldNews, 'worldNews', '≥4 regiones · equilibrio IZQ/DER · publicadas en últimas 48h', false)}
+    ${section('Legal', '⚖️', b.legal, 'legal', 'Sentencias y decisiones del día · internacional + España', false)}
+    ${section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true)}
+    ${section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimas 48h', false)}
+    <div class="footer">
+      MAL NEWS &middot; ${escape(RECIPIENT)} &middot; v3 PWA
+    </div>
+  </div>
+</body>
+</html>`;
   }
 
   function buildEmailPlainText(b) {
@@ -469,11 +659,11 @@ export default function App() {
   const intlBtnLabel = (() => {
     if (intlStatus === 'loading') return 'Buscando internacional...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
-    if (intlStatus === 'done') return 'Recargar internacional';
-    return 'Generar internacional (24)';
+    if (intlStatus === 'done') return '🔄 Recargar internacional';
+    return '🌍 Generar internacional (24)';
   })();
 
-      const spainOpinionBtnLabel = (() => {
+  const spainOpinionBtnLabel = (() => {
     if (spainOpinionStatus === 'loading') return 'Buscando opinión España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainOpinionStatus === 'done') return '🔄 Recargar opinión España';
@@ -652,21 +842,45 @@ export default function App() {
           </button>
         </div>
 
-        {/* Botón email aparece solo si hay al menos una sección */}
+        {/* Botones de exportación: email texto plano + vista HTML formateada + descargar HTML */}
         {hasAnyData && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
             <button
               className="mal-cta-secondary"
               onClick={sendEmail}
               style={{
                 border: `1px solid ${BRAND.navy}50`, borderRadius: '8px',
-                padding: '10px 24px', fontSize: '12px', fontWeight: '700',
-                letterSpacing: '0.08em', cursor: 'pointer',
+                padding: '10px 16px', fontSize: '11px', fontWeight: '700',
+                letterSpacing: '0.05em', cursor: 'pointer',
                 transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
                 background: 'rgba(255,255,255,0.85)', color: BRAND.ink,
               }}
             >
-              {emailStatus === 'sent' ? '✓ Email preparado' : `📧 Abrir email a ${RECIPIENT}`}
+              {emailStatus === 'sent' ? '✓ Email preparado' : `📧 Email plano`}
+            </button>
+            <button
+              onClick={openHtmlView}
+              style={{
+                border: `1px solid ${BRAND.orange}`, borderRadius: '8px',
+                padding: '10px 16px', fontSize: '11px', fontWeight: '700',
+                letterSpacing: '0.05em', cursor: 'pointer',
+                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
+                background: 'rgba(255,255,255,0.85)', color: BRAND.orange,
+              }}
+            >
+              🎨 Vista HTML
+            </button>
+            <button
+              onClick={downloadHtml}
+              style={{
+                border: `1px solid ${BRAND.orange}`, borderRadius: '8px',
+                padding: '10px 16px', fontSize: '11px', fontWeight: '700',
+                letterSpacing: '0.05em', cursor: 'pointer',
+                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
+                background: BRAND.orange, color: 'white',
+              }}
+            >
+              ⬇️ Descargar HTML
             </button>
           </div>
         )}
@@ -761,4 +975,4 @@ export default function App() {
       </div>
     </div>
   );
-            }
+                     }
