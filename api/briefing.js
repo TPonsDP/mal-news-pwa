@@ -194,72 +194,22 @@ ${COLUMNISTS_GUIDE}`,
       const dateList = (allowedDates && allowedDates.length === 2)
         ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (fecha de referencia)\n- ${allowedDates[1]} (día anterior)\n\nCualquier columna con publishedDate distinto a estas dos fechas se RECHAZA. Sin excepción. Sin "casi". Sin "del fin de semana".`
         : '';
-      return `FECHA DE REFERENCIA: ${todayFull || today}
-HORA ACTUAL DE LA PETICIÓN: ${requestTime}${dateList}
+      return `FECHA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
 
-Genera SOLO la sección de OPINIÓN ESPAÑA del briefing MAL NEWS.
+OPINIÓN ESPAÑA. Hasta 10 columnas firmadas, publicadas en una de las 2 fechas aceptadas.
 
-REGLAS HARD-CAP (no son sugerencias, son OBLIGATORIAS):
+REGLAS:
+- Máx 2 columnas mismo medio · Mín 4 medios distintos
+- Solo firmadas (no editoriales sin autor)
+- publishedDate dentro de fechas aceptadas (rechazar otras)
+- Mejor 4 columnas variadas que 8 de 2 medios
 
-1. DIVERSIDAD DE FUENTES (LO MÁS IMPORTANTE):
-   - MÁXIMO 2 columnas del mismo medio. Si encuentras 5 columnas verificadas de un medio, INCLUYE SOLO 2 y descarta las otras 3.
-   - MÍNIMO 4 medios distintos en el resultado final.
-   - LISTA DE MEDIOS A CUBRIR (los únicos válidos para esta sección, distribuye entre estos 9):
-     * ABC (abc.es)
-     * Vozpópuli (vozpopuli.com)
-     * The Objective (theobjective.com)
-     * El Español (elespanol.com)
-     * Libertad Digital (libertaddigital.com)
-     * elDiario.es
-     * El País (elpais.com — usar almendron.com como agregador si paywall)
-     * La Gaceta de la Iberosfera (gaceta.es)
-     * El Debate (eldebate.com)
-   - PROHIBIDO entregar resultado con solo 2 medios. Antes prefiero 4 columnas variadas que 8 de 2 medios.
-   - Consulta la guía de columnistas más abajo para nombres específicos y URLs de autor por medio.
+MEDIOS (los únicos): abc.es, vozpopuli.com, theobjective.com, elespanol.com, libertaddigital.com, eldiario.es, elpais.com (+ almendron.com), gaceta.es, eldebate.com
 
-2. FECHAS ESTRICTAS:
-   - SOLO acepta publishedDate igual a una de las DOS fechas listadas arriba (fecha de referencia o día inmediatamente anterior).
-   - Si encuentras una columna interesante de hace 2+ días: RECHAZAR. No pasa nada por descartarla.
-   - VERIFICA cada publishedDate visitando la URL del artículo si tu búsqueda inicial no muestra fecha clara.
+BÚSQUEDA: usa site:medio.com/opinion para 4-5 medios distintos. Visita la página índice si search falla. Consulta COLUMNISTS_GUIDE para nombres por día.
 
-3. CALIDAD:
-   - Solo columnas FIRMADAS. Sin editoriales sin autor. Sin "Redacción" como autor.
-   - Cantidad: hasta 10 columnas, pero PREFERIBLE devolver 4-5 que cumplan reglas que rellenar a 10 violando reglas.
-
-4. ESTRATEGIA DE BÚSQUEDA OBLIGATORIA:
-   Para forzar diversidad, NO uses búsquedas genéricas tipo "opinión España hoy". Las búsquedas con site:medio.com/opinion son OBLIGATORIAS — bypaseando la baja indexación SEO de medios pequeños.
-
-   Páginas índice de cada medio (visita directa preferible):
-   - abc.es/opinion/ (también paralalibertad.org/category/opinion/)
-   - vozpopuli.com/opinion/
-   - theobjective.com/comentario/
-   - elespanol.com/opinion/
-   - libertaddigital.com/opinion/
-   - eldiario.es/opinion/
-   - elpais.com/opinion/ (o almendron.com/tribuna si paywall)
-   - gaceta.es/opinion/
-   - eldebate.com/opinion/
-
-   USA TU JUICIO sobre qué medios buscar primero según el día de la semana, consultando la guía de columnistas de abajo. No tienes que buscar TODOS los 9 — con 4-5 búsquedas bien dirigidas a los medios que toquen ese día tienes suficiente.
-
-5. CONTEXTO TEMPORAL:
-   - Si la hora actual es <11:00 y fecha es HOY, esperable más resultados de día anterior (gente todavía no ha publicado hoy).
-   - Si hora >17:00 y fecha es HOY, casi todas las columnas del día deberían estar indexadas.
-   - Sábados y domingos hay menos opinión que entre semana - ACEPTABLE devolver pocas (4-6 columnas) en lugar de forzar a 10.
-
-OUTPUT: SOLO JSON válido (sin markdown, sin texto antes ni después). Esquema:
-{
-  "date": "DD/MM/YYYY",
-  "spainOpinion": [
-    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "...", "url": "...", "publishedDate": "YYYY-MM-DD"}
-  ]
-}
-
-CHECK FINAL antes de devolver:
-- ¿Hay 4+ medios distintos? ✓
-- ¿Ningún medio aparece más de 2 veces? ✓
-- ¿Todas las publishedDate están en la lista de fechas aceptadas? ✓
-Si algún check falla, REGENERA quitando piezas que rompan la regla, aunque devuelvas menos cantidad.`;
+OUTPUT: solo JSON, sin texto:
+{"date":"DD/MM/YYYY","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
     },
     maxUses: 6,
   },
@@ -400,4 +350,6 @@ export default async function handler(req, res) {
     const briefing = extractJson(text);
     return res.status(200).json({ briefing, section });
   } catch (err) {
-    return res.status(500).json({
+    return res.status(500).json({ error: err.message || 'Error desconocido' });
+  }
+        }
