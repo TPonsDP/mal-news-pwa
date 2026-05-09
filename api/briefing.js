@@ -1,8 +1,131 @@
 // Vercel serverless function (Node runtime)
 // La API key NUNCA sale del servidor.
-// Modelo: Claude Sonnet 4.6 con web_search.
-// Acepta { section: 'international' | 'spain' } para dividir el trabajo en 2 llamadas
-// y caber en el timeout de 60s del plan Hobby.
+// Modelo: Claude Sonnet 4.6 con web_search (internacional, spainNews) o RSS pre-fetch (spainOpinion).
+
+// ============ MÓDULO RSS PARA OPINIÓN ESPAÑA ============
+// Para evitar limitaciones de web_search en Tier 1 (timeouts, indexación pobre),
+// pre-fetcheamos los RSS de los 9 medios y pasamos la lista al modelo.
+
+const SPAIN_OPINION_FEEDS = [
+  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_opinioncompleto.xml' },
+  { source: 'ABC alt', url: 'https://www.abc.es/rss/feeds/abc_Opinion.xml' },
+  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/feed/' },
+  { source: 'The Objective', url: 'https://theobjective.com/feed/' },
+  { source: 'El Español', url: 'https://www.elespanol.com/rss/opinion.xml' },
+  { source: 'Libertad Digital', url: 'https://feeds.libertaddigital.com/c/30220/f/612428/index.rss' },
+  { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/section/opinion/' },
+  { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada' },
+  { source: 'La Gaceta', url: 'https://gaceta.es/feed/' },
+  { source: 'El Debate', url: 'https://www.eldebate.com/feed/' },
+];
+
+async function fetchOneFeed(feed, timeoutMs = 8000) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(feed.url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; MalNewsBriefing/1.0; +https://mal-news-pwa.vercel.app)',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+      },
+      redirect: 'follow',
+    });
+    clearTimeout(timer);
+    if (!res.ok) return [];
+    const xml = await res.text();
+    return parseFeedItems(xml, feed.source);
+  } catch (_err) {
+    return []; // Resilient: si un feed falla, los demás siguen
+  }
+}
+
+function parseFeedItems(xml, source) {
+  const items = [];
+  // RSS 2.0: <item>, Atom: <entry>
+  const itemMatches = xml.match(/<item[^>]*>[\s\S]*?<\/item>/gi)
+    || xml.match(/<entry[^>]*>[\s\S]*?<\/entry>/gi)
+    || [];
+  for (const itemXml of itemMatches) {
+    const title = extractTagContent(itemXml, 'title');
+    let link = extractTagContent(itemXml, 'link');
+    if (!link) {
+      const linkAttrMatch = itemXml.match(/<link[^>]+href="([^"]+)"/i);
+      if (linkAttrMatch) link = linkAttrMatch[1];
+    }
+    const pubDate = extractTagContent(itemXml, 'pubDate')
+      || extractTagContent(itemXml, 'published')
+      || extractTagContent(itemXml, 'updated')
+      || extractTagContent(itemXml, 'dc:date');
+    const description = extractTagContent(itemXml, 'description')
+      || extractTagContent(itemXml, 'summary')
+      || extractTagContent(itemXml, 'content:encoded')
+      || '';
+    let author = extractTagContent(itemXml, 'dc:creator')
+      || extractTagContent(itemXml, 'author');
+    if (author && /<name>/i.test(author)) {
+      author = extractTagContent(author, 'name');
+    }
+    if (title && link) {
+      items.push({
+        source,
+        title: cleanText(title),
+        url: cleanText(link),
+        author: cleanText(author || ''),
+        pubDate: cleanText(pubDate || ''),
+        publishedDate: rfcToISODate(pubDate),
+        description: cleanText(description).slice(0, 300),
+      });
+    }
+  }
+  return items;
+}
+
+function extractTagContent(xml, tag) {
+  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`<${escaped}[^>]*>([\\s\\S]*?)<\\/${escaped}>`, 'i');
+  const m = xml.match(re);
+  return m ? m[1] : '';
+}
+
+function cleanText(s) {
+  return String(s || '')
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function rfcToISODate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(cleanText(dateStr));
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().slice(0, 10);
+  } catch (_) { return ''; }
+}
+
+async function fetchSpainOpinionRss(allowedISODates) {
+  const allItems = await Promise.all(SPAIN_OPINION_FEEDS.map(fetchOneFeed));
+  const flat = allItems.flat();
+  // Deduplicar por URL
+  const seen = new Set();
+  const dedup = flat.filter(item => {
+    if (seen.has(item.url)) return false;
+    seen.add(item.url);
+    return true;
+  });
+  // Filtrar por fechas aceptadas
+  const inDate = dedup.filter(it => {
+    if (!allowedISODates || allowedISODates.length === 0) return true;
+    return allowedISODates.includes(it.publishedDate);
+  });
+  // Limitar a 60 candidatos máximo (suficiente para que el modelo elija 10)
+  return inDate.slice(0, 60);
+}
+
+// ============ FIN MÓDULO RSS ============
 
 const COLUMNISTS_GUIDE = `COLUMNISTAS A SEGUIR (priorízalos si han publicado HOY o ayer):
 
@@ -126,19 +249,39 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 3 claves, NO incluyas energy, spainNews
 }
 
 ${COLUMNISTS_GUIDE}`,
-    user: (today, todayFull, requestTime) => `FECHA DE REFERENCIA: ${todayFull || today}
-HORA ACTUAL DE LA PETICIÓN: ${requestTime}
+    user: (today, todayFull, requestTime, allowedDates) => {
+      const dateList = (allowedDates && allowedDates.length === 2)
+        ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (fecha de referencia)\n- ${allowedDates[1]} (día anterior)\n\nCualquier pieza con publishedDate distinto a estas dos fechas se RECHAZA. Sin "casi", sin "ayer extendido".`
+        : '';
+      return `FECHA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
 
-Genera SOLO la parte internacional del briefing MAL NEWS con piezas publicadas en las 48 horas previas a la fecha de referencia (incluyendo el día de referencia):
-- HASTA 6 opinión mundo PRIORITARIA: columnas firmadas con evento concreto detrás (no análisis evergreen). Dedica búsquedas a esto antes que a las noticias
-- HASTA 16 noticias mundo (equilibrio IZQ/DER, ≥4 regiones distintas)
-- HASTA 2 legal (sentencias/decisiones, internacional o España)
+INTERNACIONAL. Hasta 24 piezas en 3 secciones.
 
-CRÍTICO: Las columnas de opinión son la parte que más quiero - busca con esmero en NYT, FT, Le Monde, Economist, Project Syndicate, Foreign Affairs, Spectator, Atlantic. Si solo encuentras 4 columnas reales y frescas, devuelve 4.
+REGLAS ESTRICTAS DE FECHA:
+- publishedDate DEBE estar en una de las 2 fechas aceptadas. NUNCA más antiguas.
+- Si encuentras pieza interesante de hace 2+ días: rechazar.
 
-Si solo encuentras 8 noticias mundo verificables, devuelve 8 - NO rellenes hasta 16 con genéricas.
+WORLDOPINION (PRIORITARIA, hasta 6 columnas firmadas):
+- Máx 2 columnas mismo medio · Mín 4 medios distintos
+- Solo firmadas (autor real, no editoriales)
+- Solo medios internacionales no españoles
+- Mejor 4 columnas variadas que 6 de 2 medios
 
-Cada pieza debe llevar campo "publishedDate". URLs permalink directos. Devuelve SOLO JSON con las 3 claves: worldOpinion, worldNews, legal (más date). NO incluyas energy.`,
+Medios para opinión internacional: nytimes.com, ft.com, lemonde.fr, economist.com, theatlantic.com, foreignaffairs.com, project-syndicate.org, spectator.co.uk, washingtonpost.com, theguardian.com, wsj.com.
+Búsqueda recomendada: site:nytimes.com/opinion ${today}, site:ft.com/opinion ${today}, etc.
+
+WORLDNEWS (hasta 16 noticias):
+- Equilibrio IZQ/DER · ≥4 regiones distintas (EEUU, Europa, Oriente Medio, Asia, África, LATAM, Australia)
+- Eventos concretos del día (no análisis evergreen)
+- Mejor 10 piezas reales que 16 mediocres
+
+LEGAL (hasta 2 piezas):
+- Sentencias o decisiones concretas del día
+- Internacional (Law360, MLex, GCR) o España (El Derecho, Expansión Jurídico)
+
+OUTPUT: solo JSON, sin texto antes ni después:
+{"date":"DD/MM/YYYY","worldOpinion":[...],"worldNews":[...],"legal":[...]}`;
+    },
     maxUses: 10,
   },
   spainNews: {
@@ -309,6 +452,97 @@ export default async function handler(req, res) {
   }
 
   const cfg = SECTIONS[section];
+
+  // ============ FLUJO ESPECIAL RSS PARA spainOpinion ============
+  // No usa web_search. Pre-fetcha los 9 RSS, filtra por fecha, pasa la lista al modelo.
+  if (section === 'spainOpinion') {
+    try {
+      const candidates = await fetchSpainOpinionRss(allowedISODates);
+
+      if (!candidates || candidates.length === 0) {
+        return res.status(200).json({
+          briefing: {
+            date: todayShort,
+            spainOpinion: [],
+            _note: 'No se encontraron columnas en RSS para las fechas indicadas. Posibles causas: feeds caídos, sin contenido nuevo, o error temporal.',
+          },
+          section,
+        });
+      }
+
+      const candidatesText = candidates.map((c, i) =>
+        `[${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.author || 'sin autor'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${c.description.slice(0, 200)}`
+      ).join('\n\n');
+
+      const userPrompt = `FECHA: ${todayFull || todayShort}
+
+Tienes a continuación una lista de ${candidates.length} columnas firmadas de medios españoles, ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}).
+
+REGLAS DE SELECCIÓN:
+- Selecciona HASTA 10 columnas
+- MÁX 2 columnas del mismo medio
+- MÍN 4 medios distintos en el resultado
+- Solo columnas con autor real (descarta las que digan "Redacción", "Editorial", o sin autor identificable)
+- Prioriza calidad y diversidad ideológica/temática
+- Mejor 5 columnas variadas que 10 de 2 medios
+
+Para cada columna seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística).
+
+CANDIDATAS:
+${candidatesText}
+
+OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
+{"date":"${todayShort}","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
+
+      const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4000,
+          messages: [{ role: 'user', content: userPrompt }],
+          // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
+        }),
+      });
+
+      if (!upstream.ok) {
+        const errText = await upstream.text();
+        return res.status(upstream.status).json({
+          error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
+        });
+      }
+
+      const data = await upstream.json();
+      if (data.error) {
+        return res.status(500).json({ error: data.error.message || 'Error de la API' });
+      }
+
+      const text = (data.content || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.text)
+        .join('');
+
+      const briefing = extractJson(text);
+      // Añadir info diagnóstica útil
+      if (briefing && typeof briefing === 'object') {
+        briefing._meta = {
+          totalCandidates: candidates.length,
+          selectedCount: (briefing.spainOpinion || []).length,
+          mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
+        };
+      }
+      return res.status(200).json({ briefing, section });
+    } catch (err) {
+      return res.status(500).json({
+        error: `Error en flujo RSS: ${err.message || 'desconocido'}`,
+      });
+    }
+  }
+  // ============ FIN FLUJO RSS ============
 
   try {
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
