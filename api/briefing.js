@@ -136,23 +136,24 @@ ${COLUMNISTS_GUIDE}`,
 HORA ACTUAL DE LA PETICIÓN: ${requestTime}
 
 Genera SOLO la sección de OPINIÓN ESPAÑA del briefing MAL NEWS:
-- HASTA 10 columnas firmadas publicadas EXCLUSIVAMENTE en la fecha de referencia (NO en días anteriores).
+- HASTA 10 columnas firmadas publicadas en la fecha de referencia O en el día INMEDIATAMENTE ANTERIOR (ventana de 2 días).
 - Sin editoriales sin firma. Máx 3 columnas del mismo medio. Mín 5 medios distintos.
 
 REGLAS ESTRICTAS DE FECHA:
-- SOLO devuelve columnas con publishedDate EXACTAMENTE igual a la fecha de referencia.
-- NUNCA incluyas columnas del día anterior o de fechas previas. Mejor devolver 3 columnas reales de hoy que 10 incluyendo días pasados.
-- Si la fecha de referencia es HOY y la hora actual es temprana (antes de las 11:00), es esperable encontrar pocas columnas indexadas — devuelve solo las que haya, NUNCA suplementes con columnas viejas.
-- Si la hora actual es de tarde-noche (>17:00), todas las columnas del día deberían estar indexadas — busca con más insistencia.
+- Solo se aceptan columnas con publishedDate EXACTAMENTE igual a (a) la fecha de referencia o (b) el día inmediatamente anterior.
+- NUNCA incluyas columnas más antiguas (2+ días atrás de la fecha de referencia). Si la fecha de referencia es viernes, NO devuelvas columnas de miércoles, martes o anteriores. Solo viernes y jueves.
+- Prioriza las del día de referencia sobre las del día anterior. Si encuentras 7 de hoy y 3 de ayer, devuelve esas 10. Si solo 4 de hoy, complementa con 4-6 de ayer.
+- Si la hora actual es temprana (<11:00) y la fecha de referencia es HOY, es razonable que la mayoría sean del día anterior — está OK.
+- Si la hora actual es de tarde-noche (>17:00), prioriza columnas del día — todas las del día deberían estar indexadas.
 
 Consulta el guide de columnistas y prioriza los que publican el día de la semana correspondiente a la fecha de referencia.
 
-CRÍTICO: Si solo encuentras 4 columnas firmadas publicadas hoy, devuelve 4 — NO rellenes con editoriales sin firma o columnas más antiguas.
+CRÍTICO: Si solo encuentras 4 columnas firmadas en la ventana de 2 días, devuelve 4 — NO rellenes con editoriales sin firma o columnas más antiguas.
 
 Si la fecha de referencia es muy antigua (>1 mes), devuelve menos piezas pero con URL real.
 
-Cada pieza debe llevar campo "publishedDate", "author" y "source". El publishedDate DEBE coincidir con la fecha de referencia. URLs permalink directos. Devuelve SOLO JSON con la clave spainOpinion (más date).`,
-    maxUses: 12,
+Cada pieza debe llevar campo "publishedDate", "author" y "source". El publishedDate DEBE coincidir con la fecha de referencia o el día inmediatamente anterior (NUNCA más antiguo). URLs permalink directos. Devuelve SOLO JSON con la clave spainOpinion (más date).`,
+    maxUses: 8,
   },
 };
 
@@ -269,4 +270,4 @@ export default async function handler(req, res) {
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Error desconocido' });
   }
-         }
+}
