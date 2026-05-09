@@ -4,18 +4,75 @@
 // Acepta { section: 'international' | 'spain' } para dividir el trabajo en 2 llamadas
 // y caber en el timeout de 60s del plan Hobby.
 
-const COLUMNISTS_GUIDE = `COLUMNISTAS A SEGUIR (priorízalos si han publicado HOY):
-• ABC: John Müller (lunes), Juan Soto Ivars (martes/domingos), Rebeca Argudo, Ignacio Camacho (L-V)
-• Vozpópuli: Jesús Cacho, Gorka Maneiro, Agustín Valladolid (jueves), Manuel Marín (lunes), Rubén Manso (economía semanal), Víctor Lenore (cultura), Pablo Cambronero
-• The Objective: Guadalupe Sánchez, Caño, Arias Maldonado, Nieto, Benegas, Ketty Garat, Jorge San Miguel, Pablo de Lora, Manuel Fernández Ordóñez, Victoria Carvajal (sábados, economía), Maite Rico ("Sujétame el vermú" martes)
-• El Español: Cristian Campos, Pedro J. Ramírez (domingos), Lorena G. Maldonado (dom/lun), Lorenzo Bernaldo de Quirós (domingos), José Ramón Pin Arboledas (economía/management)
-• Libertad Digital: Federico Jiménez Losantos (domingos)
-• El Diario: Ignacio Escolar (L-V)
-• El País: Estefanía Molina (jueves vía almendron.com)
-• La Gaceta: Carmen Álvarez Vela
-• El Debate: Luis Ventoso, Mayte Alcaraz, Gabriel Albiac, Ramón Pérez-Maura, Bieito Rubido (L-V)
-• LATAM/Internacional: Andrés Oppenheimer (2x/semana)
-• Tecnología: Enrique Dans (enriquedans.com, casi diario)`;
+const COLUMNISTS_GUIDE = `COLUMNISTAS A SEGUIR (priorízalos si han publicado HOY o ayer):
+
+ABC (verificar primero en paralalibertad.org/category/opinion/, indexa L-V desde ~10:30h y S-D desde ~12:00h. Si no aparece, usar URL de autor directa):
+- John Müller — lunes → abc.es/autor/john-muller-4283/
+- Juan Soto Ivars — martes y domingos → abc.es/autor/juan-soto-ivars-7455/
+- Rebeca Argudo — variable → abc.es/autor/rebeca-argudo-5867/
+- Ignacio Camacho — L-V
+
+VOZPÓPULI (búsqueda web vozpopuli.com "[columnista]" [fecha], accesible desde primera hora):
+- Jesús Cacho — habitual
+- Gorka Maneiro — habitual
+- Agustín Valladolid — jueves
+- Manuel Marín — director, lunes
+- Isaac Blasco — subdirector, irregular
+- Rubén Manso — economía, semanal/quincenal, inspector Banco España → vozpopuli.com/redaccion/ruben-manso
+- Víctor Lenore — cultura, jefe sección Cultura → vozpopuli.com/redaccion/victor-lenore
+- Pablo Cambronero — variable, ex Ciudadanos → vozpopuli.com/redaccion/pablo-cambronero
+
+THE OBJECTIVE (búsqueda web theobjective.com "[columnista]" [fecha]):
+- Guadalupe Sánchez
+- Antonio Caño
+- Manuel Arias Maldonado
+- Álvaro Nieto
+- Javier Benegas
+- Ketty Garat (análisis)
+- Jorge San Miguel (variable, 1-2/semana)
+- Pablo de Lora → theobjective.com/autor/pablo-de-lora/
+- Manuel Fernández Ordóñez (Doctor Física Nuclear, energía/tecnología)
+- Victoria Carvajal — sábados, economía, ex-El País
+- Maite Rico — varios días, "Sujétame el vermú" martes, directora adjunta
+- Pablo Cambronero → theobjective.com/autor/pablo-cambronero/
+
+EL ESPAÑOL (búsqueda web):
+- Cristian Campos
+- Pedro J. Ramírez — domingos
+- Bernard-Henri Lévy (en pausa desde 15/02/2026)
+- Lorena G. Maldonado — domingos/lunes + miércoles ocasional
+- Lorenzo Bernaldo de Quirós — domingos, economía liberal
+- José Ramón Pin Arboledas — variable, IESE, RRHH/management/economía → elespanol.com/autor/jose-ramon-pin-arboledas/
+
+LIBERTAD DIGITAL:
+- Federico Jiménez Losantos — domingos (su columna escrita)
+
+EL DIARIO:
+- Ignacio Escolar — habitual
+
+EL PAÍS (de pago, usar almendron.com como agregador):
+- Estefanía Molina — jueves → almendron.com/tribuna/autor/estefania-molina/
+- Pablo de Lora
+- Juan Luis Cebrián
+
+LA GACETA DE LA IBEROSFERA:
+- Carmen Álvarez Vela → gaceta.es/opinion/
+
+EL DEBATE (búsqueda web eldebate.com/opinion/):
+- Luis Ventoso
+- Mayte Alcaraz
+- Gabriel Albiac
+- Ramón Pérez-Maura
+- Bieito Rubido (director)
+- Juan Carlos Girauta
+- Antonio R. Naranjo
+- Enrique García-Máiquez
+
+ESTRATEGIA DE BÚSQUEDA POR COLUMNISTA:
+1. Para cada columnista que toque ese día de la semana, hacer una búsqueda específica con su nombre + fecha.
+2. Si la URL del autor está disponible (listada arriba), usarla como verificación directa antes de hacer búsqueda general.
+3. Para ABC: paralalibertad.org/category/opinion/ es agregador útil (más rápido que abc.es directo).
+4. Para El País: usar almendron.com como puerta de entrada (su contenido tiene paywall).`;
 
 const RULES_BASE = `REGLAS ABSOLUTAS DE FRESCURA Y CALIDAD:
 
@@ -133,27 +190,80 @@ ESQUEMA JSON EXACTO (devuelve SOLO esta clave, NO incluyas noticias ni nada más
 }
 
 ${COLUMNISTS_GUIDE}`,
-    user: (today, todayFull, requestTime) => `FECHA DE REFERENCIA: ${todayFull || today}
-HORA ACTUAL DE LA PETICIÓN: ${requestTime}
+    user: (today, todayFull, requestTime, allowedDates) => {
+      const dateList = (allowedDates && allowedDates.length === 2)
+        ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (fecha de referencia)\n- ${allowedDates[1]} (día anterior)\n\nCualquier columna con publishedDate distinto a estas dos fechas se RECHAZA. Sin excepción. Sin "casi". Sin "del fin de semana".`
+        : '';
+      return `FECHA DE REFERENCIA: ${todayFull || today}
+HORA ACTUAL DE LA PETICIÓN: ${requestTime}${dateList}
 
-Genera SOLO la sección de OPINIÓN ESPAÑA del briefing MAL NEWS:
-- HASTA 10 columnas firmadas publicadas en la fecha de referencia O en el día INMEDIATAMENTE ANTERIOR (ventana de 2 días).
-- Sin editoriales sin firma. Máx 3 columnas del mismo medio. Mín 5 medios distintos.
+Genera SOLO la sección de OPINIÓN ESPAÑA del briefing MAL NEWS.
 
-REGLAS ESTRICTAS DE FECHA:
-- Solo se aceptan columnas con publishedDate EXACTAMENTE igual a (a) la fecha de referencia o (b) el día inmediatamente anterior.
-- NUNCA incluyas columnas más antiguas (2+ días atrás de la fecha de referencia). Si la fecha de referencia es viernes, NO devuelvas columnas de miércoles, martes o anteriores. Solo viernes y jueves.
-- Prioriza las del día de referencia sobre las del día anterior. Si encuentras 7 de hoy y 3 de ayer, devuelve esas 10. Si solo 4 de hoy, complementa con 4-6 de ayer.
-- Si la hora actual es temprana (<11:00) y la fecha de referencia es HOY, es razonable que la mayoría sean del día anterior — está OK.
-- Si la hora actual es de tarde-noche (>17:00), prioriza columnas del día — todas las del día deberían estar indexadas.
+REGLAS HARD-CAP (no son sugerencias, son OBLIGATORIAS):
 
-Consulta el guide de columnistas y prioriza los que publican el día de la semana correspondiente a la fecha de referencia.
+1. DIVERSIDAD DE FUENTES (LO MÁS IMPORTANTE):
+   - MÁXIMO 2 columnas del mismo medio. Si encuentras 5 columnas verificadas de un medio, INCLUYE SOLO 2 y descarta las otras 3.
+   - MÍNIMO 4 medios distintos en el resultado final.
+   - LISTA DE MEDIOS A CUBRIR (los únicos válidos para esta sección, distribuye entre estos 9):
+     * ABC (abc.es)
+     * Vozpópuli (vozpopuli.com)
+     * The Objective (theobjective.com)
+     * El Español (elespanol.com)
+     * Libertad Digital (libertaddigital.com)
+     * elDiario.es
+     * El País (elpais.com — usar almendron.com como agregador si paywall)
+     * La Gaceta de la Iberosfera (gaceta.es)
+     * El Debate (eldebate.com)
+   - PROHIBIDO entregar resultado con solo 2 medios. Antes prefiero 4 columnas variadas que 8 de 2 medios.
+   - Consulta la guía de columnistas más abajo para nombres específicos y URLs de autor por medio.
 
-CRÍTICO: Si solo encuentras 4 columnas firmadas en la ventana de 2 días, devuelve 4 — NO rellenes con editoriales sin firma o columnas más antiguas.
+2. FECHAS ESTRICTAS:
+   - SOLO acepta publishedDate igual a una de las DOS fechas listadas arriba (fecha de referencia o día inmediatamente anterior).
+   - Si encuentras una columna interesante de hace 2+ días: RECHAZAR. No pasa nada por descartarla.
+   - VERIFICA cada publishedDate visitando la URL del artículo si tu búsqueda inicial no muestra fecha clara.
 
-Si la fecha de referencia es muy antigua (>1 mes), devuelve menos piezas pero con URL real.
+3. CALIDAD:
+   - Solo columnas FIRMADAS. Sin editoriales sin autor. Sin "Redacción" como autor.
+   - Cantidad: hasta 10 columnas, pero PREFERIBLE devolver 4-5 que cumplan reglas que rellenar a 10 violando reglas.
 
-Cada pieza debe llevar campo "publishedDate", "author" y "source". El publishedDate DEBE coincidir con la fecha de referencia o el día inmediatamente anterior (NUNCA más antiguo). URLs permalink directos. Devuelve SOLO JSON con la clave spainOpinion (más date).`,
+4. ESTRATEGIA DE BÚSQUEDA OBLIGATORIA:
+   Para forzar diversidad, NO uses búsquedas genéricas tipo "opinión España hoy". USA búsquedas específicas a las PÁGINAS ÍNDICE de opinión de cada medio (estas páginas SÍ están bien indexadas porque son portadas):
+
+   - "site:abc.es/opinion ${today}" + revisa también paralalibertad.org/category/opinion/ como agregador
+   - "site:vozpopuli.com/opinion ${today}"  (su sección de opinión)
+   - "site:theobjective.com/comentario ${today}"  (The Objective llama "comentario" a opinión)
+   - "site:elespanol.com/opinion ${today}"
+   - "site:libertaddigital.com/opinion ${today}"
+   - "site:eldiario.es/opinion ${today}"
+   - "site:elpais.com/opinion ${today}" (o "site:almendron.com tribuna" si paywall bloquea)
+   - "site:gaceta.es/opinion ${today}"
+   - "site:eldebate.com/opinion ${today}"
+
+   Si una búsqueda concreta a una página índice no devuelve nada nuevo, PUEDES además visitar la URL directa del índice (vozpopuli.com/opinion/, theobjective.com/comentario/, etc.) para listar las columnas más recientes. Las páginas índice se actualizan al instante, no dependen de indexación lenta de SEO.
+
+   ADEMÁS: usar la guía de columnistas más abajo para buscar nombres específicos por día. Ejemplo si es martes: "Juan Soto Ivars ABC opinión ${today}".
+
+   Las búsquedas con site:medio.com/opinion son OBLIGATORIAS — bypaseando la baja indexación SEO de medios pequeños.
+
+5. CONTEXTO TEMPORAL:
+   - Si la hora actual es <11:00 y fecha es HOY, esperable más resultados de día anterior (gente todavía no ha publicado hoy).
+   - Si hora >17:00 y fecha es HOY, casi todas las columnas del día deberían estar indexadas.
+   - Sábados y domingos hay menos opinión que entre semana - ACEPTABLE devolver pocas (4-6 columnas) en lugar de forzar a 10.
+
+OUTPUT: SOLO JSON válido (sin markdown, sin texto antes ni después). Esquema:
+{
+  "date": "DD/MM/YYYY",
+  "spainOpinion": [
+    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "...", "url": "...", "publishedDate": "YYYY-MM-DD"}
+  ]
+}
+
+CHECK FINAL antes de devolver:
+- ¿Hay 4+ medios distintos? ✓
+- ¿Ningún medio aparece más de 2 veces? ✓
+- ¿Todas las publishedDate están en la lista de fechas aceptadas? ✓
+Si algún check falla, REGENERA quitando piezas que rompan la regla, aunque devuelvas menos cantidad.`;
+    },
     maxUses: 8,
   },
 };
@@ -229,6 +339,22 @@ export default async function handler(req, res) {
   const todayFull = dateFull || todayShort;
   const nowTime = requestTime || 'no especificada';
 
+  // Calcular las DOS fechas ISO aceptadas (hoy y ayer respecto a la fecha de referencia)
+  // Esto permite reglas estrictas de aceptación en el prompt.
+  const allowedISODates = (() => {
+    try {
+      const parts = todayShort.split('/').map(p => parseInt(p, 10));
+      // formato es-ES: D/M/YYYY o DD/MM/YYYY
+      const [d, m, y] = parts;
+      const ref = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+      const yest = new Date(ref.getTime() - 24 * 60 * 60 * 1000);
+      const iso = (dt) => dt.toISOString().slice(0, 10);
+      return [iso(ref), iso(yest)];
+    } catch (_) {
+      return [];
+    }
+  })();
+
   if (!section || !SECTIONS[section]) {
     return res.status(400).json({
       error: `Parámetro 'section' requerido. Valores válidos: ${Object.keys(SECTIONS).join(', ')}`,
@@ -252,31 +378,11 @@ export default async function handler(req, res) {
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: cfg.maxUses }],
         messages: [{
           role: 'user',
-          content: cfg.user(todayShort, todayFull, nowTime),
+          content: cfg.user(todayShort, todayFull, nowTime, allowedISODates),
         }],
       }),
     });
 
     if (!upstream.ok) {
       const errText = await upstream.text();
-      return res.status(upstream.status).json({
-        error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
-      });
-    }
-
-    const data = await upstream.json();
-    if (data.error) {
-      return res.status(500).json({ error: data.error.message || 'Error de la API' });
-    }
-
-    const text = (data.content || [])
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('');
-
-    const briefing = extractJson(text);
-    return res.status(200).json({ briefing, section });
-  } catch (err) {
-    return res.status(500).json({ error: err.message || 'Error desconocido' });
-  }
-}
+      return res.status(upstream
