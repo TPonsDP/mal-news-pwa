@@ -40,7 +40,8 @@ C3. MUNDO OPINIÓN: solo medios internacionales no españoles.
 C4. ENERGÍA: si Brent ha tenido movimiento relevante en últimas 24h, inclúyelo obligatoriamente.
 
 D. FORMATO:
-D1. Devuelve ÚNICAMENTE JSON válido sin markdown, sin bloques de código, sin texto explicativo antes o después.`;
+D1. Devuelve ÚNICAMENTE JSON válido sin markdown, sin bloques de código, sin texto explicativo antes o después. NO escribas frases tipo "Aquí está el briefing:" antes ni "Espero que sea útil" después. Tu respuesta debe empezar con { y terminar con }, NADA MÁS.
+D2. Si tu respuesta supera 12000 tokens, recórtala devolviendo menos piezas (preferible menos piezas completas que más cortadas). NUNCA dejes JSON sin cerrar.`;
 
 const SECTIONS = {
   international: {
@@ -163,9 +164,13 @@ function extractJson(raw) {
   const start = s.indexOf('{');
   if (start === -1) throw new Error('No se encontró JSON en la respuesta');
   s = s.slice(start);
+
+  // Intento 1: parsear todo (a veces funciona)
   try { return JSON.parse(s); } catch (_) {}
 
-  let depth = 0, inStr = false, esc = false, lastClose = -1;
+  // Intento 2: buscar PRIMER cierre balanceado y parsear hasta ahí
+  // (esto evita coger texto explicativo que viene tras el JSON)
+  let depth = 0, inStr = false, esc = false, firstBalanced = -1;
   for (let i = 0; i < s.length; i++) {
     const ch = s[i];
     if (esc) { esc = false; continue; }
@@ -173,35 +178,39 @@ function extractJson(raw) {
     if (ch === '"') { inStr = !inStr; continue; }
     if (inStr) continue;
     if (ch === '{') depth++;
-    else if (ch === '}') { depth--; if (depth === 0) lastClose = i; }
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) { firstBalanced = i; break; }
+    }
   }
-  if (lastClose > 0) {
-    try { return JSON.parse(s.slice(0, lastClose + 1)); } catch (_) {}
+  if (firstBalanced > 0) {
+    try { return JSON.parse(s.slice(0, firstBalanced + 1)); } catch (_) {}
   }
 
+  // Intento 3: JSON truncado (cortado a la mitad) - intentar reparar cerrando estructuras abiertas
   let repaired = s;
-  const lastObj = repaired.lastIndexOf('}');
-  if (lastObj > 0) {
-    repaired = repaired.slice(0, lastObj + 1);
-    let d = 0, b = 0, inS = false, e = false;
-    for (let i = 0; i < repaired.length; i++) {
-      const c = repaired[i];
-      if (e) { e = false; continue; }
-      if (c === '\\' && inS) { e = true; continue; }
-      if (c === '"') { inS = !inS; continue; }
-      if (inS) continue;
-      if (c === '{') d++;
-      else if (c === '}') d--;
-      else if (c === '[') b++;
-      else if (c === ']') b--;
-    }
-    while (b-- > 0) repaired += ']';
-    while (d-- > 0) repaired += '}';
-    try { return JSON.parse(repaired); } catch (err) {
-      throw new Error(`JSON truncado y no reparable: ${err.message}`);
-    }
+  // Si hay un texto trailing tras un } válido, recortar ahí
+  if (firstBalanced > 0) {
+    repaired = s.slice(0, firstBalanced + 1);
   }
-  throw new Error('JSON malformado en la respuesta del modelo');
+  let d = 0, b = 0, inS = false, e = false;
+  for (let i = 0; i < repaired.length; i++) {
+    const c = repaired[i];
+    if (e) { e = false; continue; }
+    if (c === '\\' && inS) { e = true; continue; }
+    if (c === '"') { inS = !inS; continue; }
+    if (inS) continue;
+    if (c === '{') d++;
+    else if (c === '}') d--;
+    else if (c === '[') b++;
+    else if (c === ']') b--;
+  }
+  if (inS) repaired += '"';
+  while (b-- > 0) repaired += ']';
+  while (d-- > 0) repaired += '}';
+  try { return JSON.parse(repaired); } catch (err) {
+    throw new Error(`JSON truncado y no reparable: ${err.message}`);
+  }
 }
 
 export default async function handler(req, res) {
