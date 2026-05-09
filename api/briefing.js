@@ -227,23 +227,20 @@ REGLAS HARD-CAP (no son sugerencias, son OBLIGATORIAS):
    - Cantidad: hasta 10 columnas, pero PREFERIBLE devolver 4-5 que cumplan reglas que rellenar a 10 violando reglas.
 
 4. ESTRATEGIA DE BÚSQUEDA OBLIGATORIA:
-   Para forzar diversidad, NO uses búsquedas genéricas tipo "opinión España hoy". USA búsquedas específicas a las PÁGINAS ÍNDICE de opinión de cada medio (estas páginas SÍ están bien indexadas porque son portadas):
+   Para forzar diversidad, NO uses búsquedas genéricas tipo "opinión España hoy". Las búsquedas con site:medio.com/opinion son OBLIGATORIAS — bypaseando la baja indexación SEO de medios pequeños.
 
-   - "site:abc.es/opinion ${today}" + revisa también paralalibertad.org/category/opinion/ como agregador
-   - "site:vozpopuli.com/opinion ${today}"  (su sección de opinión)
-   - "site:theobjective.com/comentario ${today}"  (The Objective llama "comentario" a opinión)
-   - "site:elespanol.com/opinion ${today}"
-   - "site:libertaddigital.com/opinion ${today}"
-   - "site:eldiario.es/opinion ${today}"
-   - "site:elpais.com/opinion ${today}" (o "site:almendron.com tribuna" si paywall bloquea)
-   - "site:gaceta.es/opinion ${today}"
-   - "site:eldebate.com/opinion ${today}"
+   Páginas índice de cada medio (visita directa preferible):
+   - abc.es/opinion/ (también paralalibertad.org/category/opinion/)
+   - vozpopuli.com/opinion/
+   - theobjective.com/comentario/
+   - elespanol.com/opinion/
+   - libertaddigital.com/opinion/
+   - eldiario.es/opinion/
+   - elpais.com/opinion/ (o almendron.com/tribuna si paywall)
+   - gaceta.es/opinion/
+   - eldebate.com/opinion/
 
-   Si una búsqueda concreta a una página índice no devuelve nada nuevo, PUEDES además visitar la URL directa del índice (vozpopuli.com/opinion/, theobjective.com/comentario/, etc.) para listar las columnas más recientes. Las páginas índice se actualizan al instante, no dependen de indexación lenta de SEO.
-
-   ADEMÁS: usar la guía de columnistas más abajo para buscar nombres específicos por día. Ejemplo si es martes: "Juan Soto Ivars ABC opinión ${today}".
-
-   Las búsquedas con site:medio.com/opinion son OBLIGATORIAS — bypaseando la baja indexación SEO de medios pequeños.
+   USA TU JUICIO sobre qué medios buscar primero según el día de la semana, consultando la guía de columnistas de abajo. No tienes que buscar TODOS los 9 — con 4-5 búsquedas bien dirigidas a los medios que toquen ese día tienes suficiente.
 
 5. CONTEXTO TEMPORAL:
    - Si la hora actual es <11:00 y fecha es HOY, esperable más resultados de día anterior (gente todavía no ha publicado hoy).
@@ -264,7 +261,7 @@ CHECK FINAL antes de devolver:
 - ¿Todas las publishedDate están en la lista de fechas aceptadas? ✓
 Si algún check falla, REGENERA quitando piezas que rompan la regla, aunque devuelvas menos cantidad.`;
     },
-    maxUses: 8,
+    maxUses: 6,
   },
 };
 
@@ -385,4 +382,22 @@ export default async function handler(req, res) {
 
     if (!upstream.ok) {
       const errText = await upstream.text();
-      return res.status(upstream
+      return res.status(upstream.status).json({
+        error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
+      });
+    }
+
+    const data = await upstream.json();
+    if (data.error) {
+      return res.status(500).json({ error: data.error.message || 'Error de la API' });
+    }
+
+    const text = (data.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('');
+
+    const briefing = extractJson(text);
+    return res.status(200).json({ briefing, section });
+  } catch (err) {
+    return res.status(500).json({
