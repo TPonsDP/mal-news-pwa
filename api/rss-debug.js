@@ -2,25 +2,38 @@
 // Visita https://mal-news-pwa.vercel.app/api/rss-debug en el navegador.
 
 const SPAIN_OPINION_FEEDS = [
-  { source: 'ABC opinion completo', url: 'https://www.abc.es/rss/feeds/abc_opinioncompleto.xml' },
-  { source: 'ABC opinion', url: 'https://www.abc.es/rss/feeds/abc_Opinion.xml' },
-  { source: 'ABC opinion alt', url: 'https://www.abc.es/rss/feeds/abc_opinion.xml' },
-  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/feed/' },
-  { source: 'Vozpópuli opinion', url: 'https://www.vozpopuli.com/opinion/feed/' },
-  { source: 'The Objective', url: 'https://theobjective.com/feed/' },
-  { source: 'The Objective opinion', url: 'https://theobjective.com/comentario/feed/' },
-  { source: 'El Español opinion v1', url: 'https://www.elespanol.com/rss/opinion.xml' },
-  { source: 'El Español opinion v2', url: 'https://www.elespanol.com/opinion/rss/' },
-  { source: 'Libertad Digital v1', url: 'https://feeds.libertaddigital.com/c/30220/f/612428/index.rss' },
-  { source: 'Libertad Digital v2', url: 'https://www.libertaddigital.com/opinion/index.rss' },
-  { source: 'Libertad Digital v3', url: 'https://www.libertaddigital.com/feeds/articulos.xml' },
-  { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/section/opinion/' },
-  { source: 'elDiario.es alt', url: 'https://www.eldiario.es/rss/' },
-  { source: 'El País opinion', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada' },
-  { source: 'La Gaceta', url: 'https://gaceta.es/feed/' },
-  { source: 'La Gaceta opinion', url: 'https://gaceta.es/opinion/feed/' },
-  { source: 'El Debate', url: 'https://www.eldebate.com/feed/' },
-  { source: 'El Debate opinion', url: 'https://www.eldebate.com/opinion/feed/' },
+  // ============ VOZPÓPULI - intentos nuevos ============
+  { source: 'Vozpópuli /rss', url: 'https://www.vozpopuli.com/rss/' },
+  { source: 'Vozpópuli /rss.xml', url: 'https://www.vozpopuli.com/rss.xml' },
+  { source: 'Vozpópuli /index.rss', url: 'https://www.vozpopuli.com/index.rss' },
+  { source: 'Vozpópuli /?feed=rss2', url: 'https://www.vozpopuli.com/?feed=rss2' },
+  { source: 'Vozpópuli /feeds/all.xml', url: 'https://www.vozpopuli.com/feeds/all.xml' },
+
+  // ============ EL ESPAÑOL - intentos nuevos ============
+  { source: 'El Español /rss', url: 'https://www.elespanol.com/rss' },
+  { source: 'El Español /feed', url: 'https://www.elespanol.com/feed/' },
+  { source: 'El Español /rss.xml', url: 'https://www.elespanol.com/rss.xml' },
+  { source: 'El Español /opinion.rss', url: 'https://www.elespanol.com/opinion.rss' },
+  { source: 'El Español /opinion/index.rss', url: 'https://www.elespanol.com/opinion/index.rss' },
+
+  // ============ LIBERTAD DIGITAL - intentos nuevos ============
+  { source: 'LD /rss', url: 'https://www.libertaddigital.com/rss/' },
+  { source: 'LD /rss.xml', url: 'https://www.libertaddigital.com/rss.xml' },
+  { source: 'LD /opinion/rss', url: 'https://www.libertaddigital.com/opinion/rss/' },
+  { source: 'LD /opinion.rss', url: 'https://www.libertaddigital.com/opinion.rss' },
+  { source: 'LD /comunidad/rss', url: 'https://www.libertaddigital.com/comunidad/rss/' },
+
+  // ============ EL DEBATE - intentos nuevos ============
+  { source: 'El Debate /rss', url: 'https://www.eldebate.com/rss/' },
+  { source: 'El Debate /rss.xml', url: 'https://www.eldebate.com/rss.xml' },
+  { source: 'El Debate /index.xml', url: 'https://www.eldebate.com/index.xml' },
+  { source: 'El Debate /rss/portada', url: 'https://www.eldebate.com/rss/portada.xml' },
+  { source: 'El Debate /sitemap-news', url: 'https://www.eldebate.com/sitemap-news.xml' },
+
+  // ============ ELDIARIO.ES - intentos para encontrar feed con fechas ============
+  { source: 'elDiario portada', url: 'https://www.eldiario.es/rss/portada/' },
+  { source: 'elDiario opiniones', url: 'https://www.eldiario.es/opiniones/feed/' },
+  { source: 'elDiario rss tema opinion', url: 'https://www.eldiario.es/rss/tema/opinion/' },
 ];
 
 async function probeFeed(feed) {
@@ -113,4 +126,4 @@ export default async function handler(req, res) {
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Error desconocido' });
   }
-}
+        }
