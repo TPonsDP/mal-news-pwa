@@ -164,7 +164,6 @@ function NewsCard({ item, index, sectionColor, type }) {
         padding: '12px 16px',
         marginBottom: '6px',
         boxShadow: BRAND.shadow,
-        boxShadow: '0 1px 3px rgba(30,58,138,0.06)',
         animation: `fadeSlide 0.35s ease ${Math.min(index * 0.03, 0.5)}s both`,
       }}>
         {/* Titulo (clickable si hay URL) */}
@@ -491,7 +490,7 @@ export default function App() {
       date: (intlData?.date || spainOpinionData?.date || spainNewsData?.date || todayShort),
       worldNews: intlData?.worldNews || [],
       worldOpinion: intlData?.worldOpinion || [],
- legal: intlData?.legal || [],
+      legal: intlData?.legal || [],
       spainNews: spainNewsData?.spainNews || [],
       spainOpinion: spainOpinionData?.spainOpinion || [],
     };
@@ -656,7 +655,8 @@ export default function App() {
     spainOpinion: BRAND.opinionGrad,  // morado oscuro → lila
     spainNews:    BRAND.newsGrad,     // rojo → naranja
   };
-         const intlSections = intlData ? [
+
+  const intlSections = intlData ? [
     { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 6, type: 'opinion',
       descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto' },
     { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 16, type: 'news',
@@ -665,7 +665,7 @@ export default function App() {
       descriptor: 'Sentencias y decisiones del día · internacional + España' },
   ] : [];
 
-  const spainOpinionSections = spainOpinionData ? [
+const spainOpinionSections = spainOpinionData ? [
     { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 12, type: 'opinion',
       descriptor: 'Columnas firmadas · sin editoriales · 5+ medios · publicadas hoy o ayer' },
   ] : [];
@@ -920,7 +920,6 @@ export default function App() {
             🇪🇸 Buscando 10 noticias España...
           </p>
         )}
-
         {/* Mensaje de cooldown activo cuando NO hay carga en marcha */}
         {isInCooldown && !anyLoading && (
           <p style={{ textAlign: 'center', color: 'rgba(30,58,138,0.65)', fontSize: '11px', marginBottom: '8px', fontStyle: 'italic' }}>
@@ -994,4 +993,4 @@ export default function App() {
       </div>
     </div>
   );
-      } 
+            }
