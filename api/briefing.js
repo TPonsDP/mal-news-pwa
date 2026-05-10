@@ -12,14 +12,13 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'The Objective', url: 'https://theobjective.com/feed/' },
   { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada' },
   { source: 'La Gaceta', url: 'https://gaceta.es/opinion/feed/' },
+  { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml' },
 
   // ============ GOOGLE NEWS RSS (fallback universal) ============
   // Google News tiene RSS para cualquier medio. Lo usamos para los que no exponen RSS propio
   // o lo tienen roto. Las fechas vienen siempre en RSS estándar parseable.
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+opinion+OR+columna&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'El Español', url: 'https://news.google.com/rss/search?q=site:elespanol.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'Libertad Digital', url: 'https://news.google.com/rss/search?q=site:libertaddigital.com+opinion&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'elDiario.es', url: 'https://news.google.com/rss/search?q=site:eldiario.es/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
@@ -32,13 +31,12 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada' },
   { source: 'The Objective', url: 'https://theobjective.com/feed/' },
   { source: 'La Gaceta', url: 'https://gaceta.es/feed/' },
+  { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml' },
 
   // Google News RSS (fallback universal para los que no tengan RSS propio fiable)
   { source: 'El Mundo', url: 'https://news.google.com/rss/search?q=site:elmundo.es&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'El Español', url: 'https://news.google.com/rss/search?q=site:elespanol.com&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'Libertad Digital', url: 'https://news.google.com/rss/search?q=site:libertaddigital.com&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'elDiario.es', url: 'https://news.google.com/rss/search?q=site:eldiario.es&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
@@ -502,7 +500,8 @@ export default async function handler(req, res) {
           },
           section,
         });
-}
+      }
+
       currentStep = 'build-prompt';
       const candidatesText = candidates.map((c, i) =>
         `[${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.author || 'sin autor'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${c.description.slice(0, 200)}`
@@ -545,7 +544,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         }),
       });
 
-      if (!upstream.ok) {
+    if (!upstream.ok) {
         const errText = await upstream.text();
         return res.status(upstream.status).json({
           error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
