@@ -23,6 +23,26 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'elDiario.es', url: 'https://news.google.com/rss/search?q=site:eldiario.es/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
+// ============ FEEDS RSS PARA NOTICIAS ESPAÑA ============
+// Para noticias usamos los portadas/general de cada medio (no la sección opinion).
+// Cubre eventos del día: política, economía, sociedad, sucesos.
+const SPAIN_NEWS_FEEDS = [
+  // RSS oficiales directos (los que tengan)
+  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_PortadaCompleta.xml' },
+  { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada' },
+  { source: 'The Objective', url: 'https://theobjective.com/feed/' },
+  { source: 'La Gaceta', url: 'https://gaceta.es/feed/' },
+
+  // Google News RSS (fallback universal para los que no tengan RSS propio fiable)
+  { source: 'El Mundo', url: 'https://news.google.com/rss/search?q=site:elmundo.es&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'El Español', url: 'https://news.google.com/rss/search?q=site:elespanol.com&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Libertad Digital', url: 'https://news.google.com/rss/search?q=site:libertaddigital.com&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'elDiario.es', url: 'https://news.google.com/rss/search?q=site:eldiario.es&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
+];
+
 async function fetchOneFeed(feed, timeoutMs = 8000) {
   try {
     const controller = new AbortController();
@@ -111,7 +131,15 @@ function rfcToISODate(dateStr) {
 }
 
 async function fetchSpainOpinionRss(allowedISODates) {
-  const allItems = await Promise.all(SPAIN_OPINION_FEEDS.map(fetchOneFeed));
+  return fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates);
+}
+
+async function fetchSpainNewsRss(allowedISODates) {
+  return fetchFeedsAndFilter(SPAIN_NEWS_FEEDS, allowedISODates);
+}
+
+async function fetchFeedsAndFilter(feedList, allowedISODates) {
+  const allItems = await Promise.all(feedList.map(fetchOneFeed));
   const flat = allItems.flat();
   // Deduplicar por URL
   const seen = new Set();
@@ -125,8 +153,8 @@ async function fetchSpainOpinionRss(allowedISODates) {
     if (!allowedISODates || allowedISODates.length === 0) return true;
     return allowedISODates.includes(it.publishedDate);
   });
-  // Limitar a 60 candidatos máximo (suficiente para que el modelo elija 10)
-  return inDate.slice(0, 60);
+  // Limitar a 80 candidatos máximo
+  return inDate.slice(0, 80);
 }
 
 // ============ FIN MÓDULO RSS ============
@@ -397,7 +425,7 @@ function extractJson(raw) {
   if (firstBalanced > 0) {
     repaired = s.slice(0, firstBalanced + 1);
   }
-  let d = 0, b = 0, inS = false, e = false
+  let d = 0, b = 0, inS = false, e = false;
   for (let i = 0; i < repaired.length; i++) {
     const c = repaired[i];
     if (e) { e = false; continue; }
@@ -472,5 +500,213 @@ export default async function handler(req, res) {
           },
           section,
         });
-        }
-      
+      }
+
+      const candidatesText = candidates.map((c, i) =>
+        `[${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.author || 'sin autor'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${c.description.slice(0, 200)}`
+      ).join('\n\n');
+
+      const userPrompt = `FECHA: ${todayFull || todayShort}
+
+Tienes a continuación una lista de ${candidates.length} columnas firmadas de medios españoles, ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}).
+
+REGLAS DE SELECCIÓN:
+- Selecciona HASTA 12 columnas
+- MÁX 3 columnas del mismo medio
+- MÍN 5 medios distintos en el resultado
+- Solo columnas con autor real (descarta las que digan "Redacción", "Editorial", o sin autor identificable)
+- Prioriza calidad y diversidad ideológica/temática
+- Mejor 8 columnas variadas que 12 de 3 medios
+
+Para cada columna seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística).
+
+CANDIDATAS:
+${candidatesText}
+
+OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
+{"date":"${todayShort}","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
+
+      const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 6000,
+          messages: [{ role: 'user', content: userPrompt }],
+          // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
+        }),
+      });
+
+      if (!upstream.ok) {
+        const errText = await upstream.text();
+        return res.status(upstream.status).json({
+          error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
+        });
+      }
+
+      const data = await upstream.json();
+      if (data.error) {
+        return res.status(500).json({ error: data.error.message || 'Error de la API' });
+      }
+
+      const text = (data.content || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.text)
+        .join('');
+
+      const briefing = extractJson(text);
+      // Añadir info diagnóstica útil
+      if (briefing && typeof briefing === 'object') {
+        briefing._meta = {
+          totalCandidates: candidates.length,
+          selectedCount: (briefing.spainOpinion || []).length,
+          mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
+        };
+      }
+      return res.status(200).json({ briefing, section });
+    } catch (err) {
+      return res.status(500).json({
+        error: `Error en flujo RSS: ${err.message || 'desconocido'}`,
+      });
+    }
+  }
+  // ============ FIN FLUJO RSS spainOpinion ============
+
+  // ============ FLUJO ESPECIAL RSS PARA spainNews ============
+  // Igual que spainOpinion: pre-fetch RSS de portadas + Google News, sin web_search.
+  if (section === 'spainNews') {
+    try {
+      const candidates = await fetchSpainNewsRss(allowedISODates);
+
+      if (!candidates || candidates.length === 0) {
+        return res.status(200).json({
+          briefing: {
+            date: todayShort,
+            spainNews: [],
+            _note: 'No se encontraron noticias en RSS para las fechas indicadas.',
+          },
+          section,
+        });
+      }
+
+      const candidatesText = candidates.map((c, i) =>
+        `[${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${c.description.slice(0, 200)}`
+      ).join('\n\n');
+
+      const userPrompt = `FECHA: ${todayFull || todayShort}
+
+Tienes a continuación una lista de ${candidates.length} noticias de medios españoles, ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}).
+
+REGLAS DE SELECCIÓN:
+- Selecciona HASTA 10 noticias
+- MÁX 2 noticias del mismo medio
+- MÍN 4 medios distintos en el resultado
+- PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos, decisiones gubernamentales, anuncios oficiales, hechos relevantes
+- DESCARTA: análisis genéricos, columnas de opinión, contenido evergreen sin actualidad
+- Equilibrio temático: política, economía, sociedad, sucesos
+- Mejor 6 noticias relevantes que 10 mediocres
+
+Para cada noticia seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO).
+
+CANDIDATAS:
+${candidatesText}
+
+OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
+{"date":"${todayShort}","spainNews":[{"rank":1,"title":"...","summary":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
+
+      const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 4000,
+          messages: [{ role: 'user', content: userPrompt }],
+          // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
+        }),
+      });
+
+      if (!upstream.ok) {
+        const errText = await upstream.text();
+        return res.status(upstream.status).json({
+          error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
+        });
+      }
+
+      const data = await upstream.json();
+      if (data.error) {
+        return res.status(500).json({ error: data.error.message || 'Error de la API' });
+      }
+
+      const text = (data.content || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.text)
+        .join('');
+
+      const briefing = extractJson(text);
+      if (briefing && typeof briefing === 'object') {
+        briefing._meta = {
+          totalCandidates: candidates.length,
+          selectedCount: (briefing.spainNews || []).length,
+          mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
+        };
+      }
+      return res.status(200).json({ briefing, section });
+    } catch (err) {
+      return res.status(500).json({
+        error: `Error en flujo RSS spainNews: ${err.message || 'desconocido'}`,
+      });
+    }
+  }
+  // ============ FIN FLUJO RSS spainNews ============
+
+  try {
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 12000,
+        system: cfg.system,
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: cfg.maxUses }],
+        messages: [{
+          role: 'user',
+          content: cfg.user(todayShort, todayFull, nowTime, allowedISODates),
+        }],
+      }),
+    });
+
+    if (!upstream.ok) {
+      const errText = await upstream.text();
+      return res.status(upstream.status).json({
+        error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
+      });
+    }
+
+    const data = await upstream.json();
+    if (data.error) {
+      return res.status(500).json({ error: data.error.message || 'Error de la API' });
+    }
+
+    const text = (data.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('');
+
+    const briefing = extractJson(text);
+    return res.status(200).json({ briefing, section });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Error desconocido' });
+  }
+}
