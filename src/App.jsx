@@ -4,24 +4,35 @@ const RECIPIENT = 'tonipons91@gmail.com';
 const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Tier 1 de Anthropic
 
 const BRAND = {
-  // Fondo Sage muted (verde apagado, paleta tierra)
-  limeLight: '#D5DBC1',  // Sage claro
-  limeDark: '#B7C49E',   // Sage medio
-  // Azul marino Tailwind (blue-900) para textos y logo
-  navy: '#1E3A8A',
-  navyDeep: '#172554',   // blue-950 (aún más oscuro para acentos)
-  // Terracota para la fecha (alternativas comentadas para fácil swap)
-  orange: '#C2693C',     // Terracota (recomendada con sage)
-  // orange: '#E2725B',  // Terracota clásica más cálida
-  // orange: '#A0522D',  // Sienna (más marrón)
-  // orange: '#FF8C42',  // Mandarina vibrante
-  // orange: '#CC5500',  // Naranja quemado
-  // Fondo de tarjetas crema claro
-  card: '#FAF8F2',
-  cardSubtle: 'rgba(255,255,255,0.92)',
-  ink: '#1E3A8A',        // azul marino para texto principal
-  inkSoft: 'rgba(30,58,138,0.72)',
-  // Lean badges
+  // ============ NUEVA PALETA: Oxford Blue + Smoke Gray + 3 gradientes ============
+  oxford: '#1A365D',           // Marca principal (Azul Oxford)
+  blueAccent: '#007AFF',       // Acento brillante (final del gradiente internacional)
+  bgGray: '#F0F4F8',           // Fondo (Gris Humo)
+  bgGrayDeep: '#E2E8F0',       // Variante para gradientes sutiles del fondo
+  cardWhite: '#FFFFFF',        // Tarjetas blancas
+  shadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+  shadowLg: '0 8px 24px rgba(0, 0, 0, 0.12)',
+  // Gradientes oficiales por bucket
+  intlGrad: 'linear-gradient(90deg, #1A365D, #007AFF)',
+  opinionGrad: 'linear-gradient(90deg, #6B46C1, #9F7AEA)',
+  newsGrad: 'linear-gradient(90deg, #E53E3E, #F6AD55)',
+  // Colores sólidos para bordes/badges (start de cada gradiente)
+  intlColor: '#1A365D',
+  opinionColor: '#6B46C1',
+  newsColor: '#E53E3E',
+
+  // ============ ALIASES PARA RETROCOMPATIBILIDAD ============
+  // (todo el código existente que usa BRAND.navy, BRAND.card, etc. seguirá funcionando)
+  navy: '#1A365D',
+  navyDeep: '#102844',
+  card: '#FFFFFF',
+  cardSubtle: 'rgba(255,255,255,0.95)',
+  ink: '#1A365D',
+  inkSoft: 'rgba(26, 54, 93, 0.65)',
+  orange: '#E53E3E',           // antes terracota, ahora rojo (= newsColor start)
+  limeLight: '#F0F4F8',        // antes sage, ahora bgGray
+  limeDark: '#E2E8F0',         // antes sage dark, ahora bgGray deep
+  // Lean badges (mantenidos)
   leftBlue: '#3B82F6',
   rightRed: '#EF4444',
 };
@@ -149,9 +160,10 @@ function NewsCard({ item, index, sectionColor, type }) {
       <div style={{
         background: BRAND.card,
         borderLeft: `4px solid ${sectionColor}`,
-        borderRadius: '0 6px 6px 0',
-        padding: '10px 14px',
-        marginBottom: '5px',
+        borderRadius: '0 8px 8px 0',
+        padding: '12px 16px',
+        marginBottom: '6px',
+        boxShadow: BRAND.shadow,
         boxShadow: '0 1px 3px rgba(30,58,138,0.06)',
         animation: `fadeSlide 0.35s ease ${Math.min(index * 0.03, 0.5)}s both`,
       }}>
@@ -220,10 +232,10 @@ function NewsCard({ item, index, sectionColor, type }) {
     <div style={{
       background: BRAND.card,
       borderLeft: `4px solid ${sectionColor}`,
-      borderRadius: '0 6px 6px 0',
-      padding: '10px 14px',
-      marginBottom: '5px',
-      boxShadow: '0 1px 3px rgba(30,58,138,0.06)',
+      borderRadius: '0 8px 8px 0',
+      padding: '12px 16px',
+      marginBottom: '6px',
+      boxShadow: BRAND.shadow,
       animation: `fadeSlide 0.35s ease ${Math.min(index * 0.03, 0.5)}s both`,
     }}>
       {/* Linea de byline */}
@@ -274,7 +286,7 @@ function NewsCard({ item, index, sectionColor, type }) {
   );
 }
 
-function Section({ title, icon, items, color, count, descriptor, type }) {
+function Section({ title, icon, items, color, gradient, count, descriptor, type }) {
   const realCount = items?.length || 0;
   const itemLabel = type === 'opinion' ? (realCount === 1 ? 'COLUMNA' : 'COLUMNAS') : (realCount === 1 ? 'PIEZA' : 'PIEZAS');
 
@@ -282,11 +294,11 @@ function Section({ title, icon, items, color, count, descriptor, type }) {
     <div style={{ marginBottom: '20px' }}>
       {/* Bloque de cabecera de sección */}
       <div style={{
-        background: color,
+        background: gradient || color,
         color: 'white',
         padding: '14px 18px',
-        borderRadius: '8px 8px 0 0',
-        boxShadow: '0 2px 8px rgba(30,58,138,0.15)',
+        borderRadius: '12px 12px 0 0',
+        boxShadow: BRAND.shadow,
       }}>
         <div style={{
           display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap',
@@ -479,7 +491,7 @@ export default function App() {
       date: (intlData?.date || spainOpinionData?.date || spainNewsData?.date || todayShort),
       worldNews: intlData?.worldNews || [],
       worldOpinion: intlData?.worldOpinion || [],
-      legal: intlData?.legal || [],
+ legal: intlData?.legal || [],
       spainNews: spainNewsData?.spainNews || [],
       spainOpinion: spainOpinionData?.spainOpinion || [],
     };
@@ -489,9 +501,13 @@ export default function App() {
   function buildHtml(b) {
     const escape = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-    const SECTION_COLORS_LOCAL = {
-      worldOpinion: '#1D4ED8', worldNews: '#047857', legal: '#334155',
-      spainOpinion: '#BE185D', spainNews: '#9A3412',
+    // Mapeo de colores y gradientes por sección (debe coincidir con SECTION_COLORS/SECTION_GRADIENTS de la PWA)
+    const SECTION_STYLES = {
+      worldOpinion: { color: '#1A365D', gradient: 'linear-gradient(90deg, #1A365D, #007AFF)' },
+      worldNews:    { color: '#1A365D', gradient: 'linear-gradient(90deg, #1A365D, #007AFF)' },
+      legal:        { color: '#1A365D', gradient: 'linear-gradient(90deg, #1A365D, #007AFF)' },
+      spainOpinion: { color: '#6B46C1', gradient: 'linear-gradient(90deg, #6B46C1, #9F7AEA)' },
+      spainNews:    { color: '#E53E3E', gradient: 'linear-gradient(90deg, #E53E3E, #F6AD55)' },
     };
 
     const getDay = (iso) => {
@@ -510,28 +526,28 @@ export default function App() {
         ? `<div style="margin-top:6px;font-size:11px;"><a href="${escape(item.url)}" style="color:${color};text-decoration:none;border-bottom:1px dotted ${color};font-weight:700;">leer &rarr;</a></div>`
         : '';
       return `
-        <div style="background:#FAF8F2;border-left:4px solid ${color};border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:6px;font-family:Verdana,Geneva,sans-serif;">
-          <div style="font-size:13px;font-weight:700;color:#172554;line-height:1.3;margin-bottom:4px;">${escape(item.title)}</div>
-          <div style="font-size:11.5px;color:rgba(30,58,138,0.72);line-height:1.45;${summaryStyle}margin-bottom:5px;">${escape(item.summary)}</div>
-          <div style="font-size:10.5px;color:rgba(30,58,138,0.85);font-weight:700;">${meta}</div>
+        <div style="background:#FFFFFF;border-left:4px solid ${color};border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:Verdana,Geneva,sans-serif;">
+          <div style="font-size:13px;font-weight:700;color:#1A365D;line-height:1.3;margin-bottom:4px;">${escape(item.title)}</div>
+          <div style="font-size:11.5px;color:rgba(26,54,93,0.72);line-height:1.45;${summaryStyle}margin-bottom:5px;">${escape(item.summary)}</div>
+          <div style="font-size:10.5px;color:rgba(26,54,93,0.85);font-weight:700;">${meta}</div>
           ${link}
         </div>`;
     };
 
     const section = (title, icon, items, colorKey, descriptor, isOpinion) => {
       if (!items?.length) return '';
-      const color = SECTION_COLORS_LOCAL[colorKey];
+      const { color, gradient } = SECTION_STYLES[colorKey];
       const itemLabel = isOpinion ? (items.length === 1 ? 'COLUMNA' : 'COLUMNAS') : (items.length === 1 ? 'PIEZA' : 'PIEZAS');
       const itemsHtml = items.map(i => card(i, color, isOpinion)).join('');
       return `
-        <div style="margin-bottom:24px;">
-          <div style="background:${color};color:white;padding:14px 18px;border-radius:8px 8px 0 0;font-family:Verdana,Geneva,sans-serif;">
+        <div style="margin-bottom:28px;">
+          <div style="background:${gradient};color:white;padding:16px 20px;border-radius:12px 12px 0 0;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:Verdana,Geneva,sans-serif;">
             <div style="font-size:15px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;">
               ${icon} ${escape(title)} &middot; ${items.length} ${itemLabel}
             </div>
             <div style="font-size:11px;opacity:0.92;margin-top:6px;">${escape(descriptor)}</div>
           </div>
-          <div style="background:rgba(255,255,255,0.4);padding:8px 8px 4px;border-radius:0 0 8px 8px;border:1px solid ${color}30;border-top:none;">
+          <div style="background:rgba(255,255,255,0.55);padding:10px 10px 4px;border-radius:0 0 12px 12px;">
             ${itemsHtml}
           </div>
         </div>`;
@@ -546,14 +562,14 @@ export default function App() {
 <meta charset="UTF-8">
 <title>MAL NEWS - ${escape(b.date || todayShort)}</title>
 <style>
-  body { margin:0; padding:24px; background:linear-gradient(135deg,#D5DBC1 0%,#B7C49E 100%); font-family:Verdana,Geneva,sans-serif; color:#1E3A8A; }
-  .container { max-width:780px; margin:0 auto; }
-  .header { text-align:center; margin-bottom:24px; padding:20px; background:rgba(255,255,255,0.6); border-radius:12px; }
-  .logo { font-size:32px; font-weight:800; color:#1E3A8A; letter-spacing:2px; margin:0; }
-  .date { font-size:12px; letter-spacing:0.3em; color:#C2693C; text-transform:uppercase; font-weight:800; margin:8px 0 0; }
-  .total { font-size:11px; color:#C2693C; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
-  .footer { text-align:center; margin-top:32px; padding:16px; font-size:10px; color:rgba(30,58,138,0.55); letter-spacing:0.15em; font-style:italic; border-top:1px solid rgba(30,58,138,0.15); }
-  .copy-hint { background:#FFF7ED; border:1px solid #C2693C; border-radius:8px; padding:12px 16px; margin-bottom:20px; font-size:12px; color:#9A3412; text-align:center; }
+  body { margin:0; padding:24px; background:#F0F4F8; font-family:Verdana,Geneva,sans-serif; color:#1A365D; }
+  .container { max-width:820px; margin:0 auto; }
+  .header { text-align:center; margin-bottom:28px; padding:24px; background:#FFFFFF; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+  .logo { font-size:34px; font-weight:800; color:#1A365D; letter-spacing:2px; margin:0; }
+  .date { font-size:12px; letter-spacing:0.3em; color:#1A365D; opacity:0.7; text-transform:uppercase; font-weight:800; margin:8px 0 0; }
+  .total { font-size:11px; color:#007AFF; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
+  .footer { text-align:center; margin-top:32px; padding:18px; font-size:10px; color:rgba(26,54,93,0.55); letter-spacing:0.15em; font-style:italic; border-top:1px solid rgba(26,54,93,0.12); }
+  .copy-hint { background:#FFFFFF; border:1px solid rgba(26,54,93,0.15); border-radius:10px; padding:14px 18px; margin-bottom:20px; font-size:12px; color:#1A365D; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.05); }
   @media print { .copy-hint { display:none; } body { background:white; } }
 </style>
 </head>
@@ -623,36 +639,39 @@ export default function App() {
     (merged.energy?.length || 0) + (merged.legal?.length || 0) +
     (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0);
 
-  // Colores por sección - Paleta C (Vibrante saturada) ACTIVA
-  // Si quieres cambiar, descomenta una de las paletas alternativas abajo y comenta esta
+  // ============ COLORES POR SECCIÓN (Nueva paleta Oxford + gradientes) ============
+  // Mapeo por bucket: las 3 secciones internacionales comparten gradiente azul,
+  // Opinión España usa morado, Noticias España usa rojo-naranja.
   const SECTION_COLORS = {
-    worldOpinion: '#1D4ED8',  // Royal blue
-    worldNews:    '#047857',  // Emerald
-    legal:        '#334155',  // Charcoal
-    spainOpinion: '#BE185D',  // Rose dark
-    spainNews:    '#9A3412',  // Orange dark
+    worldOpinion: BRAND.intlColor,    // Oxford Blue
+    worldNews:    BRAND.intlColor,
+    legal:        BRAND.intlColor,
+    spainOpinion: BRAND.opinionColor, // Morado
+    spainNews:    BRAND.newsColor,    // Rojo
   };
-  // Paleta A - Magazine editorial (default original):
-  // const SECTION_COLORS = { worldOpinion: '#3730A3', worldNews: '#0F766E', legal: '#475569', spainOpinion: '#9F1239', spainNews: '#C2410C' };
-  // Paleta B - Vintage sobria:
-  // const SECTION_COLORS = { worldOpinion: '#172554', worldNews: '#14532D', legal: '#44403C', spainOpinion: '#7F1D1D', spainNews: '#9A3412' };
-
-  const intlSections = intlData ? [
-    { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, count: 6, type: 'opinion',
+  const SECTION_GRADIENTS = {
+    worldOpinion: BRAND.intlGrad,     // azul oxford → azul brillante
+    worldNews:    BRAND.intlGrad,
+    legal:        BRAND.intlGrad,
+    spainOpinion: BRAND.opinionGrad,  // morado oscuro → lila
+    spainNews:    BRAND.newsGrad,     // rojo → naranja
+  };
+         const intlSections = intlData ? [
+    { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 6, type: 'opinion',
       descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto' },
-    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, count: 16, type: 'news',
+    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 16, type: 'news',
       descriptor: '≥4 regiones · equilibrio IZQ/DER · publicadas en últimas 48h' },
-    { title: 'Legal', icon: '⚖️', items: intlData.legal, color: SECTION_COLORS.legal, count: 2, type: 'news',
+    { title: 'Legal', icon: '⚖️', items: intlData.legal, color: SECTION_COLORS.legal, gradient: SECTION_GRADIENTS.legal, count: 2, type: 'news',
       descriptor: 'Sentencias y decisiones del día · internacional + España' },
   ] : [];
 
   const spainOpinionSections = spainOpinionData ? [
-    { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, count: 10, type: 'opinion',
+    { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 12, type: 'opinion',
       descriptor: 'Columnas firmadas · sin editoriales · 5+ medios · publicadas hoy o ayer' },
   ] : [];
 
   const spainNewsSections = spainNewsData ? [
-    { title: 'España', icon: '🇪🇸', items: spainNewsData.spainNews, color: SECTION_COLORS.spainNews, count: 10, type: 'news',
+    { title: 'España', icon: '🇪🇸', items: spainNewsData.spainNews, color: SECTION_COLORS.spainNews, gradient: SECTION_GRADIENTS.spainNews, count: 10, type: 'news',
       descriptor: 'Eventos concretos · prensa española · publicadas últimas 48h' },
   ] : [];
 
@@ -975,4 +994,4 @@ export default function App() {
       </div>
     </div>
   );
-                     }
+      } 
