@@ -488,7 +488,9 @@ export default async function handler(req, res) {
   // ============ FLUJO ESPECIAL RSS PARA spainOpinion ============
   // No usa web_search. Pre-fetcha los 9 RSS, filtra por fecha, pasa la lista al modelo.
   if (section === 'spainOpinion') {
+    let currentStep = 'init';
     try {
+      currentStep = 'fetch-rss';
       const candidates = await fetchSpainOpinionRss(allowedISODates);
 
       if (!candidates || candidates.length === 0) {
@@ -500,8 +502,8 @@ export default async function handler(req, res) {
           },
           section,
         });
-      }
-
+}
+      currentStep = 'build-prompt';
       const candidatesText = candidates.map((c, i) =>
         `[${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.author || 'sin autor'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${c.description.slice(0, 200)}`
       ).join('\n\n');
@@ -510,13 +512,14 @@ export default async function handler(req, res) {
 
 Tienes a continuación una lista de ${candidates.length} columnas firmadas de medios españoles, ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}).
 
-REGLAS DE SELECCIÓN:
-- Selecciona HASTA 12 columnas
-- MÁX 3 columnas del mismo medio
-- MÍN 5 medios distintos en el resultado
-- Solo columnas con autor real (descarta las que digan "Redacción", "Editorial", o sin autor identificable)
-- Prioriza calidad y diversidad ideológica/temática
-- Mejor 8 columnas variadas que 12 de 3 medios
+REGLAS DE SELECCIÓN (en orden de prioridad):
+1. CRÍTICO: NUNCA devuelvas array vacío si hay al menos UNA columna firmada en la lista. Mejor 3 columnas que 0.
+2. Solo columnas con autor real (descarta las que digan "Redacción", "Editorial", o sin autor identificable).
+3. Selecciona HASTA 12 columnas (puedes devolver menos si la lista es corta).
+4. IDEAL si hay corpus suficiente: MÁX 3 columnas del mismo medio, MÍN 5 medios distintos.
+5. ACEPTABLE si corpus limitado (típico domingos/festivos/horas tempranas): 3-4 medios distintos, hasta 4 columnas del mismo medio.
+6. Prioriza calidad y diversidad ideológica/temática cuando puedas.
+7. Mejor pocas columnas variadas que ninguna por intentar cumplir reglas estrictas.
 
 Para cada columna seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística).
 
@@ -526,6 +529,7 @@ ${candidatesText}
 OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
 {"date":"${todayShort}","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
 
+      currentStep = 'call-anthropic';
       const upstream = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -545,14 +549,22 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         const errText = await upstream.text();
         return res.status(upstream.status).json({
           error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
+          step: 'anthropic-response',
+          candidatesFound: candidates.length,
         });
       }
 
+      currentStep = 'parse-response';
       const data = await upstream.json();
       if (data.error) {
-        return res.status(500).json({ error: data.error.message || 'Error de la API' });
+        return res.status(500).json({
+          error: data.error.message || 'Error de la API',
+          step: 'anthropic-data',
+          candidatesFound: candidates.length,
+        });
       }
 
+      currentStep = 'extract-json';
       const text = (data.content || [])
         .filter(b => b.type === 'text')
         .map(b => b.text)
@@ -566,11 +578,20 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           selectedCount: (briefing.spainOpinion || []).length,
           mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
         };
+      } else {
+        // El modelo no devolvió JSON válido — devolvemos diagnóstico
+        return res.status(500).json({
+          error: 'El modelo no devolvió JSON parseable',
+          step: 'extract-json',
+          candidatesFound: candidates.length,
+          rawTextSample: text.slice(0, 300),
+        });
       }
       return res.status(200).json({ briefing, section });
     } catch (err) {
       return res.status(500).json({
-        error: `Error en flujo RSS: ${err.message || 'desconocido'}`,
+        error: `Error en paso "${currentStep}": ${err.message || 'desconocido'}`,
+        step: currentStep,
       });
     }
   }
@@ -601,14 +622,15 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
 
 Tienes a continuación una lista de ${candidates.length} noticias de medios españoles, ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}).
 
-REGLAS DE SELECCIÓN:
-- Selecciona HASTA 10 noticias
-- MÁX 2 noticias del mismo medio
-- MÍN 4 medios distintos en el resultado
-- PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos, decisiones gubernamentales, anuncios oficiales, hechos relevantes
-- DESCARTA: análisis genéricos, columnas de opinión, contenido evergreen sin actualidad
-- Equilibrio temático: política, economía, sociedad, sucesos
-- Mejor 6 noticias relevantes que 10 mediocres
+REGLAS DE SELECCIÓN (en orden de prioridad):
+1. CRÍTICO: NUNCA devuelvas array vacío si hay al menos UNA noticia relevante en la lista. Mejor 3 noticias que 0.
+2. Selecciona HASTA 10 noticias (puedes devolver menos si la lista es corta).
+3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos, decisiones gubernamentales, anuncios oficiales, hechos relevantes.
+4. DESCARTA: análisis genéricos, columnas de opinión, contenido evergreen sin actualidad.
+5. IDEAL si hay corpus suficiente: MÁX 2 noticias mismo medio, MÍN 4 medios distintos.
+6. ACEPTABLE si corpus limitado: hasta 3 noticias mismo medio, mín 3 medios distintos.
+7. Equilibrio temático: política, economía, sociedad, sucesos.
+8. Mejor pocas noticias relevantes que ninguna por intentar cumplir reglas estrictas.
 
 Para cada noticia seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO).
 
