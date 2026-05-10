@@ -1,47 +1,37 @@
-// Endpoint diagnóstico: prueba cada RSS y reporta qué funciona y qué no.
-// Visita https://mal-news-pwa.vercel.app/api/rss-debug en el navegador.
+// Endpoint diagnóstico PROFUNDO: muestra el XML crudo de los feeds problemáticos
+// para inspeccionar exactamente cómo estructuran sus datos.
+// Visitar: https://mal-news-pwa.vercel.app/api/rss-debug-deep
 
-const SPAIN_OPINION_FEEDS = [
-  // ============ VOZPÓPULI - intentos nuevos ============
-  { source: 'Vozpópuli /rss', url: 'https://www.vozpopuli.com/rss/' },
-  { source: 'Vozpópuli /rss.xml', url: 'https://www.vozpopuli.com/rss.xml' },
-  { source: 'Vozpópuli /index.rss', url: 'https://www.vozpopuli.com/index.rss' },
-  { source: 'Vozpópuli /?feed=rss2', url: 'https://www.vozpopuli.com/?feed=rss2' },
-  { source: 'Vozpópuli /feeds/all.xml', url: 'https://www.vozpopuli.com/feeds/all.xml' },
-
-  // ============ EL ESPAÑOL - intentos nuevos ============
-  { source: 'El Español /rss', url: 'https://www.elespanol.com/rss' },
-  { source: 'El Español /feed', url: 'https://www.elespanol.com/feed/' },
-  { source: 'El Español /rss.xml', url: 'https://www.elespanol.com/rss.xml' },
-  { source: 'El Español /opinion.rss', url: 'https://www.elespanol.com/opinion.rss' },
-  { source: 'El Español /opinion/index.rss', url: 'https://www.elespanol.com/opinion/index.rss' },
-
-  // ============ LIBERTAD DIGITAL - intentos nuevos ============
-  { source: 'LD /rss', url: 'https://www.libertaddigital.com/rss/' },
-  { source: 'LD /rss.xml', url: 'https://www.libertaddigital.com/rss.xml' },
-  { source: 'LD /opinion/rss', url: 'https://www.libertaddigital.com/opinion/rss/' },
-  { source: 'LD /opinion.rss', url: 'https://www.libertaddigital.com/opinion.rss' },
-  { source: 'LD /comunidad/rss', url: 'https://www.libertaddigital.com/comunidad/rss/' },
-
-  // ============ EL DEBATE - intentos nuevos ============
-  { source: 'El Debate /rss', url: 'https://www.eldebate.com/rss/' },
-  { source: 'El Debate /rss.xml', url: 'https://www.eldebate.com/rss.xml' },
-  { source: 'El Debate /index.xml', url: 'https://www.eldebate.com/index.xml' },
-  { source: 'El Debate /rss/portada', url: 'https://www.eldebate.com/rss/portada.xml' },
-  { source: 'El Debate /sitemap-news', url: 'https://www.eldebate.com/sitemap-news.xml' },
-
-  // ============ ELDIARIO.ES - intentos para encontrar feed con fechas ============
-  { source: 'elDiario portada', url: 'https://www.eldiario.es/rss/portada/' },
-  { source: 'elDiario opiniones', url: 'https://www.eldiario.es/opiniones/feed/' },
-  { source: 'elDiario rss tema opinion', url: 'https://www.eldiario.es/rss/tema/opinion/' },
+// Feeds a inspeccionar:
+const TARGETS = [
+  {
+    name: 'Vozpópuli ?feed=rss2',
+    url: 'https://www.vozpopuli.com/?feed=rss2',
+    issue: 'Devuelve OK 200 pero parser lee 0 items. Inspeccionar formato XML/Atom.',
+  },
+  {
+    name: 'El Español /rss',
+    url: 'https://www.elespanol.com/rss',
+    issue: 'Devuelve 30 items sin fechas parseadas. Buscar tag de fecha real.',
+  },
+  {
+    name: 'elDiario.es /rss/',
+    url: 'https://www.eldiario.es/rss/',
+    issue: 'Devuelve 101 items sin fechas parseadas. Buscar tag de fecha real.',
+  },
 ];
 
-async function probeFeed(feed) {
-  const startMs = Date.now();
+async function inspectFeed(target) {
+  const out = {
+    name: target.name,
+    url: target.url,
+    issue: target.issue,
+  };
+
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(feed.url, {
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(target.url, {
       signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -50,46 +40,52 @@ async function probeFeed(feed) {
       redirect: 'follow',
     });
     clearTimeout(timer);
-    const ms = Date.now() - startMs;
+
+    out.httpStatus = res.status;
+    out.contentType = res.headers.get('content-type') || '';
     if (!res.ok) {
-      return {
-        source: feed.source,
-        url: feed.url,
-        status: 'FAIL',
-        httpStatus: res.status,
-        elapsedMs: ms,
-      };
+      out.error = `HTTP ${res.status}`;
+      return out;
     }
+
     const xml = await res.text();
-    const itemCount = (xml.match(/<item[^>]*>/gi) || []).length;
-    const entryCount = (xml.match(/<entry[^>]*>/gi) || []).length;
-    const total = itemCount + entryCount;
-    // Extraer las primeras 3 fechas para ver el formato
-    const dateMatches = xml.match(/<(?:pubDate|published|updated|dc:date)[^>]*>([^<]+)<\/(?:pubDate|published|updated|dc:date)>/gi) || [];
-    const sampleDates = dateMatches.slice(0, 3).map(m => m.replace(/<[^>]+>/g, '').trim());
-    // Extraer 1 título de muestra
-    const titleMatch = xml.match(/<item[^>]*>[\s\S]*?<title[^>]*>(?:<!\[CDATA\[)?([^<\]]+)/i);
-    const sampleTitle = titleMatch ? titleMatch[1].trim().slice(0, 100) : '';
-    return {
-      source: feed.source,
-      url: feed.url,
-      status: 'OK',
-      httpStatus: res.status,
-      elapsedMs: ms,
-      itemsFound: total,
-      sampleTitle,
-      sampleDates,
-      xmlLength: xml.length,
-      isValidXml: xml.includes('<rss') || xml.includes('<feed') || xml.includes('<?xml'),
-    };
+    out.xmlLength = xml.length;
+
+    // Detectar formato
+    out.isRSS2 = xml.includes('<rss') || xml.includes('<channel>');
+    out.isAtom = xml.includes('<feed') && xml.includes('xmlns="http://www.w3.org/2005/Atom"');
+    out.hasItems = (xml.match(/<item[^>]*>/gi) || []).length;
+    out.hasEntries = (xml.match(/<entry[^>]*>/gi) || []).length;
+
+    // Listar TODOS los tags únicos top-level dentro del primer item/entry
+    const itemMatch = xml.match(/<(item|entry)[^>]*>([\s\S]*?)<\/\1>/i);
+    if (itemMatch) {
+      const itemBody = itemMatch[2];
+      // Extraer nombres de tags directos
+      const tagMatches = itemBody.match(/<([a-zA-Z][a-zA-Z0-9:_-]*)[\s>]/g) || [];
+      const uniqueTags = [...new Set(tagMatches.map(m => m.replace(/[<\s>]/g, '')))].sort();
+      out.tagsInFirstItem = uniqueTags;
+      // Mostrar el primer item COMPLETO (capado a 2000 chars)
+      out.firstItemRaw = itemBody.slice(0, 2000);
+    } else {
+      out.tagsInFirstItem = [];
+      // Si no hay item, mostrar parte del XML para ver la estructura
+      out.xmlHead = xml.slice(0, 1500);
+    }
+
+    // Buscar candidatos de fecha en cualquier formato
+    const dateRegex = /<([a-zA-Z][a-zA-Z0-9:_-]*(?:date|time|pub|publi|updat|creat)[a-zA-Z0-9:_-]*)[^>]*>([^<]+)</gi;
+    const allDates = [];
+    let m;
+    while ((m = dateRegex.exec(xml)) !== null && allDates.length < 5) {
+      allDates.push({ tag: m[1], value: m[2].trim().slice(0, 60) });
+    }
+    out.dateTagsFound = allDates;
+
+    return out;
   } catch (err) {
-    return {
-      source: feed.source,
-      url: feed.url,
-      status: 'ERROR',
-      error: err.message || String(err),
-      elapsedMs: Date.now() - startMs,
-    };
+    out.error = err.message || String(err);
+    return out;
   }
 }
 
@@ -97,33 +93,13 @@ export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
   try {
-    const results = await Promise.all(SPAIN_OPINION_FEEDS.map(probeFeed));
-    const ok = results.filter(r => r.status === 'OK' && (r.itemsFound || 0) > 0);
-    const fail = results.filter(r => r.status !== 'OK' || (r.itemsFound || 0) === 0);
+    const results = await Promise.all(TARGETS.map(inspectFeed));
     return res.status(200).json({
-      summary: {
-        totalFeeds: results.length,
-        feedsWithItems: ok.length,
-        feedsFailedOrEmpty: fail.length,
-        timestamp: new Date().toISOString(),
-      },
-      working: ok.map(r => ({
-        source: r.source,
-        url: r.url,
-        items: r.itemsFound,
-        sampleTitle: r.sampleTitle,
-        sampleDates: r.sampleDates,
-      })),
-      failing: fail.map(r => ({
-        source: r.source,
-        url: r.url,
-        status: r.status,
-        httpStatus: r.httpStatus,
-        error: r.error,
-        elapsedMs: r.elapsedMs,
-      })),
+      timestamp: new Date().toISOString(),
+      note: 'Diagnóstico profundo: tags y formato real de cada feed problemático',
+      feeds: results,
     }, null, 2);
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Error desconocido' });
   }
-        }
+           }
