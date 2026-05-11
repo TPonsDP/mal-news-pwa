@@ -135,8 +135,13 @@ async function fetchSpainNewsRss(allowedISODates) {
 }
 
 async function fetchFeedsAndFilter(feedList, allowedISODates) {
-  const allItems = await Promise.all(feedList.map(fetchOneFeed));
-  const flat = allItems.flat();
+  // Para cada feed, fetchear y registrar diagnóstico
+  const feedResults = await Promise.all(feedList.map(async (feed) => {
+    const items = await fetchOneFeed(feed);
+    return { source: feed.source, count: items.length, items };
+  }));
+  const flat = feedResults.flatMap(r => r.items);
+
   // Deduplicar por URL
   const seen = new Set();
   const dedup = flat.filter(item => {
@@ -144,13 +149,31 @@ async function fetchFeedsAndFilter(feedList, allowedISODates) {
     seen.add(item.url);
     return true;
   });
+
   // Filtrar por fechas aceptadas
   const inDate = dedup.filter(it => {
     if (!allowedISODates || allowedISODates.length === 0) return true;
     return allowedISODates.includes(it.publishedDate);
   });
-  // Limitar a 80 candidatos máximo
-  return inDate.slice(0, 80);
+
+  // Diagnóstico: para los feeds que NO aportaron candidatos, decir si fallaron o si tenían fechas viejas
+  const diagnostic = feedResults.map(r => {
+    const passedDate = r.items.filter(it => allowedISODates.includes(it.publishedDate)).length;
+    const latestDate = r.items.length > 0
+      ? [...new Set(r.items.map(it => it.publishedDate).filter(Boolean))].sort().reverse()[0]
+      : null;
+    return {
+      source: r.source,
+      rawCount: r.count,
+      passedDateFilter: passedDate,
+      latestDateSeen: latestDate || 'sin fecha',
+    };
+  });
+
+  return {
+    candidates: inDate.slice(0, 80),
+    diagnostic,
+  };
 }
 
 // ============ FIN MÓDULO RSS ============
@@ -487,14 +510,19 @@ export default async function handler(req, res) {
     let currentStep = 'init';
     try {
       currentStep = 'fetch-rss';
-      const candidates = await fetchSpainOpinionRss(allowedISODates);
+      const { candidates, diagnostic } = await fetchSpainOpinionRss(allowedISODates);
 
       if (!candidates || candidates.length === 0) {
+        // Diagnóstico detallado: qué devolvió cada feed
+        const detail = diagnostic.map(d =>
+          `${d.source}: ${d.rawCount} items, ${d.passedDateFilter} en fecha (última: ${d.latestDateSeen})`
+        ).join(' | ');
         return res.status(200).json({
           briefing: {
             date: todayShort,
             spainOpinion: [],
-            _note: 'No se encontraron columnas en RSS para las fechas indicadas. Posibles causas: feeds caídos, sin contenido nuevo, o error temporal.',
+            _note: `Sin candidatos. Fechas permitidas: ${allowedISODates.join(', ')}. Detalle por feed: ${detail}`,
+            _meta: { allowedDates: allowedISODates, feedDiagnostic: diagnostic },
           },
           section,
         });
@@ -609,14 +637,18 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
   // Igual que spainOpinion: pre-fetch RSS de portadas + Google News, sin web_search.
   if (section === 'spainNews') {
     try {
-      const candidates = await fetchSpainNewsRss(allowedISODates);
+      const { candidates, diagnostic } = await fetchSpainNewsRss(allowedISODates);
 
       if (!candidates || candidates.length === 0) {
+        const detail = diagnostic.map(d =>
+          `${d.source}: ${d.rawCount} items, ${d.passedDateFilter} en fecha (última: ${d.latestDateSeen})`
+        ).join(' | ');
         return res.status(200).json({
           briefing: {
             date: todayShort,
             spainNews: [],
-            _note: 'No se encontraron noticias en RSS para las fechas indicadas.',
+            _note: `Sin candidatos. Fechas permitidas: ${allowedISODates.join(', ')}. Detalle por feed: ${detail}`,
+            _meta: { allowedDates: allowedISODates, feedDiagnostic: diagnostic },
           },
           section,
         });
