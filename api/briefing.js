@@ -13,13 +13,11 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada' },
   { source: 'La Gaceta', url: 'https://gaceta.es/opinion/feed/' },
   { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml' },
+  { source: 'El Español', url: 'https://www.elespanol.com/rss' },
+  { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
 
-  // ============ GOOGLE NEWS RSS (fallback universal) ============
-  // Google News tiene RSS para cualquier medio. Lo usamos para los que no exponen RSS propio
-  // o lo tienen roto. Las fechas vienen siempre en RSS estándar parseable.
+  // ============ GOOGLE NEWS RSS (fallback solo para medios sin RSS público) ============
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+opinion+OR+columna&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'El Español', url: 'https://news.google.com/rss/search?q=site:elespanol.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'elDiario.es', url: 'https://news.google.com/rss/search?q=site:eldiario.es/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
 // ============ FEEDS RSS PARA NOTICIAS ESPAÑA ============
@@ -32,12 +30,12 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'The Objective', url: 'https://theobjective.com/feed/' },
   { source: 'La Gaceta', url: 'https://gaceta.es/feed/' },
   { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml' },
+  { source: 'El Español', url: 'https://www.elespanol.com/rss' },
+  { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
 
-  // Google News RSS (fallback universal para los que no tengan RSS propio fiable)
+  // Google News RSS (fallback solo para medios sin RSS público fiable)
   { source: 'El Mundo', url: 'https://news.google.com/rss/search?q=site:elmundo.es&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'El Español', url: 'https://news.google.com/rss/search?q=site:elespanol.com&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'elDiario.es', url: 'https://news.google.com/rss/search?q=site:eldiario.es&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
@@ -544,7 +542,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         }),
       });
 
-    if (!upstream.ok) {
+      if (!upstream.ok) {
         const errText = await upstream.text();
         return res.status(upstream.status).json({
           error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
