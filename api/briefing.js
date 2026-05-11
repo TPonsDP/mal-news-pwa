@@ -156,6 +156,29 @@ async function fetchFeedsAndFilter(feedList, allowedISODates) {
     return allowedISODates.includes(it.publishedDate);
   });
 
+  // CAP POR FUENTE PERSONALIZADO: más cuota para medios preferidos.
+  // The Objective, El Español y Vozpópuli tienen prioridad — más candidatos
+  // para que el modelo tenga muchas opciones de donde escoger.
+  const PER_SOURCE_CAPS = {
+    'The Objective': 8,
+    'El Español': 8,
+    'Vozpópuli': 8,
+    'elDiario.es': 4,
+    'ABC': 4,
+    'El País': 4,
+    'La Gaceta': 4,
+    'Libertad Digital': 4,
+  };
+  const DEFAULT_CAP = 4;
+  const perSourceCounts = {};
+  const balanced = inDate.filter(item => {
+    const cap = PER_SOURCE_CAPS[item.source] ?? DEFAULT_CAP;
+    perSourceCounts[item.source] = perSourceCounts[item.source] || 0;
+    if (perSourceCounts[item.source] >= cap) return false;
+    perSourceCounts[item.source]++;
+    return true;
+  });
+
   // Diagnóstico: para los feeds que NO aportaron candidatos, decir si fallaron o si tenían fechas viejas
   const diagnostic = feedResults.map(r => {
     const passedDate = r.items.filter(it => allowedISODates.includes(it.publishedDate)).length;
@@ -166,12 +189,13 @@ async function fetchFeedsAndFilter(feedList, allowedISODates) {
       source: r.source,
       rawCount: r.count,
       passedDateFilter: passedDate,
+      includedAfterCap: perSourceCounts[r.source] || 0,
       latestDateSeen: latestDate || 'sin fecha',
     };
   });
 
   return {
-    candidates: inDate.slice(0, 80),
+    candidates: balanced.slice(0, 80),
     diagnostic,
   };
 }
@@ -539,20 +563,45 @@ Tienes a continuación una lista de ${candidates.length} piezas de medios españ
 
 ⚠️ PROHIBIDO ABSOLUTAMENTE devolver un array spainOpinion vacío. Si tienes dudas, INCLUYE. Mejor pasarse de inclusivo que de restrictivo.
 
+⭐ MEDIOS PREFERIDOS DEL USUARIO (prioriza columnas de estos, en este orden):
+1. The Objective
+2. El Español
+3. Vozpópuli
+Si hay candidatas válidas de estos medios, INCLÚYELAS todas (hasta el cap de cada uno).
+
 REGLAS DE SELECCIÓN (en orden de prioridad):
-1. PROHIBIDO array vacío. Si hay piezas con autor, selecciona mínimo 3-4. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" o similar, también CUENTAN como columna válida.
-2. Selecciona HASTA 12 columnas (puedes devolver menos, pero NUNCA cero si hay candidatas).
-3. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
-4. IDEAL si hay corpus suficiente: MÁX 3 mismo medio, MÍN 5 medios distintos.
-5. ACEPTABLE: 3-4 medios distintos, hasta 4 columnas del mismo medio.
-6. Prioriza diversidad ideológica/temática cuando puedas.
+1. PROHIBIDO array vacío. Si hay piezas con autor, selecciona mínimo 3-4. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" "/elsubjetivo/" o similar, también CUENTAN como columna válida.
+2. HARD CAPS INVIOLABLES por medio (NO se pueden superar):
+   - The Objective: MÁX 4 columnas ⭐
+   - El Español: MÁX 4 columnas ⭐
+   - Vozpópuli: MÁX 4 columnas ⭐
+   - elDiario.es: MÁX 2 columnas
+   - El País: MÁX 2 columnas
+   - ABC: MÁX 2 columnas
+   - La Gaceta: MÁX 2 columnas
+   - Libertad Digital: MÁX 2 columnas
+3. Selecciona HASTA 14 columnas en total.
+4. MÍNIMO 4 medios distintos en el resultado.
+5. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
+6. Prioriza diversidad ideológica/temática entre medios.
+
+EJEMPLO DE DISTRIBUCIÓN IDEAL si hay corpus suficiente:
+- The Objective: 4 (preferido al tope)
+- El Español: 4 (preferido al tope)
+- Vozpópuli: 3 (preferido)
+- elDiario.es: 1
+- ABC: 1
+- El País: 1
+- Total: 14 columnas, 6 medios distintos
+
+Si un medio preferido no tiene candidatas, completa con los siguientes en orden de preferencia (después The Objective/El Español/Vozpópuli, viene elDiario.es, luego los demás).
 
 Para cada columna seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú).
 
 CANDIDATAS:
 ${candidatesText}
 
-OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: NO ARRAY VACÍO.
+OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: NO ARRAY VACÍO, PREFERIDOS PRIMERO.
 {"date":"${todayShort}","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
 
       currentStep = 'call-anthropic';
@@ -565,7 +614,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 6000,
+          max_tokens: 7500,
           messages: [{ role: 'user', content: userPrompt }],
           // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
         }),
