@@ -763,7 +763,7 @@ export default function App() {
   ] : [];
 
   const spainOpinionSections = spainOpinionData ? [
-    { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 12, type: 'opinion',
+    { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 14, type: 'opinion',
       descriptor: 'Columnas firmadas · 3+ medios · publicadas en últimas 72h',
       note: spainOpinionData._note,
       meta: spainOpinionData._meta },
