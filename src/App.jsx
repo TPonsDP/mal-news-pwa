@@ -5,21 +5,21 @@ const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar T
 
 const BRAND = {
   // ============ NUEVA PALETA: Oxford Blue + Smoke Gray + 3 gradientes ============
-  oxford: '#1A365D',           // Marca principal (Azul Oxford)
-  blueAccent: '#007AFF',       // Acento brillante (final del gradiente internacional)
+  oxford: '#1A365D',           // Marca principal (Azul Oxford) - solo logo
+  blueAccent: '#0EA5E9',       // Acento brillante (final del gradiente internacional)
   bgGray: '#F0F4F8',           // Fondo (Gris Humo)
   bgGrayDeep: '#E2E8F0',       // Variante para gradientes sutiles del fondo
   cardWhite: '#FFFFFF',        // Tarjetas blancas
   shadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
   shadowLg: '0 8px 24px rgba(0, 0, 0, 0.12)',
   // Gradientes oficiales por bucket
-  intlGrad: 'linear-gradient(90deg, #1A365D, #007AFF)',
-  opinionGrad: 'linear-gradient(90deg, #6B46C1, #9F7AEA)',
-  newsGrad: 'linear-gradient(90deg, #E53E3E, #F6AD55)',
+  intlGrad: 'linear-gradient(90deg, #1D4ED8, #0EA5E9)',
+  opinionGrad: 'linear-gradient(90deg, #4D7C0F, #84CC16)',
+  newsGrad: 'linear-gradient(90deg, #C2410C, #FA6900)',
   // Colores sólidos para bordes/badges (start de cada gradiente)
-  intlColor: '#1A365D',
-  opinionColor: '#6B46C1',
-  newsColor: '#E53E3E',
+  intlColor: '#1D4ED8',
+  opinionColor: '#4D7C0F',
+  newsColor: '#C2410C',
 
   // ============ ALIASES PARA RETROCOMPATIBILIDAD ============
   // (todo el código existente que usa BRAND.navy, BRAND.card, etc. seguirá funcionando)
@@ -29,7 +29,7 @@ const BRAND = {
   cardSubtle: 'rgba(255,255,255,0.95)',
   ink: '#1A365D',
   inkSoft: 'rgba(26, 54, 93, 0.65)',
-  orange: '#E53E3E',           // antes terracota, ahora rojo (= newsColor start)
+  orange: '#FA6900',           // Naranja Ciudadanos vivo (usado en decoraciones y botón HOY)
   limeLight: '#F0F4F8',        // antes sage, ahora bgGray
   limeDark: '#E2E8F0',         // antes sage dark, ahora bgGray deep
   // Lean badges (mantenidos)
@@ -285,7 +285,7 @@ function NewsCard({ item, index, sectionColor, type }) {
   );
 }
 
-function Section({ title, icon, items, color, gradient, count, descriptor, type }) {
+function Section({ title, icon, items, color, gradient, count, descriptor, type, note, meta }) {
   const realCount = items?.length || 0;
   const itemLabel = type === 'opinion' ? (realCount === 1 ? 'COLUMNA' : 'COLUMNAS') : (realCount === 1 ? 'PIEZA' : 'PIEZAS');
 
@@ -329,9 +329,19 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type 
         borderTop: 'none',
       }}>
         {realCount === 0 ? (
-          <p style={{ margin: '12px', color: BRAND.inkSoft, fontSize: '11px', fontStyle: 'italic', textAlign: 'center' }}>
-            Sin piezas disponibles para esta sección
-          </p>
+          <div style={{ margin: '12px', color: BRAND.inkSoft, fontSize: '11px', fontStyle: 'italic', textAlign: 'center' }}>
+            <p style={{ margin: '0 0 8px' }}>Sin piezas disponibles para esta sección</p>
+            {note && (
+              <p style={{ margin: '6px 12px', fontSize: '10px', color: BRAND.orange, fontStyle: 'normal', textAlign: 'left', padding: '8px', background: 'rgba(250,105,0,0.08)', borderRadius: '6px' }}>
+                {note}
+              </p>
+            )}
+            {meta && (
+              <p style={{ margin: '4px 12px', fontSize: '9px', color: BRAND.inkSoft, fontStyle: 'normal', textAlign: 'left' }}>
+                Diagnóstico: {meta.totalCandidates ?? '?'} candidatos · {meta.mediumsAvailable ?? '?'} medios · {meta.selectedCount ?? '?'} seleccionados
+              </p>
+            )}
+          </div>
         ) : (
           items.map((item, i) => <NewsCard key={i} item={item} index={i} sectionColor={color} type={type} />)
         )}
@@ -502,11 +512,11 @@ export default function App() {
 
     // Mapeo de colores y gradientes por sección (debe coincidir con SECTION_COLORS/SECTION_GRADIENTS de la PWA)
     const SECTION_STYLES = {
-      worldOpinion: { color: '#1A365D', gradient: 'linear-gradient(90deg, #1A365D, #007AFF)' },
-      worldNews:    { color: '#1A365D', gradient: 'linear-gradient(90deg, #1A365D, #007AFF)' },
-      legal:        { color: '#1A365D', gradient: 'linear-gradient(90deg, #1A365D, #007AFF)' },
-      spainOpinion: { color: '#6B46C1', gradient: 'linear-gradient(90deg, #6B46C1, #9F7AEA)' },
-      spainNews:    { color: '#E53E3E', gradient: 'linear-gradient(90deg, #E53E3E, #F6AD55)' },
+      worldOpinion: { color: '#1D4ED8', gradient: 'linear-gradient(90deg, #1D4ED8, #0EA5E9)' },
+      worldNews:    { color: '#1D4ED8', gradient: 'linear-gradient(90deg, #1D4ED8, #0EA5E9)' },
+      legal:        { color: '#1D4ED8', gradient: 'linear-gradient(90deg, #1D4ED8, #0EA5E9)' },
+      spainOpinion: { color: '#4D7C0F', gradient: 'linear-gradient(90deg, #4D7C0F, #84CC16)' },
+      spainNews:    { color: '#C2410C', gradient: 'linear-gradient(90deg, #C2410C, #FA6900)' },
     };
 
     const getDay = (iso) => {
@@ -566,7 +576,7 @@ export default function App() {
   .header { text-align:center; margin-bottom:28px; padding:24px; background:#FFFFFF; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,0.08); }
   .logo { font-size:34px; font-weight:800; color:#1A365D; letter-spacing:2px; margin:0; }
   .date { font-size:12px; letter-spacing:0.3em; color:#1A365D; opacity:0.7; text-transform:uppercase; font-weight:800; margin:8px 0 0; }
-  .total { font-size:11px; color:#007AFF; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
+  .total { font-size:11px; color:#0EA5E9; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
   .footer { text-align:center; margin-top:32px; padding:18px; font-size:10px; color:rgba(26,54,93,0.55); letter-spacing:0.15em; font-style:italic; border-top:1px solid rgba(26,54,93,0.12); }
   .copy-hint { background:#FFFFFF; border:1px solid rgba(26,54,93,0.15); border-radius:10px; padding:14px 18px; margin-bottom:20px; font-size:12px; color:#1A365D; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.05); }
   @media print { .copy-hint { display:none; } body { background:white; } }
@@ -666,7 +676,9 @@ export default function App() {
 
   const spainOpinionSections = spainOpinionData ? [
     { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 12, type: 'opinion',
-      descriptor: 'Columnas firmadas · 3+ medios · publicadas hoy o ayer' },
+      descriptor: 'Columnas firmadas · 3+ medios · publicadas en últimas 72h',
+      note: spainOpinionData._note,
+      meta: spainOpinionData._meta },
   ] : [];
 
   const spainNewsSections = spainNewsData ? [
@@ -794,24 +806,25 @@ export default function App() {
           </p>
         )}
 
-        {/* TRES BOTONES: internacional + opinión España + noticias España */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+        {/* TRES BOTONES: cada uno con su gradiente identitario y texto blanco */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
           <button
             className="mal-cta"
             onClick={() => fetchSection('international')}
             disabled={intlStatus === 'loading' || isInCooldown}
             style={{
-              border: 'none', borderRadius: '10px', padding: '12px 18px',
-              fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em',
+              border: 'none', borderRadius: '12px', padding: '14px 22px',
+              fontSize: '11px', fontWeight: '800', letterSpacing: '0.08em',
               cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
               background: intlStatus === 'loading'
-                ? `linear-gradient(90deg, ${BRAND.orange}, ${BRAND.navy}, ${BRAND.orange})`
-                : `linear-gradient(135deg, ${BRAND.orange} 0%, ${BRAND.navy} 100%)`,
+                ? `linear-gradient(90deg, #1D4ED8, #0EA5E9, #1D4ED8)`
+                : BRAND.intlGrad,
               backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: BRAND.ink, opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 4px 18px rgba(194,105,60,0.40)', textTransform: 'uppercase',
+              color: 'white', opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
+              boxShadow: '0 6px 20px rgba(29,78,216,0.40)', textTransform: 'uppercase',
+              textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
             {intlBtnLabel}
@@ -822,17 +835,18 @@ export default function App() {
             onClick={() => fetchSection('spainOpinion')}
             disabled={spainOpinionStatus === 'loading' || isInCooldown}
             style={{
-              border: 'none', borderRadius: '10px', padding: '12px 18px',
-              fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em',
+              border: 'none', borderRadius: '12px', padding: '14px 22px',
+              fontSize: '11px', fontWeight: '800', letterSpacing: '0.08em',
               cursor: (spainOpinionStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
               background: spainOpinionStatus === 'loading'
-                ? `linear-gradient(90deg, ${BRAND.orange}, ${BRAND.navy}, ${BRAND.orange})`
-                : `linear-gradient(135deg, ${BRAND.orange} 0%, ${BRAND.navy} 100%)`,
+                ? `linear-gradient(90deg, #4D7C0F, #84CC16, #4D7C0F)`
+                : BRAND.opinionGrad,
               backgroundSize: spainOpinionStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: spainOpinionStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: BRAND.ink, opacity: (spainOpinionStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 4px 18px rgba(194,105,60,0.40)', textTransform: 'uppercase',
+              color: 'white', opacity: (spainOpinionStatus === 'loading' || isInCooldown) ? 0.65 : 1,
+              boxShadow: '0 6px 20px rgba(77,124,15,0.35)', textTransform: 'uppercase',
+              textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
             {spainOpinionBtnLabel}
@@ -843,17 +857,18 @@ export default function App() {
             onClick={() => fetchSection('spainNews')}
             disabled={spainNewsStatus === 'loading' || isInCooldown}
             style={{
-              border: 'none', borderRadius: '10px', padding: '12px 18px',
-              fontSize: '11px', fontWeight: '700', letterSpacing: '0.06em',
+              border: 'none', borderRadius: '12px', padding: '14px 22px',
+              fontSize: '11px', fontWeight: '800', letterSpacing: '0.08em',
               cursor: (spainNewsStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
               background: spainNewsStatus === 'loading'
-                ? `linear-gradient(90deg, ${BRAND.orange}, ${BRAND.navy}, ${BRAND.orange})`
-                : `linear-gradient(135deg, ${BRAND.orange} 0%, ${BRAND.navy} 100%)`,
+                ? `linear-gradient(90deg, #C2410C, #FA6900, #C2410C)`
+                : BRAND.newsGrad,
               backgroundSize: spainNewsStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: spainNewsStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: BRAND.ink, opacity: (spainNewsStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 4px 18px rgba(194,105,60,0.40)', textTransform: 'uppercase',
+              color: 'white', opacity: (spainNewsStatus === 'loading' || isInCooldown) ? 0.65 : 1,
+              boxShadow: '0 6px 20px rgba(250,105,0,0.40)', textTransform: 'uppercase',
+              textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
             {spainNewsBtnLabel}
@@ -965,7 +980,7 @@ export default function App() {
         {hasAnyData && (
           <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
             {[...intlSections, ...spainOpinionSections, ...spainNewsSections].map((s, i) => (
-              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} count={s.count} descriptor={s.descriptor} type={s.type} />
+              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} />
             ))}
           </div>
         )}
