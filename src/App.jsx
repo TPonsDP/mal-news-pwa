@@ -1,5 +1,53 @@
 import { useState, useEffect } from 'react';
 
+// ============ CACHE LOCALSTORAGE ============
+// Persiste el briefing entre sesiones: si cierras la PWA y vuelves a abrir,
+// recuperas el último briefing generado de cada botón.
+// SIN TTL: la última generación de cada uno (Internacional, Opinión, Noticias)
+// queda guardada hasta que regeneres ese botón o pulses "limpiar".
+
+const CACHE_KEY = 'mal-news-briefing-v1';
+
+function loadBriefingCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.timestamp) return null;
+    return parsed;
+  } catch (_) { return null; }
+}
+
+function saveBriefingCache(payload) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ...payload,
+      timestamp: new Date().toISOString(),
+    }));
+  } catch (_) { /* localStorage no disponible o quota lleno: silencioso */ }
+}
+
+function clearBriefingCache() {
+  try { localStorage.removeItem(CACHE_KEY); } catch (_) { /* silencioso */ }
+}
+
+// Formatea hace cuánto se generó el briefing en texto humano
+function formatCacheAge(timestamp) {
+  if (!timestamp) return '';
+  try {
+    const ms = Date.now() - new Date(timestamp).getTime();
+    const minutes = Math.floor(ms / 60000);
+    if (minutes < 1) return 'ahora mismo';
+    if (minutes < 60) return `hace ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `hace ${hours} h`;
+    const days = Math.floor(hours / 24);
+    return `hace ${days} d`;
+  } catch (_) { return ''; }
+}
+
+// ============ FIN CACHE LOCALSTORAGE ============
+
 const RECIPIENT = 'tonipons91@gmail.com';
 const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Tier 1 de Anthropic
 
@@ -208,13 +256,32 @@ function NewsCard({ item, index, sectionColor, type }) {
           </p>
         )}
 
-        {/* autor . medio . dia */}
+        {/* autor . medio . dia + link leer */}
         <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px',
           fontSize: '10.5px', color: BRAND.navyDeep, fontWeight: '700',
-          letterSpacing: '0.02em', opacity: 0.85,
+          letterSpacing: '0.02em',
           fontFamily: "'Verdana', 'Geneva', sans-serif",
         }}>
-          {meta}
+          <span style={{ opacity: 0.85 }}>{meta}</span>
+          {item.url && (
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: sectionColor,
+                textDecoration: 'none',
+                borderBottom: `1px dotted ${sectionColor}`,
+                fontWeight: '700',
+                fontSize: '10.5px',
+                whiteSpace: 'nowrap',
+                marginLeft: '8px',
+              }}
+            >
+              leer →
+            </a>
+          )}
         </div>
       </div>
     );
@@ -373,6 +440,27 @@ export default function App() {
   // Fecha seleccionada (formato ISO YYYY-MM-DD para el input). Por defecto: hoy.
   const todayIso = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(todayIso);
+
+  // Timestamp de la última hidratación / guardado (para mostrar "hace Xh")
+  const [cacheTimestamp, setCacheTimestamp] = useState(null);
+
+  // Hidratar desde localStorage al montar (solo una vez)
+  useEffect(() => {
+    const cache = loadBriefingCache();
+    if (!cache) return;
+    if (cache.intlData) setIntlData(cache.intlData);
+    if (cache.spainOpinionData) setSpainOpinionData(cache.spainOpinionData);
+    if (cache.spainNewsData) setSpainNewsData(cache.spainNewsData);
+    if (cache.selectedDate) setSelectedDate(cache.selectedDate);
+    if (cache.timestamp) setCacheTimestamp(cache.timestamp);
+  }, []);
+
+  // Guardar en localStorage cada vez que cambie alguna data o la fecha
+  useEffect(() => {
+    if (!intlData && !spainOpinionData && !spainNewsData) return; // nada que guardar
+    saveBriefingCache({ intlData, spainOpinionData, spainNewsData, selectedDate });
+    setCacheTimestamp(new Date().toISOString());
+  }, [intlData, spainOpinionData, spainNewsData, selectedDate]);
 
   useEffect(() => {
     const tick = () => {
@@ -804,6 +892,33 @@ export default function App() {
           <p style={{ textAlign: 'center', color: BRAND.inkSoft, fontSize: '10px', marginBottom: '10px', fontStyle: 'italic' }}>
             Briefing histórico - fechas antiguas pueden tener menos piezas y URLs rotas
           </p>
+        )}
+
+        {/* Indicador de cache: cuándo se generó la última versión */}
+        {cacheTimestamp && (intlData || spainOpinionData || spainNewsData) && (
+          <div style={{
+            textAlign: 'center', fontSize: '10px', color: BRAND.inkSoft,
+            marginBottom: '12px', fontStyle: 'italic',
+            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px',
+          }}>
+            <span>💾 Briefing guardado {formatCacheAge(cacheTimestamp)}</span>
+            <button
+              onClick={() => {
+                clearBriefingCache();
+                setIntlData(null);
+                setSpainOpinionData(null);
+                setSpainNewsData(null);
+                setCacheTimestamp(null);
+              }}
+              style={{
+                fontSize: '9px', padding: '2px 8px', borderRadius: '4px',
+                border: `1px solid ${BRAND.inkSoft}`, background: 'transparent',
+                color: BRAND.inkSoft, cursor: 'pointer', fontStyle: 'normal',
+              }}
+            >
+              limpiar
+            </button>
+          </div>
         )}
 
         {/* TRES BOTONES: cada uno con su gradiente identitario y texto blanco */}
