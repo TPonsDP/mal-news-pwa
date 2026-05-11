@@ -622,7 +622,6 @@ export default function App() {
       dsep,
       section('🌍 Mundo', b.worldNews),
       section('✍️ Opinión Internacional', b.worldOpinion),
-      section('⚡ Energía', b.energy),
       section('⚖️ Legal', b.legal),
       section('🇪🇸 España', b.spainNews),
       section('✒️ Opinión España', b.spainOpinion),
@@ -635,7 +634,7 @@ export default function App() {
   const merged = mergeBriefings();
   const totalPieces =
     (merged.worldNews?.length || 0) + (merged.worldOpinion?.length || 0) +
-    (merged.energy?.length || 0) + (merged.legal?.length || 0) +
+    (merged.legal?.length || 0) +
     (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0);
 
   // ============ COLORES POR SECCIÓN (Nueva paleta Oxford + gradientes) ============
@@ -665,9 +664,9 @@ export default function App() {
       descriptor: 'Sentencias y decisiones del día · internacional + España' },
   ] : [];
 
-const spainOpinionSections = spainOpinionData ? [
+  const spainOpinionSections = spainOpinionData ? [
     { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 12, type: 'opinion',
-      descriptor: 'Columnas firmadas · sin editoriales · 5+ medios · publicadas hoy o ayer' },
+      descriptor: 'Columnas firmadas · 3+ medios · publicadas hoy o ayer' },
   ] : [];
 
   const spainNewsSections = spainNewsData ? [
@@ -735,7 +734,7 @@ const spainOpinionSections = spainOpinionData ? [
         </div>
 
         <p style={{ margin: '0 0 18px', fontSize: '10px', color: BRAND.orange, letterSpacing: '0.18em', textAlign: 'center', fontStyle: 'italic', opacity: 0.85 }}>
-          MUNDO · OPINIÓN INTL · ENERGÍA · LEGAL · ESPAÑA · OPINIÓN ESPAÑA
+          MUNDO · OPINIÓN INTL · LEGAL · ESPAÑA · OPINIÓN ESPAÑA
         </p>
 
         <div style={{ height: '1px', background: `linear-gradient(90deg, transparent 0%, ${BRAND.orange}66 50%, transparent 100%)`, margin: '0 0 24px' }} />
@@ -920,6 +919,7 @@ const spainOpinionSections = spainOpinionData ? [
             🇪🇸 Buscando 10 noticias España...
           </p>
         )}
+
         {/* Mensaje de cooldown activo cuando NO hay carga en marcha */}
         {isInCooldown && !anyLoading && (
           <p style={{ textAlign: 'center', color: 'rgba(30,58,138,0.65)', fontSize: '11px', marginBottom: '8px', fontStyle: 'italic' }}>
@@ -993,4 +993,4 @@ const spainOpinionSections = spainOpinionData ? [
       </div>
     </div>
   );
-            }
+}
