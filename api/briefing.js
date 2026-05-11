@@ -16,7 +16,8 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
 
   // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo o no tienen RSS) ============
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+opinion+OR+columna&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'El Español', url: 'https://news.google.com/rss/search?q=site:elespanol.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
@@ -36,6 +37,7 @@ const SPAIN_NEWS_FEEDS = [
   // Google News RSS (fallback solo para medios sin RSS público fiable)
   { source: 'El Mundo', url: 'https://news.google.com/rss/search?q=site:elmundo.es&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
