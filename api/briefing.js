@@ -13,11 +13,11 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada' },
   { source: 'La Gaceta', url: 'https://gaceta.es/opinion/feed/' },
   { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml' },
-  { source: 'El Español', url: 'https://www.elespanol.com/rss' },
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
 
-  // ============ GOOGLE NEWS RSS (fallback solo para medios sin RSS público) ============
+  // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo o no tienen RSS) ============
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+opinion+OR+columna&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'El Español', url: 'https://news.google.com/rss/search?q=site:elespanol.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
 // ============ FEEDS RSS PARA NOTICIAS ESPAÑA ============
@@ -278,15 +278,15 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 3 claves, NO incluyas energy, spainNews
 
 ${COLUMNISTS_GUIDE}`,
     user: (today, todayFull, requestTime, allowedDates) => {
-      const dateList = (allowedDates && allowedDates.length === 2)
-        ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (fecha de referencia)\n- ${allowedDates[1]} (día anterior)\n\nCualquier pieza con publishedDate distinto a estas dos fechas se RECHAZA. Sin "casi", sin "ayer extendido".`
+      const dateList = (allowedDates && allowedDates.length === 3)
+        ? `\n\nFECHAS ACEPTADAS (ÚNICAS TRES, sin excepción):\n- ${allowedDates[0]} (fecha de referencia)\n- ${allowedDates[1]} (día anterior)\n- ${allowedDates[2]} (hace 2 días)\n\nCualquier pieza con publishedDate distinto a estas tres fechas se RECHAZA. Sin "casi", sin "ayer extendido".`
         : '';
       return `FECHA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
 
 INTERNACIONAL. Hasta 24 piezas en 3 secciones.
 
 REGLAS ESTRICTAS DE FECHA:
-- publishedDate DEBE estar en una de las 2 fechas aceptadas. NUNCA más antiguas.
+- publishedDate DEBE estar en una de las 3 fechas aceptadas. NUNCA más antiguas.
 - Si encuentras pieza interesante de hace 2+ días: rechazar.
 
 WORLDOPINION (PRIORITARIA, hasta 6 columnas firmadas):
@@ -362,12 +362,12 @@ ESQUEMA JSON EXACTO (devuelve SOLO esta clave, NO incluyas noticias ni nada más
 
 ${COLUMNISTS_GUIDE}`,
     user: (today, todayFull, requestTime, allowedDates) => {
-      const dateList = (allowedDates && allowedDates.length === 2)
-        ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (fecha de referencia)\n- ${allowedDates[1]} (día anterior)\n\nCualquier columna con publishedDate distinto a estas dos fechas se RECHAZA. Sin excepción. Sin "casi". Sin "del fin de semana".`
+      const dateList = (allowedDates && allowedDates.length === 3)
+        ? `\n\nFECHAS ACEPTADAS (ÚNICAS TRES, sin excepción):\n- ${allowedDates[0]} (fecha de referencia)\n- ${allowedDates[1]} (día anterior)\n- ${allowedDates[2]} (hace 2 días)\n\nCualquier columna con publishedDate distinto a estas tres fechas se RECHAZA. Sin excepción. Sin "casi". Sin "del fin de semana".`
         : '';
       return `FECHA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
 
-OPINIÓN ESPAÑA. Hasta 10 columnas firmadas, publicadas en una de las 2 fechas aceptadas.
+OPINIÓN ESPAÑA. Hasta 10 columnas firmadas, publicadas en una de las 3 fechas aceptadas.
 
 REGLAS:
 - Máx 2 columnas mismo medio · Mín 4 medios distintos
@@ -457,17 +457,17 @@ export default async function handler(req, res) {
   const todayFull = dateFull || todayShort;
   const nowTime = requestTime || 'no especificada';
 
-  // Calcular las DOS fechas ISO aceptadas (hoy y ayer respecto a la fecha de referencia)
-  // Esto permite reglas estrictas de aceptación en el prompt.
+  // Calcular las TRES fechas ISO aceptadas (hoy, ayer, anteayer) respecto a la fecha de referencia.
+  // 3 días es mejor que 2 para weekends/festivos cuando hay menos contenido fresco.
   const allowedISODates = (() => {
     try {
       const parts = todayShort.split('/').map(p => parseInt(p, 10));
-      // formato es-ES: D/M/YYYY o DD/MM/YYYY
       const [d, m, y] = parts;
       const ref = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
       const yest = new Date(ref.getTime() - 24 * 60 * 60 * 1000);
+      const beforeYest = new Date(ref.getTime() - 48 * 60 * 60 * 1000);
       const iso = (dt) => dt.toISOString().slice(0, 10);
-      return [iso(ref), iso(yest)];
+      return [iso(ref), iso(yest), iso(beforeYest)];
     } catch (_) {
       return [];
     }
@@ -507,23 +507,24 @@ export default async function handler(req, res) {
 
       const userPrompt = `FECHA: ${todayFull || todayShort}
 
-Tienes a continuación una lista de ${candidates.length} columnas firmadas de medios españoles, ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}).
+Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (mayoritariamente opinión, algunas noticias o análisis), ya filtradas por fecha (publicadas en una de las 3 fechas aceptadas: ${allowedISODates.join(' o ')}).
+
+⚠️ PROHIBIDO ABSOLUTAMENTE devolver un array spainOpinion vacío. Si tienes dudas, INCLUYE. Mejor pasarse de inclusivo que de restrictivo.
 
 REGLAS DE SELECCIÓN (en orden de prioridad):
-1. CRÍTICO: NUNCA devuelvas array vacío si hay al menos UNA columna firmada en la lista. Mejor 3 columnas que 0.
-2. Solo columnas con autor real (descarta las que digan "Redacción", "Editorial", o sin autor identificable).
-3. Selecciona HASTA 12 columnas (puedes devolver menos si la lista es corta).
-4. IDEAL si hay corpus suficiente: MÁX 3 columnas del mismo medio, MÍN 5 medios distintos.
-5. ACEPTABLE si corpus limitado (típico domingos/festivos/horas tempranas): 3-4 medios distintos, hasta 4 columnas del mismo medio.
-6. Prioriza calidad y diversidad ideológica/temática cuando puedas.
-7. Mejor pocas columnas variadas que ninguna por intentar cumplir reglas estrictas.
+1. PROHIBIDO array vacío. Si hay piezas con autor, selecciona mínimo 3-4. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" o similar, también CUENTAN como columna válida.
+2. Selecciona HASTA 12 columnas (puedes devolver menos, pero NUNCA cero si hay candidatas).
+3. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
+4. IDEAL si hay corpus suficiente: MÁX 3 mismo medio, MÍN 5 medios distintos.
+5. ACEPTABLE: 3-4 medios distintos, hasta 4 columnas del mismo medio.
+6. Prioriza diversidad ideológica/temática cuando puedas.
 
-Para cada columna seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística).
+Para cada columna seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú).
 
 CANDIDATAS:
 ${candidatesText}
 
-OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
+OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: NO ARRAY VACÍO.
 {"date":"${todayShort}","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
 
       currentStep = 'call-anthropic';
@@ -570,11 +571,21 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
       const briefing = extractJson(text);
       // Añadir info diagnóstica útil
       if (briefing && typeof briefing === 'object') {
+        const selectedCount = (briefing.spainOpinion || []).length;
+        const sourceCounts = candidates.reduce((acc, c) => {
+          acc[c.source] = (acc[c.source] || 0) + 1;
+          return acc;
+        }, {});
         briefing._meta = {
           totalCandidates: candidates.length,
-          selectedCount: (briefing.spainOpinion || []).length,
+          selectedCount,
           mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
+          candidatesPerSource: sourceCounts,
         };
+        // Si el modelo IGNORÓ la regla "NUNCA vacío", añadir diagnóstico crítico
+        if (selectedCount === 0 && candidates.length > 0) {
+          briefing._note = `⚠️ El modelo recibió ${candidates.length} candidatos de ${briefing._meta.mediumsAvailable} medios pero seleccionó 0. Posible filtro excesivo. Detalle: ${JSON.stringify(sourceCounts)}`;
+        }
       } else {
         // El modelo no devolvió JSON válido — devolvemos diagnóstico
         return res.status(500).json({
@@ -617,7 +628,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
 
       const userPrompt = `FECHA: ${todayFull || todayShort}
 
-Tienes a continuación una lista de ${candidates.length} noticias de medios españoles, ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}).
+Tienes a continuación una lista de ${candidates.length} noticias de medios españoles, ya filtradas por fecha (publicadas en una de las 3 fechas aceptadas: ${allowedISODates.join(' o ')}).
 
 REGLAS DE SELECCIÓN (en orden de prioridad):
 1. CRÍTICO: NUNCA devuelvas array vacío si hay al menos UNA noticia relevante en la lista. Mejor 3 noticias que 0.
