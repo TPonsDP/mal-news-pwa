@@ -1,55 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0d5c36"/>
-      <stop offset="100%" stop-color="#1a8a52"/>
-    </linearGradient>
-    <linearGradient id="wave" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.10"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.02"/>
-    </linearGradient>
+    <radialGradient id="bg" cx="38%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#5685BD"/>
+      <stop offset="45%" stop-color="#1A365D"/>
+      <stop offset="100%" stop-color="#04101F"/>
+    </radialGradient>
   </defs>
-
-  <!-- Fondo -->
-  <rect width="512" height="512" rx="0" fill="url(#bg)"/>
-
-  <!-- Olas decorativas -->
-  <ellipse cx="420" cy="80" rx="240" ry="110" fill="url(#wave)"/>
-  <ellipse cx="100" cy="430" rx="200" ry="80" fill="url(#wave)"/>
-
-  <!-- Líneas tenues -->
-  <line x1="0" y1="256" x2="512" y2="256" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-  <line x1="256" y1="0" x2="256" y2="512" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-
-  <!-- Gaviota (seagull) en la parte superior -->
-  <g transform="translate(256, 165)" opacity="0.95">
-    <!-- Cuerpo -->
-    <ellipse cx="0" cy="6" rx="22" ry="12" fill="white"/>
-    <circle cx="22" cy="-2" r="11" fill="white"/>
-    <!-- Pico dorado -->
-    <polygon points="32,-2 46,-6 32,4" fill="#f0c040"/>
-    <!-- Ojo -->
-    <circle cx="25" cy="-3" r="2.5" fill="#0d5c36"/>
-    <circle cx="25.5" cy="-3.5" r="0.8" fill="white"/>
-    <!-- Alas extendidas -->
-    <path d="M -10,0 Q -50,-26 -92,-10 Q -68,2 -24,5 Z" fill="white" opacity="0.95"/>
-    <path d="M -10,5 Q -56,-6 -88,12 Q -64,12 -22,9 Z" fill="rgba(255,255,255,0.7)"/>
-    <path d="M 12,-2 Q 44,-28 84,-15 Q 62,2 26,3 Z" fill="white" opacity="0.95"/>
-    <path d="M 12,3 Q 46,-10 80,10 Q 56,10 24,7 Z" fill="rgba(255,255,255,0.7)"/>
-  </g>
-
-  <!-- Texto MAL -->
-  <text x="256" y="340" font-family="Georgia, 'Times New Roman', serif" font-size="120" font-weight="700"
-        fill="white" text-anchor="middle" letter-spacing="6">MAL</text>
-
-  <!-- Línea separadora -->
-  <line x1="156" y1="365" x2="356" y2="365" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
-
-  <!-- Texto NEWS -->
-  <text x="256" y="420" font-family="Georgia, 'Times New Roman', serif" font-size="56" font-weight="400"
-        fill="rgba(255,255,255,0.9)" text-anchor="middle" letter-spacing="20">NEWS</text>
-
-  <!-- Banda dorada inferior -->
-  <rect x="0" y="492" width="512" height="20" fill="rgba(240,192,64,0.25)"/>
-  <rect x="0" y="494" width="100" height="6" fill="rgba(240,192,64,0.6)"/>
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+  <rect x="154" y="80" width="58" height="198" rx="6" fill="#60A5FA"/>
+  <polygon points="212,80 256,263 301,80 275,80 256,195 237,80" fill="#A3E635"/>
+  <rect x="301" y="80" width="58" height="198" rx="6" fill="#FB923C"/>
+  <text x="256" y="400" text-anchor="middle" font-family="Verdana, Geneva, sans-serif" font-weight="800" font-size="58" fill="#A3E635" letter-spacing="0.25em">NEWS</text>
 </svg>
