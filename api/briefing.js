@@ -14,11 +14,15 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'La Gaceta', url: 'https://gaceta.es/opinion/feed/' },
   { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml' },
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
+  { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/' },
+  { source: 'El Mundo', url: 'https://www.elmundo.es/rss/opinion.xml' },
+  { source: 'OK Diario', url: 'https://www.okdiario.com/opinion/feed/' },
 
   // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo o no tienen RSS) ============
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'El Español', url: 'https://news.google.com/rss/search?q=site:elespanol.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Artículo 14', url: 'https://news.google.com/rss/search?q=site:articulo14.es&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Agenda Pública', url: 'https://news.google.com/rss/search?q=site:agendapublica.es&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
 // ============ FEEDS RSS PARA NOTICIAS ESPAÑA ============
@@ -162,14 +166,19 @@ async function fetchFeedsAndFilter(feedList, allowedISODates) {
   // The Objective, El Español y Vozpópuli tienen prioridad — más candidatos
   // para que el modelo tenga muchas opciones de donde escoger.
   const PER_SOURCE_CAPS = {
-    'The Objective': 8,
-    'El Español': 8,
     'Vozpópuli': 8,
-    'elDiario.es': 4,
-    'ABC': 4,
+    'Artículo 14': 8,
+    'The Objective': 6,
+    'InfoLibre': 6,
+    'La Gaceta': 6,
+    'Libertad Digital': 6,
+    'Agenda Pública': 6,
+    'elDiario.es': 5,
+    'El Mundo': 6,
+    'ABC': 6,
+    'OK Diario': 6,
     'El País': 4,
-    'La Gaceta': 4,
-    'Libertad Digital': 4,
+    'El Español': 8,
   };
   const DEFAULT_CAP = 4;
   const perSourceCounts = {};
@@ -565,38 +574,53 @@ Tienes a continuación una lista de ${candidates.length} piezas de medios españ
 
 ⚠️ PROHIBIDO ABSOLUTAMENTE devolver un array spainOpinion vacío. Si tienes dudas, INCLUYE. Mejor pasarse de inclusivo que de restrictivo.
 
-⭐ MEDIOS PREFERIDOS DEL USUARIO (prioriza columnas de estos, en este orden):
-1. The Objective
-2. El Español
-3. Vozpópuli
-Si hay candidatas válidas de estos medios, INCLÚYELAS todas (hasta el cap de cada uno).
+⭐ MEDIOS PREFERIDOS DEL USUARIO (orden de prioridad, prioriza los primeros):
+1. Vozpópuli ⭐
+2. Artículo 14 ⭐
+3. The Objective
+4. InfoLibre
+5. La Gaceta
+6. Libertad Digital
+7. elDiario.es
+Si hay candidatas válidas de estos medios, INCLÚYELAS en este orden de preferencia hasta el cap de cada uno.
 
 REGLAS DE SELECCIÓN (en orden de prioridad):
-1. PROHIBIDO array vacío. Si hay piezas con autor, selecciona mínimo 3-4. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" "/elsubjetivo/" o similar, también CUENTAN como columna válida.
+1. PROHIBIDO array vacío. Si hay piezas con autor, selecciona mínimo 3-4. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" "/elsubjetivo/" o similar, también CUENTAN como columna válida. EXCEPCIÓN: items con source "Agenda Pública" o "Artículo 14" pueden incluirse aunque no aparezca autor (Google News no expone el autor, pero los artículos originales son análisis firmados de calidad).
 2. HARD CAPS INVIOLABLES por medio (NO se pueden superar):
-   - The Objective: MÁX 4 columnas ⭐
-   - El Español: MÁX 4 columnas ⭐
-   - Vozpópuli: MÁX 4 columnas ⭐
-   - elDiario.es: MÁX 2 columnas
-   - El País: MÁX 2 columnas
+   - Vozpópuli: MÁX 4 columnas (MÍNIMO 2 obligatorias si hay candidatos) ⭐
+   - Artículo 14: MÁX 4 columnas ⭐
+   - The Objective: MÁX 3 columnas
+   - InfoLibre: MÁX 3 columnas (MÍNIMO 1 obligatorio si hay candidatos)
+   - La Gaceta: MÁX 3 columnas
+   - Libertad Digital: MÁX 3 columnas
+   - Agenda Pública: MÁX 2 columnas (MÍNIMO 1 obligatorio si hay candidatos)
+   - elDiario.es: MÁX 2 columnas (MÍNIMO 1 obligatorio si hay candidatos)
+   - El País: MÁX 2 columnas (MÍNIMO 1 obligatorio si hay candidatos)
+   - El Mundo: MÁX 2 columnas
    - ABC: MÁX 2 columnas
-   - La Gaceta: MÁX 2 columnas
-   - Libertad Digital: MÁX 2 columnas
-3. Selecciona HASTA 14 columnas en total.
+   - OK Diario: MÁX 2 columnas
+2.bis MÍNIMOS OBLIGATORIOS:
+- Si en CANDIDATAS aparece al menos 2 items con source "Vozpópuli", DEBES incluir mínimo 2 columnas suyas.
+- Si aparece al menos 1 item con source "Agenda Pública", "InfoLibre", "elDiario.es" o "El País", DEBES incluir mínimo 1 columna de cada uno.
+No es opcional. Estos medios tienen presencia garantizada cuando haya material.
+3. Selecciona HASTA 16 columnas en total.
 4. MÍNIMO 4 medios distintos en el resultado.
 5. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
 6. Prioriza diversidad ideológica/temática entre medios.
 
 EJEMPLO DE DISTRIBUCIÓN IDEAL si hay corpus suficiente:
-- The Objective: 4 (preferido al tope)
-- El Español: 4 (preferido al tope)
-- Vozpópuli: 3 (preferido)
-- elDiario.es: 1
-- ABC: 1
-- El País: 1
-- Total: 14 columnas, 6 medios distintos
+- Vozpópuli: 4 (preferido #1, tope)
+- Artículo 14: 3 (preferido #2)
+- The Objective: 2 (preferido #3)
+- InfoLibre: 2 (preferido #4, mínimo 1)
+- La Gaceta: 2 (preferido #5)
+- Libertad Digital: 2 (preferido #6)
+- elDiario.es: 1 (preferido #7, mínimo 1)
+- Agenda Pública: 1 (mínimo)
+- El País: 1 (mínimo)
+- Total: 18 → ajusta a 16 según calidad
 
-Si un medio preferido no tiene candidatas, completa con los siguientes en orden de preferencia (después The Objective/El Español/Vozpópuli, viene elDiario.es, luego los demás).
+Si un medio preferido no tiene candidatas, completa con los siguientes en orden de preferencia (después la lista de 7 preferidos, viene El Mundo, ABC y El País).
 
 Para cada columna seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú).
 
@@ -616,7 +640,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 7500,
+          max_tokens: 8500,
           messages: [{ role: 'user', content: userPrompt }],
           // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
         }),
