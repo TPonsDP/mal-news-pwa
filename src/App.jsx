@@ -109,50 +109,37 @@ function getSourceColor(source) {
 
 function MalNewsLogo({ maxWidth = 420 }) {
   return (
-    <svg viewBox="0 0 400 200" width="100%" style={{ maxWidth, height: 'auto', display: 'block', margin: '0 auto', filter: 'drop-shadow(0 8px 24px rgba(30,58,138,0.25))' }} xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 400 160" width="100%" style={{ maxWidth, height: 'auto', display: 'block', margin: '0 auto', filter: 'drop-shadow(0 6px 18px rgba(26,54,93,0.20))' }} xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="malBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#D5DBC1" stopOpacity="1" />
-          <stop offset="100%" stopColor="#B7C49E" stopOpacity="1" />
-        </linearGradient>
-        <linearGradient id="malWaveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.04" />
-        </linearGradient>
-        <filter id="malLogoGlow">
-          <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
+        <radialGradient id="malIconBg" cx="38%" cy="30%" r="80%">
+          <stop offset="0%" stopColor="#5685BD" />
+          <stop offset="45%" stopColor="#1A365D" />
+          <stop offset="100%" stopColor="#04101F" />
+        </radialGradient>
       </defs>
-      <rect width="400" height="200" rx="16" fill="url(#malBgGrad)" />
-      <ellipse cx="320" cy="30" rx="180" ry="80" fill="url(#malWaveGrad)" />
-      <ellipse cx="80" cy="170" rx="150" ry="60" fill="url(#malWaveGrad)" />
-      <line x1="0" y1="100" x2="400" y2="100" stroke="rgba(30,58,138,0.06)" strokeWidth="1" />
-      <line x1="200" y1="0" x2="200" y2="200" stroke="rgba(30,58,138,0.06)" strokeWidth="1" />
-      <g transform="translate(285, 62)" filter="url(#malLogoGlow)">
-        <ellipse cx="0" cy="8" rx="18" ry="10" fill="white" opacity="0.95" />
-        <circle cx="18" cy="2" r="9" fill="white" opacity="0.95" />
-        <polygon points="26,2 36,-1 26,5" fill="#C2693C" opacity="0.95" />
-        <circle cx="21" cy="1" r="2" fill="#1E3A8A" />
-        <circle cx="21.5" cy="0.5" r="0.6" fill="white" />
-        <path d="M -8,2 Q -40,-20 -75,-8 Q -55,0 -20,4 Z" fill="white" opacity="0.92" />
-        <path d="M -8,6 Q -45,-5 -72,10 Q -52,10 -18,8 Z" fill="rgba(255,255,255,0.75)" />
-        <path d="M 10,0 Q 35,-22 68,-12 Q 50,2 22,3 Z" fill="white" opacity="0.92" />
-        <path d="M 10,4 Q 38,-8 65,8 Q 46,8 20,6 Z" fill="rgba(255,255,255,0.75)" />
-        <path d="M -16,12 Q -28,22 -24,30 Q -18,26 -12,18 Z" fill="white" opacity="0.85" />
-        <path d="M -12,14 Q -20,28 -14,34 Q -8,28 -6,20 Z" fill="white" opacity="0.9" />
-        <line x1="2" y1="18" x2="0" y2="28" stroke="rgba(194,105,60,0.85)" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="6" y1="18" x2="8" y2="28" stroke="rgba(194,105,60,0.85)" strokeWidth="1.5" strokeLinecap="round" />
+
+      {/* Círculo logo a la izquierda */}
+      <g transform="translate(80, 80)">
+        <circle cx="0" cy="0" r="64" fill="url(#malIconBg)" />
+        {/* M letterform, escalado para r=64 */}
+        <g transform="translate(0, 0) scale(0.25)">
+          <g transform="translate(-256, -256)">
+            <rect x="154" y="80" width="58" height="198" rx="6" fill="#60A5FA" />
+            <polygon points="212,80 256,263 301,80 275,80 256,195 237,80" fill="#A3E635" />
+            <rect x="301" y="80" width="58" height="198" rx="6" fill="#FB923C" />
+            <text x="256" y="400" textAnchor="middle" fontFamily="Verdana, Geneva, sans-serif" fontWeight="800" fontSize="58" fill="#A3E635" letterSpacing="14">NEWS</text>
+          </g>
+        </g>
       </g>
-      <line x1="30" y1="148" x2="185" y2="148" stroke="rgba(30,58,138,0.4)" strokeWidth="1" />
-      <text x="30" y="110" fontFamily="'Verdana', 'Geneva', sans-serif" fontSize="58" fontWeight="700" fill="#1E3A8A" letterSpacing="2" opacity="0.97">MAL</text>
-      <text x="30" y="143" fontFamily="'Verdana', 'Geneva', sans-serif" fontSize="30" fontWeight="500" fill="rgba(30,58,138,0.85)" letterSpacing="10">NEWS</text>
-      <text x="30" y="168" fontFamily="'Verdana', sans-serif" fontSize="11" fill="rgba(30,58,138,0.55)" letterSpacing="3" fontStyle="italic">Tu briefing diario</text>
-      <rect x="0" y="190" width="400" height="10" rx="0" fill="rgba(30,58,138,0.08)" />
-      <rect x="0" y="192" width="60" height="4" rx="0" fill="rgba(194,105,60,0.45)" />
+
+      {/* Wordmark a la derecha */}
+      <text x="170" y="78" fontFamily="'Verdana', 'Geneva', sans-serif" fontSize="42" fontWeight="800" fill="#1A365D" letterSpacing="3">MAL</text>
+      <text x="170" y="118" fontFamily="'Verdana', 'Geneva', sans-serif" fontSize="28" fontWeight="600" fill="rgba(26,54,93,0.85)" letterSpacing="8">NEWS</text>
+      <text x="170" y="142" fontFamily="'Verdana', sans-serif" fontSize="10" fill="rgba(26,54,93,0.55)" letterSpacing="3" fontStyle="italic">Tu briefing diario</text>
+
+      {/* Línea decorativa inferior */}
+      <line x1="170" y1="148" x2="380" y2="148" stroke="rgba(26,54,93,0.3)" strokeWidth="1" />
+      <line x1="170" y1="148" x2="220" y2="148" stroke="#FA6900" strokeWidth="2" opacity="0.6" />
     </svg>
   );
 }
@@ -763,7 +750,7 @@ export default function App() {
   ] : [];
 
   const spainOpinionSections = spainOpinionData ? [
-    { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 14, type: 'opinion',
+    { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 16, type: 'opinion',
       descriptor: 'Columnas firmadas · 3+ medios · publicadas en últimas 72h',
       note: spainOpinionData._note,
       meta: spainOpinionData._meta },
