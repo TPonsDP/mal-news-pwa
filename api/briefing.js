@@ -17,6 +17,7 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/' },
   { source: 'El Mundo', url: 'https://www.elmundo.es/rss/opinion.xml' },
   { source: 'OK Diario', url: 'https://www.okdiario.com/opinion/feed/' },
+  { source: 'El Blog Salmón', url: 'https://www.elblogsalmon.com/feed' },
 
   // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo o no tienen RSS) ============
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
@@ -37,6 +38,12 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml' },
   { source: 'El Español', url: 'https://www.elespanol.com/rss' },
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
+  { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/' },
+  { source: 'La Vanguardia', url: 'https://www.lavanguardia.com/mvc/feed/rss/home' },
+
+  // BALEARES regional
+  { source: 'OK Diario Baleares', url: 'https://okdiario.com/baleares/feed/' },
+  { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/illes-balears/rss/' },
 
   // Google News RSS (fallback solo para medios sin RSS público fiable)
   { source: 'El Mundo', url: 'https://news.google.com/rss/search?q=site:elmundo.es&hl=es-ES&gl=ES&ceid=ES:es' },
@@ -173,10 +180,14 @@ async function fetchFeedsAndFilter(feedList, allowedISODates) {
     'La Gaceta': 6,
     'Libertad Digital': 6,
     'Agenda Pública': 6,
-    'elDiario.es': 5,
+    'elDiario.es': 6,
     'El Mundo': 6,
     'ABC': 6,
     'OK Diario': 6,
+    'El Blog Salmón': 4,
+    'La Vanguardia': 6,
+    'OK Diario Baleares': 4,
+    'elDiario.es Baleares': 4,
     'El País': 4,
     'El Español': 8,
   };
@@ -426,7 +437,7 @@ OUTPUT: solo JSON, sin texto antes ni después:
   },
   spainNews: {
     label: 'Noticias España',
-    system: `Eres mi editor de noticias personal de élite. Tu tarea es buscar en web noticias de España publicadas en las ÚLTIMAS 48H y devolver hasta 10 piezas con eventos concretos del día.
+    system: `Eres mi editor de noticias personal de élite. Tu tarea es buscar en web noticias de España publicadas en las ÚLTIMAS 48H y devolver hasta 15 piezas con eventos concretos del día.
 
 ${RULES_BASE}
 
@@ -434,7 +445,7 @@ ESQUEMA JSON EXACTO (devuelve SOLO esta clave, NO incluyas opinión ni nada más
 {
   "date": "DD/MM/YYYY",
   "spainNews": [
-    /* HASTA 10 piezas con evento concreto del día (votación, declaración, sentencia, dato económico, suceso).
+    /* HASTA 15 piezas con evento concreto del día (votación, declaración, sentencia, dato económico, suceso).
        Fuentes: Vozpópuli, The Objective, Libertad Digital, VilaWeb, El Diario, El Debate, Artículo 14, Agenda Pública, El Confidencial, ABC, El País, El Mundo, La Razón. */
     {"rank": 1, "title": "...", "summary": "...", "source": "...", "url": "...", "publishedDate": "2026-05-07"}
   ]
@@ -443,7 +454,7 @@ ESQUEMA JSON EXACTO (devuelve SOLO esta clave, NO incluyas opinión ni nada más
 HORA ACTUAL DE LA PETICIÓN: ${requestTime}
 
 Genera SOLO la parte de NOTICIAS de España (sin opinión) del briefing MAL NEWS con piezas publicadas EN la fecha de referencia (priorizando) o el día anterior:
-- HASTA 10 noticias España con eventos concretos (votaciones, sentencias, datos económicos, declaraciones políticas, sucesos)
+- HASTA 15 noticias España con eventos concretos (votaciones, sentencias, datos económicos, declaraciones políticas, sucesos)
 
 REGLAS:
 - Prioriza noticias publicadas EN la fecha de referencia. Solo incluye del día anterior si son eventos relevantes que continúan o si la fecha es temprana.
@@ -644,18 +655,21 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - Vozpópuli: MÁX 4 columnas (MÍNIMO 2 obligatorias si hay candidatos) ⭐
    - Artículo 14: MÁX 4 columnas ⭐
    - The Objective: MÁX 3 columnas
-   - InfoLibre: MÁX 3 columnas (MÍNIMO 1 obligatorio si hay candidatos)
+   - InfoLibre: MÁX 3 columnas (MÍNIMO 2 obligatorias si hay ≥2 candidatos)
    - La Gaceta: MÁX 3 columnas
    - Libertad Digital: MÁX 3 columnas
    - Agenda Pública: MÁX 2 columnas (MÍNIMO 1 obligatorio si hay candidatos)
-   - elDiario.es: MÁX 2 columnas (MÍNIMO 1 obligatorio si hay candidatos)
+   - elDiario.es: MÁX 3 columnas (MÍNIMO 2 obligatorias si hay ≥2 candidatos)
    - El País: MÁX 2 columnas (MÍNIMO 1 obligatorio si hay candidatos)
    - El Mundo: MÁX 2 columnas
    - ABC: MÁX 2 columnas
    - OK Diario: MÁX 2 columnas
+   - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo)
 2.bis MÍNIMOS OBLIGATORIOS:
 - Si en CANDIDATAS aparece al menos 2 items con source "Vozpópuli", DEBES incluir mínimo 2 columnas suyas.
-- Si aparece al menos 1 item con source "Agenda Pública", "InfoLibre", "elDiario.es" o "El País", DEBES incluir mínimo 1 columna de cada uno.
+- Si aparece al menos 2 items con source "elDiario.es", DEBES incluir mínimo 2 columnas de elDiario.es.
+- Si aparece al menos 2 items con source "InfoLibre", DEBES incluir mínimo 2 columnas de InfoLibre.
+- Si aparece al menos 1 item con source "Agenda Pública" o "El País", DEBES incluir mínimo 1 columna de cada uno.
 No es opcional. Estos medios tienen presencia garantizada cuando haya material.
 3. Selecciona HASTA 16 columnas en total.
 4. MÍNIMO 4 medios distintos en el resultado.
@@ -793,13 +807,15 @@ Tienes a continuación una lista de ${candidates.length} noticias de medios espa
 
 REGLAS DE SELECCIÓN (en orden de prioridad):
 1. CRÍTICO: NUNCA devuelvas array vacío si hay al menos UNA noticia relevante en la lista. Mejor 3 noticias que 0.
-2. Selecciona HASTA 10 noticias (puedes devolver menos si la lista es corta).
+2. Selecciona HASTA 15 noticias (puedes devolver menos si la lista es corta).
 3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos, decisiones gubernamentales, anuncios oficiales, hechos relevantes.
 4. DESCARTA: análisis genéricos, columnas de opinión, contenido evergreen sin actualidad.
-5. IDEAL si hay corpus suficiente: MÁX 2 noticias mismo medio, MÍN 4 medios distintos.
+5. IDEAL si hay corpus suficiente: MÁX 3 noticias mismo medio, MÍN 5 medios distintos.
 6. ACEPTABLE si corpus limitado: hasta 3 noticias mismo medio, mín 3 medios distintos.
-7. Equilibrio temático: política, economía, sociedad, sucesos.
-8. Mejor pocas noticias relevantes que ninguna por intentar cumplir reglas estrictas.
+7. PLURALIDAD: prioriza incluir al menos 1 noticia de El País o elDiario.es o InfoLibre (voces izquierda), y al menos 1 de La Vanguardia (perspectiva catalana) si hay material relevante.
+7.bis BALEARES OBLIGATORIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares" o "elDiario.es Baleares", DEBES incluir 1 noticia de Baleares. No es opcional cuando hay material.
+8. Equilibrio temático: política, economía, sociedad, sucesos.
+9. Mejor pocas noticias relevantes que ninguna por intentar cumplir reglas estrictas.
 
 Para cada noticia seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO).
 
