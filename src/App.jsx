@@ -753,7 +753,7 @@ export default function App() {
   ] : [];
 
   const spainNewsSections = spainNewsData ? [
-    { title: 'España', icon: '🇪🇸', items: spainNewsData.spainNews, color: SECTION_COLORS.spainNews, gradient: SECTION_GRADIENTS.spainNews, count: 10, type: 'news',
+    { title: 'España', icon: '🇪🇸', items: spainNewsData.spainNews, color: SECTION_COLORS.spainNews, gradient: SECTION_GRADIENTS.spainNews, count: 15, type: 'news',
       descriptor: 'Eventos concretos · prensa española · publicadas últimas 48h' },
   ] : [];
 
@@ -775,7 +775,7 @@ export default function App() {
     if (spainNewsStatus === 'loading') return 'Buscando noticias España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainNewsStatus === 'done') return '🔄 Recargar noticias España';
-    return '🇪🇸 Noticias España (10)';
+    return '🇪🇸 Noticias España (15)';
   })();
 
   const hasAnyData = intlData || spainNewsData || spainOpinionData;
@@ -1090,7 +1090,7 @@ export default function App() {
               Pulsa los botones para generar cada sección
             </p>
             <p style={{ fontSize: '11px', margin: '8px 0 0', color: 'rgba(30,58,138,0.55)' }}>
-              Internacional: 8 opinión + 20 mundo · Opinión España: 16 · Noticias España: 10
+              Internacional: 8 opinión + 20 mundo · Opinión España: 16 · Noticias España: 15
             </p>
           </div>
         )}
