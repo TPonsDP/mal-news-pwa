@@ -834,7 +834,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 4000,
+          max_tokens: 7000,
           messages: [{ role: 'user', content: userPrompt }],
           // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
         }),
