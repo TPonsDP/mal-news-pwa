@@ -667,10 +667,10 @@ export default function App() {
       <p class="date">${escape(b.date || todayShort)}</p>
       <p class="total">${total} PIEZAS</p>
     </div>
-    ${section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true)}
-    ${section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · publicadas en últimas 48h · incluye sentencias relevantes', false)}
-    ${section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true)}
     ${section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimas 48h', false)}
+    ${section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true)}
+    ${section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · publicadas en últimas 48h · incluye sentencias relevantes', false)}
+    ${section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true)}
     <div class="footer">
       MAL NEWS &middot; ${escape(RECIPIENT)} &middot; v3 PWA
     </div>
@@ -704,10 +704,10 @@ export default function App() {
       `MAL NEWS - Briefing ${b.date || todayShort}`,
       `Tu briefing diario · ${totalPieces} piezas`,
       dsep,
-      section('🌍 Mundo', b.worldNews),
-      section('✍️ Opinión Internacional', b.worldOpinion),
       section('🇪🇸 España', b.spainNews),
       section('✒️ Opinión España', b.spainOpinion),
+      section('🌍 Mundo', b.worldNews),
+      section('✍️ Opinión Internacional', b.worldOpinion),
       dsep,
       'MAL NEWS · Briefing automático',
       '',
@@ -739,10 +739,10 @@ export default function App() {
   };
 
   const intlSections = intlData ? [
-    { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 8, type: 'opinion',
-      descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto' },
     { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 20, type: 'news',
       descriptor: 'Cobertura global plural · ≥6 regiones · equilibrio IZQ/DER · incluye sentencias relevantes' },
+    { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 8, type: 'opinion',
+      descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto' },
   ] : [];
 
   const spainOpinionSections = spainOpinionData ? [
@@ -908,24 +908,24 @@ export default function App() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
           <button
             className="mal-cta"
-            onClick={() => fetchSection('international')}
-            disabled={intlStatus === 'loading' || isInCooldown}
+            onClick={() => fetchSection('spainNews')}
+            disabled={spainNewsStatus === 'loading' || isInCooldown}
             style={{
               border: 'none', borderRadius: '12px', padding: '14px 22px',
               fontSize: '11px', fontWeight: '800', letterSpacing: '0.08em',
-              cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
+              cursor: (spainNewsStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-              background: intlStatus === 'loading'
-                ? `linear-gradient(90deg, #1D4ED8, #0EA5E9, #1D4ED8)`
-                : BRAND.intlGrad,
-              backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
-              animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: 'white', opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 6px 20px rgba(29,78,216,0.40)', textTransform: 'uppercase',
+              background: spainNewsStatus === 'loading'
+                ? `linear-gradient(90deg, #C2410C, #FA6900, #C2410C)`
+                : BRAND.newsGrad,
+              backgroundSize: spainNewsStatus === 'loading' ? '200% 100%' : '100% 100%',
+              animation: spainNewsStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
+              color: 'white', opacity: (spainNewsStatus === 'loading' || isInCooldown) ? 0.65 : 1,
+              boxShadow: '0 6px 20px rgba(250,105,0,0.40)', textTransform: 'uppercase',
               textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
-            {intlBtnLabel}
+            {spainNewsBtnLabel}
           </button>
 
           <button
@@ -952,24 +952,24 @@ export default function App() {
 
           <button
             className="mal-cta"
-            onClick={() => fetchSection('spainNews')}
-            disabled={spainNewsStatus === 'loading' || isInCooldown}
+            onClick={() => fetchSection('international')}
+            disabled={intlStatus === 'loading' || isInCooldown}
             style={{
               border: 'none', borderRadius: '12px', padding: '14px 22px',
               fontSize: '11px', fontWeight: '800', letterSpacing: '0.08em',
-              cursor: (spainNewsStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
+              cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-              background: spainNewsStatus === 'loading'
-                ? `linear-gradient(90deg, #C2410C, #FA6900, #C2410C)`
-                : BRAND.newsGrad,
-              backgroundSize: spainNewsStatus === 'loading' ? '200% 100%' : '100% 100%',
-              animation: spainNewsStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: 'white', opacity: (spainNewsStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 6px 20px rgba(250,105,0,0.40)', textTransform: 'uppercase',
+              background: intlStatus === 'loading'
+                ? `linear-gradient(90deg, #1D4ED8, #0EA5E9, #1D4ED8)`
+                : BRAND.intlGrad,
+              backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
+              animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
+              color: 'white', opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
+              boxShadow: '0 6px 20px rgba(29,78,216,0.40)', textTransform: 'uppercase',
               textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
-            {spainNewsBtnLabel}
+            {intlBtnLabel}
           </button>
         </div>
 
@@ -1077,7 +1077,7 @@ export default function App() {
         {/* Render de las secciones disponibles - orden: internacional, opinión España, noticias España */}
         {hasAnyData && (
           <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
-            {[...intlSections, ...spainOpinionSections, ...spainNewsSections].map((s, i) => (
+            {[...spainNewsSections, ...spainOpinionSections, ...intlSections].map((s, i) => (
               <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} />
             ))}
           </div>
