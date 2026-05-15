@@ -142,7 +142,7 @@ function rfcToISODate(dateStr) {
 }
 
 async function fetchSpainOpinionRss(allowedISODates) {
-  return fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 36);
+  return fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48);
 }
 
 async function fetchSpainNewsRss(allowedISODates) {
@@ -401,14 +401,13 @@ INTERNACIONAL. Hasta 28 piezas en 2 secciones, distribuidas por regiones para co
 
 REGLAS ESTRICTAS DE FECHA:
 - publishedDate DEBE estar en una de las 2 fechas aceptadas (HOY o ayer). NUNCA más antiguas.
-- VENTANA ÓPTIMA: últimas 24-36h. Las piezas de HOY son siempre superiores.
-- Piezas de hace 36-48h: aceptables solo si NO hay material fresco del tema concreto.
+- VENTANA: últimas 48h. Acepta piezas de HOY y ayer indistintamente.
 - Si una pieza es de hace 2+ días: rechazar.
-- Mejor devolver MENOS piezas frescas (<36h) que rellenar con material de 36-48h.
+- Prioriza relevancia y calidad sobre minutos extra de frescura.
 
 WORLDOPINION (PRIORITARIA, hasta 8 columnas firmadas):
 - HARD CAPS: Máx 3 columnas USA · Máx 2 columnas UK · Máx 2 columnas mismo medio
-MÍNIMO 2 columnas de fuera del eje anglo (USA/UK): de Europa, LATAM, India, Asia, OM, África o Rusia
+- MÍNIMO 2 columnas de fuera del eje anglo (USA/UK): de Europa, LATAM, India, Asia, OM, África o Rusia
 - Mín 5 medios distintos · ≥3 regiones distintas
 - Solo firmadas (autor real, no editoriales)
 - Solo medios internacionales no españoles
@@ -484,7 +483,7 @@ Búsqueda recomendada: site:[dominio]/opinion ${today} para columnas firmadas, s
 OUTPUT: solo JSON, sin texto antes ni después:
 {"date":"DD/MM/YYYY","worldOpinion":[...],"worldNews":[...]}`;
     },
-    maxUses: 20,
+    maxUses: 12,
   },
   spainNews: {
     label: 'Noticias España',
@@ -714,8 +713,8 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - El Mundo: MÁX 2 columnas
    - ABC: MÁX 2 columnas
    - OK Diario: MÁX 2 columnas
-   - El Blog Salmón: MÁX 2 columnas
-   2.bis PRIORIDADES SUAVES (no obligatorias):
+   - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo)
+2.bis PRIORIDADES SUAVES (no obligatorias):
 - Prioriza incluir 2 columnas de Vozpópuli si hay material de calidad.
 - Prioriza incluir 1-2 columnas de elDiario.es e InfoLibre si hay material para equilibrar paleta.
 - Prioriza incluir 1 columna de El País o Agenda Pública si hay material.
@@ -821,9 +820,9 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         error: `Error en paso "${currentStep}": ${err.message || 'desconocido'}`,
         step: currentStep,
       });
-      
     }
-    // ============ FIN FLUJO RSS spainOpinion ============
+  }
+  // ============ FIN FLUJO RSS spainOpinion ============
 
   // ============ FLUJO ESPECIAL RSS PARA spainNews ============
   // Igual que spainOpinion: pre-fetch RSS de portadas + Google News, sin web_search.
@@ -965,5 +964,4 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Error desconocido' });
   }
-  }
-  }
+}
