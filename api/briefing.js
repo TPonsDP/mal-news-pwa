@@ -40,10 +40,12 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
   { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/' },
   { source: 'La Vanguardia', url: 'https://www.lavanguardia.com/mvc/feed/rss/home' },
+  { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/rss' },
 
   // BALEARES regional
   { source: 'OK Diario Baleares', url: 'https://okdiario.com/baleares/feed/' },
   { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/illes-balears/rss/' },
+  { source: 'Economía de Mallorca', url: 'https://www.economiademallorca.com/feed/' },
 
   // Google News RSS (fallback solo para medios sin RSS público fiable)
   { source: 'El Mundo', url: 'https://news.google.com/rss/search?q=site:elmundo.es&hl=es-ES&gl=ES&ceid=ES:es' },
@@ -140,14 +142,14 @@ function rfcToISODate(dateStr) {
 }
 
 async function fetchSpainOpinionRss(allowedISODates) {
-  return fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates);
+  return fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 36);
 }
 
 async function fetchSpainNewsRss(allowedISODates) {
-  return fetchFeedsAndFilter(SPAIN_NEWS_FEEDS, allowedISODates);
+  return fetchFeedsAndFilter(SPAIN_NEWS_FEEDS, allowedISODates, 36);
 }
 
-async function fetchFeedsAndFilter(feedList, allowedISODates) {
+async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
   // Para cada feed, fetchear y registrar diagnóstico
   const feedResults = await Promise.all(feedList.map(async (feed) => {
     const items = await fetchOneFeed(feed);
@@ -164,10 +166,24 @@ async function fetchFeedsAndFilter(feedList, allowedISODates) {
   });
 
   // Filtrar por fechas aceptadas
-  const inDate = dedup.filter(it => {
+  let inDate = dedup.filter(it => {
     if (!allowedISODates || allowedISODates.length === 0) return true;
     return allowedISODates.includes(it.publishedDate);
   });
+
+  // Filtro adicional por timestamp si se especifica maxHoursAgo
+  // (más estricto que el filtro de fecha)
+  if (maxHoursAgo && Number.isFinite(maxHoursAgo)) {
+    const cutoffMs = Date.now() - (maxHoursAgo * 60 * 60 * 1000);
+    inDate = inDate.filter(it => {
+      if (!it.pubDate) return true; // sin timestamp, dejamos pasar
+      try {
+        const ts = new Date(it.pubDate).getTime();
+        if (isNaN(ts)) return true; // timestamp inválido, dejamos pasar
+        return ts >= cutoffMs;
+      } catch (_) { return true; }
+    });
+  }
 
   // CAP POR FUENTE PERSONALIZADO: más cuota para medios preferidos.
   // The Objective, El Español y Vozpópuli tienen prioridad — más candidatos
@@ -186,8 +202,10 @@ async function fetchFeedsAndFilter(feedList, allowedISODates) {
     'OK Diario': 6,
     'El Blog Salmón': 4,
     'La Vanguardia': 6,
+    'Crónica Global': 5,
     'OK Diario Baleares': 4,
     'elDiario.es Baleares': 4,
+    'Economía de Mallorca': 4,
     'El País': 4,
     'El Español': 8,
   };
@@ -344,16 +362,19 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas energy, spainNews
 
 ${COLUMNISTS_GUIDE}`,
     user: (today, todayFull, requestTime, allowedDates) => {
-      const dateList = (allowedDates && allowedDates.length === 3)
-        ? `\n\nFECHAS ACEPTADAS (ÚNICAS TRES, sin excepción):\n- ${allowedDates[0]} (fecha de referencia)\n- ${allowedDates[1]} (día anterior)\n- ${allowedDates[2]} (hace 2 días)\n\nCualquier pieza con publishedDate distinto a estas tres fechas se RECHAZA. Sin "casi", sin "ayer extendido".`
+      const dateList = (allowedDates && allowedDates.length === 2)
+        ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (fecha de referencia / HOY)\n- ${allowedDates[1]} (día anterior)\n\nCualquier pieza con publishedDate distinto a estas dos fechas se RECHAZA. Sin "casi", sin "del fin de semana", sin "anteayer". Ventana máxima: 48h.\n\nPRIORIDAD DE FRESCURA EN OPINIÓN: dentro de las 48h, prefiere columnas de las últimas 24-36h. Las piezas de ayer son aceptables pero las de HOY siempre superiores.`
         : '';
       return `FECHA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
 
 INTERNACIONAL. Hasta 28 piezas en 2 secciones, distribuidas por regiones para cobertura global plural.
 
 REGLAS ESTRICTAS DE FECHA:
-- publishedDate DEBE estar en una de las 3 fechas aceptadas. NUNCA más antiguas.
-- Si encuentras pieza interesante de hace 2+ días: rechazar.
+- publishedDate DEBE estar en una de las 2 fechas aceptadas (HOY o ayer). NUNCA más antiguas.
+- VENTANA ÓPTIMA: últimas 24-36h. Las piezas de HOY son siempre superiores.
+- Piezas de hace 36-48h: aceptables solo si NO hay material fresco del tema concreto.
+- Si una pieza es de hace 2+ días: rechazar.
+- Mejor devolver MENOS piezas frescas (<36h) que rellenar con material de 36-48h.
 
 WORLDOPINION (PRIORITARIA, hasta 8 columnas firmadas):
 - HARD CAPS: Máx 3 columnas USA · Máx 2 columnas UK · Máx 2 columnas mismo medio
@@ -485,8 +506,8 @@ ESQUEMA JSON EXACTO (devuelve SOLO esta clave, NO incluyas noticias ni nada más
 
 ${COLUMNISTS_GUIDE}`,
     user: (today, todayFull, requestTime, allowedDates) => {
-      const dateList = (allowedDates && allowedDates.length === 3)
-        ? `\n\nFECHAS ACEPTADAS (ÚNICAS TRES, sin excepción):\n- ${allowedDates[0]} (fecha de referencia)\n- ${allowedDates[1]} (día anterior)\n- ${allowedDates[2]} (hace 2 días)\n\nCualquier columna con publishedDate distinto a estas tres fechas se RECHAZA. Sin excepción. Sin "casi". Sin "del fin de semana".`
+      const dateList = (allowedDates && allowedDates.length === 2)
+        ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (fecha de referencia / HOY)\n- ${allowedDates[1]} (día anterior)\n\nCualquier columna con publishedDate distinto a estas dos fechas se RECHAZA. Sin excepción. Sin "del fin de semana", sin "anteayer". Ventana máxima: 48h.\n\nPRIORIDAD DE FRESCURA: dentro de las 48h, prefiere columnas de las últimas 24-36h. Las piezas de HOY son siempre superiores a las de ayer. Solo incluye piezas de ayer si añaden tema único no cubierto por las de hoy.`
         : '';
       return `FECHA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
 
@@ -580,17 +601,16 @@ export default async function handler(req, res) {
   const todayFull = dateFull || todayShort;
   const nowTime = requestTime || 'no especificada';
 
-  // Calcular las TRES fechas ISO aceptadas (hoy, ayer, anteayer) respecto a la fecha de referencia.
-  // 3 días es mejor que 2 para weekends/festivos cuando hay menos contenido fresco.
+  // Calcular las DOS fechas ISO aceptadas (hoy, ayer) respecto a la fecha de referencia.
+  // 48h en lugar de 72h: prioridad por frescura. Para weekends/festivos, ajustar manualmente.
   const allowedISODates = (() => {
     try {
       const parts = todayShort.split('/').map(p => parseInt(p, 10));
       const [d, m, y] = parts;
       const ref = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
       const yest = new Date(ref.getTime() - 24 * 60 * 60 * 1000);
-      const beforeYest = new Date(ref.getTime() - 48 * 60 * 60 * 1000);
       const iso = (dt) => dt.toISOString().slice(0, 10);
-      return [iso(ref), iso(yest), iso(beforeYest)];
+      return [iso(ref), iso(yest)];
     } catch (_) {
       return [];
     }
@@ -635,9 +655,9 @@ export default async function handler(req, res) {
 
       const userPrompt = `FECHA: ${todayFull || todayShort}
 
-Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (mayoritariamente opinión, algunas noticias o análisis), ya filtradas por fecha (publicadas en una de las 3 fechas aceptadas: ${allowedISODates.join(' o ')}).
+Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (mayoritariamente opinión, algunas noticias o análisis), ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
 
-⚠️ PROHIBIDO ABSOLUTAMENTE devolver un array spainOpinion vacío. Si tienes dudas, INCLUYE. Mejor pasarse de inclusivo que de restrictivo.
+✅ PERMITIDO devolver MENOS columnas si no hay material fresco suficiente. Mejor 8-10 columnas de calidad fresca que 16 mediocres o de hace 36+ horas.
 
 ⭐ MEDIOS PREFERIDOS DEL USUARIO (orden de prioridad, prioriza los primeros):
 1. Vozpópuli ⭐
@@ -650,29 +670,28 @@ Tienes a continuación una lista de ${candidates.length} piezas de medios españ
 Si hay candidatas válidas de estos medios, INCLÚYELAS en este orden de preferencia hasta el cap de cada uno.
 
 REGLAS DE SELECCIÓN (en orden de prioridad):
-1. PROHIBIDO array vacío. Si hay piezas con autor, selecciona mínimo 3-4. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" "/elsubjetivo/" o similar, también CUENTAN como columna válida. EXCEPCIÓN: items con source "Agenda Pública" o "Artículo 14" pueden incluirse aunque no aparezca autor (Google News no expone el autor, pero los artículos originales son análisis firmados de calidad).
+1. Selecciona piezas con autor real cuando sea posible. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" "/elsubjetivo/" o similar, también CUENTAN como columna válida. EXCEPCIÓN: items con source "Agenda Pública" o "Artículo 14" pueden incluirse aunque no aparezca autor (Google News no expone el autor, pero los artículos originales son análisis firmados de calidad).
 2. HARD CAPS INVIOLABLES por medio (NO se pueden superar):
-   - Vozpópuli: MÁX 4 columnas (MÍNIMO 2 obligatorias si hay candidatos) ⭐
+   - Vozpópuli: MÁX 4 columnas ⭐
    - Artículo 14: MÁX 4 columnas ⭐
    - The Objective: MÁX 3 columnas
-   - InfoLibre: MÁX 3 columnas (MÍNIMO 2 obligatorias si hay ≥2 candidatos)
+   - InfoLibre: MÁX 3 columnas
    - La Gaceta: MÁX 3 columnas
    - Libertad Digital: MÁX 3 columnas
-   - Agenda Pública: MÁX 2 columnas (MÍNIMO 1 obligatorio si hay candidatos)
-   - elDiario.es: MÁX 3 columnas (MÍNIMO 2 obligatorias si hay ≥2 candidatos)
-   - El País: MÁX 2 columnas (MÍNIMO 1 obligatorio si hay candidatos)
+   - Agenda Pública: MÁX 2 columnas
+   - elDiario.es: MÁX 3 columnas
+   - El País: MÁX 2 columnas
    - El Mundo: MÁX 2 columnas
    - ABC: MÁX 2 columnas
    - OK Diario: MÁX 2 columnas
    - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo)
-2.bis MÍNIMOS OBLIGATORIOS:
-- Si en CANDIDATAS aparece al menos 2 items con source "Vozpópuli", DEBES incluir mínimo 2 columnas suyas.
-- Si aparece al menos 2 items con source "elDiario.es", DEBES incluir mínimo 2 columnas de elDiario.es.
-- Si aparece al menos 2 items con source "InfoLibre", DEBES incluir mínimo 2 columnas de InfoLibre.
-- Si aparece al menos 1 item con source "Agenda Pública" o "El País", DEBES incluir mínimo 1 columna de cada uno.
-No es opcional. Estos medios tienen presencia garantizada cuando haya material.
-3. Selecciona HASTA 16 columnas en total.
-4. MÍNIMO 4 medios distintos en el resultado.
+2.bis PRIORIDADES SUAVES (no obligatorias):
+- Prioriza incluir 2 columnas de Vozpópuli si hay material de calidad.
+- Prioriza incluir 1-2 columnas de elDiario.es e InfoLibre si hay material para equilibrar paleta.
+- Prioriza incluir 1 columna de El País o Agenda Pública si hay material.
+Estas son preferencias, NO obligaciones. Si no hay material adecuado en algún medio, NO lo fuerces.
+3. Selecciona HASTA 16 columnas en total — pero menos si no hay material fresco suficiente.
+4. MÍNIMO 3 medios distintos en el resultado (si hay material para ello).
 5. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
 6. Prioriza diversidad ideológica/temática entre medios.
 
@@ -803,19 +822,19 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
 
       const userPrompt = `FECHA: ${todayFull || todayShort}
 
-Tienes a continuación una lista de ${candidates.length} noticias de medios españoles, ya filtradas por fecha (publicadas en una de las 3 fechas aceptadas: ${allowedISODates.join(' o ')}).
+Tienes a continuación una lista de ${candidates.length} noticias de medios españoles, ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
 
 REGLAS DE SELECCIÓN (en orden de prioridad):
-1. CRÍTICO: NUNCA devuelvas array vacío si hay al menos UNA noticia relevante en la lista. Mejor 3 noticias que 0.
+1. Devuelve las noticias que haya. Si solo hay 5 noticias frescas y relevantes, devuelve 5. No fuerces el cupo.
 2. Selecciona HASTA 15 noticias (puedes devolver menos si la lista es corta).
 3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos, decisiones gubernamentales, anuncios oficiales, hechos relevantes.
 4. DESCARTA: análisis genéricos, columnas de opinión, contenido evergreen sin actualidad.
 5. IDEAL si hay corpus suficiente: MÁX 3 noticias mismo medio, MÍN 5 medios distintos.
 6. ACEPTABLE si corpus limitado: hasta 3 noticias mismo medio, mín 3 medios distintos.
 7. PLURALIDAD: prioriza incluir al menos 1 noticia de El País o elDiario.es o InfoLibre (voces izquierda), y al menos 1 de La Vanguardia (perspectiva catalana) si hay material relevante.
-7.bis BALEARES OBLIGATORIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares" o "elDiario.es Baleares", DEBES incluir 1 noticia de Baleares. No es opcional cuando hay material.
+7.bis BALEARES PRIORITARIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares", "elDiario.es Baleares" o "Economía de Mallorca", PRIORIZA incluir 1 noticia de Baleares. Si no hay material apropiado, no fuerces.
 8. Equilibrio temático: política, economía, sociedad, sucesos.
-9. Mejor pocas noticias relevantes que ninguna por intentar cumplir reglas estrictas.
+9. Mejor pocas noticias relevantes y frescas que muchas mediocres o forzadas.
 
 Para cada noticia seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO).
 
