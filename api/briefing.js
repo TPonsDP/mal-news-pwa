@@ -219,18 +219,48 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
     return true;
   });
 
-  // Diagnóstico: para los feeds que NO aportaron candidatos, decir si fallaron o si tenían fechas viejas
+  // Diagnóstico mejorado: para cada feed, contar cuántas piezas pasaron cada filtro
+  const cutoffMs = maxHoursAgo && Number.isFinite(maxHoursAgo)
+    ? Date.now() - (maxHoursAgo * 60 * 60 * 1000)
+    : null;
+
   const diagnostic = feedResults.map(r => {
-    const passedDate = r.items.filter(it => allowedISODates.includes(it.publishedDate)).length;
+    const passedDate = r.items.filter(it => allowedISODates.includes(it.publishedDate));
+    let passedTimestamp = passedDate.length;
+    if (cutoffMs !== null) {
+      passedTimestamp = passedDate.filter(it => {
+        if (!it.pubDate) return true;
+        try {
+          const ts = new Date(it.pubDate).getTime();
+          if (isNaN(ts)) return true;
+          return ts >= cutoffMs;
+        } catch (_) { return true; }
+      }).length;
+    }
     const latestDate = r.items.length > 0
       ? [...new Set(r.items.map(it => it.publishedDate).filter(Boolean))].sort().reverse()[0]
+      : null;
+    // Encontrar el timestamp más reciente para mostrar la última publicación
+    const latestTs = r.items.length > 0
+      ? r.items.reduce((max, it) => {
+          if (!it.pubDate) return max;
+          try {
+            const t = new Date(it.pubDate).getTime();
+            return (!isNaN(t) && t > max) ? t : max;
+          } catch (_) { return max; }
+        }, 0)
+      : 0;
+    const hoursAgo = latestTs > 0
+      ? Math.round((Date.now() - latestTs) / (60 * 60 * 1000) * 10) / 10
       : null;
     return {
       source: r.source,
       rawCount: r.count,
-      passedDateFilter: passedDate,
+      passedDateFilter: passedDate.length,
+      passedTimestampFilter: passedTimestamp,
       includedAfterCap: perSourceCounts[r.source] || 0,
       latestDateSeen: latestDate || 'sin fecha',
+      hoursAgo: hoursAgo,
     };
   });
 
@@ -378,7 +408,7 @@ REGLAS ESTRICTAS DE FECHA:
 
 WORLDOPINION (PRIORITARIA, hasta 8 columnas firmadas):
 - HARD CAPS: Máx 3 columnas USA · Máx 2 columnas UK · Máx 2 columnas mismo medio
-- MÍNIMO 2 columnas de fuera del eje anglo (USA/UK): de Europa, LATAM, India, Asia, OM, África o Rusia
+MÍNIMO 2 columnas de fuera del eje anglo (USA/UK): de Europa, LATAM, India, Asia, OM, África o Rusia
 - Mín 5 medios distintos · ≥3 regiones distintas
 - Solo firmadas (autor real, no editoriales)
 - Solo medios internacionales no españoles
@@ -684,8 +714,8 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - El Mundo: MÁX 2 columnas
    - ABC: MÁX 2 columnas
    - OK Diario: MÁX 2 columnas
-   - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo)
-2.bis PRIORIDADES SUAVES (no obligatorias):
+   - El Blog Salmón: MÁX 2 columnas
+   2.bis PRIORIDADES SUAVES (no obligatorias):
 - Prioriza incluir 2 columnas de Vozpópuli si hay material de calidad.
 - Prioriza incluir 1-2 columnas de elDiario.es e InfoLibre si hay material para equilibrar paleta.
 - Prioriza incluir 1 columna de El País o Agenda Pública si hay material.
@@ -791,9 +821,9 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         error: `Error en paso "${currentStep}": ${err.message || 'desconocido'}`,
         step: currentStep,
       });
+      
     }
-  }
-  // ============ FIN FLUJO RSS spainOpinion ============
+    // ============ FIN FLUJO RSS spainOpinion ============
 
   // ============ FLUJO ESPECIAL RSS PARA spainNews ============
   // Igual que spainOpinion: pre-fetch RSS de portadas + Google News, sin web_search.
@@ -935,4 +965,5 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Error desconocido' });
   }
-}
+  }
+  }
