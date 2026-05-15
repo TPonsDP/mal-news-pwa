@@ -61,12 +61,12 @@ const BRAND = {
   shadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
   shadowLg: '0 8px 24px rgba(0, 0, 0, 0.12)',
   // Gradientes oficiales por bucket
-  intlGrad: 'linear-gradient(90deg, #1D4ED8, #0EA5E9)',
-  opinionGrad: 'linear-gradient(90deg, #4D7C0F, #84CC16)',
+  intlGrad: 'linear-gradient(90deg, #0F766E, #5EEAD4)',
+  opinionGrad: 'linear-gradient(90deg, #65A30D, #FACC15)',
   newsGrad: 'linear-gradient(90deg, #C2410C, #FA6900)',
   // Colores sólidos para bordes/badges (start de cada gradiente)
-  intlColor: '#1D4ED8',
-  opinionColor: '#4D7C0F',
+  intlColor: '#0F766E',
+  opinionColor: '#65A30D',
   newsColor: '#C2410C',
 
   // ============ ALIASES PARA RETROCOMPATIBILIDAD ============
@@ -107,39 +107,69 @@ function getSourceColor(source) {
   return SOURCE_COLORS.default;
 }
 
-function MalNewsLogo({ maxWidth = 420 }) {
+function DiagonalHeader({ dateObj }) {
+  const dayNameRaw = dateObj.toLocaleDateString('es-ES', { weekday: 'long' });
+  const dayName = dayNameRaw.charAt(0).toUpperCase() + dayNameRaw.slice(1);
+  const dayNumber = dateObj.getDate();
+  const month = dateObj.toLocaleDateString('es-ES', { month: 'long' }).toUpperCase();
+  const year = dateObj.getFullYear();
+
   return (
-    <svg viewBox="0 0 400 160" width="100%" style={{ maxWidth, height: 'auto', display: 'block', margin: '0 auto', filter: 'drop-shadow(0 6px 18px rgba(26,54,93,0.20))' }} xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 600 210" width="100%" style={{
+      maxWidth: '640px',
+      height: 'auto',
+      display: 'block',
+      margin: '0 auto',
+      filter: 'drop-shadow(0 6px 20px rgba(26,54,93,0.15))',
+    }} xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="malIconBg" cx="38%" cy="30%" r="80%">
+        <radialGradient id="hdrMalBg" cx="38%" cy="30%" r="80%">
           <stop offset="0%" stopColor="#5685BD" />
           <stop offset="45%" stopColor="#1A365D" />
           <stop offset="100%" stopColor="#04101F" />
         </radialGradient>
       </defs>
 
-      {/* Círculo logo a la izquierda */}
-      <g transform="translate(80, 80)">
-        <circle cx="0" cy="0" r="64" fill="url(#malIconBg)" />
-        {/* M letterform, escalado para r=64 */}
-        <g transform="translate(0, 0) scale(0.25)">
-          <g transform="translate(-256, -256)">
-            <rect x="154" y="80" width="58" height="198" rx="6" fill="#60A5FA" />
-            <polygon points="212,80 256,263 301,80 275,80 256,195 237,80" fill="#A3E635" />
-            <rect x="301" y="80" width="58" height="198" rx="6" fill="#FB923C" />
-            <text x="256" y="400" textAnchor="middle" fontFamily="Verdana, Geneva, sans-serif" fontWeight="800" fontSize="58" fill="#A3E635" letterSpacing="14">NEWS</text>
-          </g>
+      {/* Fondo gris humo con esquinas redondeadas */}
+      <rect x="0" y="0" width="600" height="210" fill="#F0F4F8" rx="10" />
+
+      {/* Bloque azul Oxford con corte diagonal */}
+      <path d="M 0 0 L 280 0 L 200 210 L 0 210 Z" fill="#1A365D" />
+
+      {/* Línea naranja siguiendo el corte diagonal */}
+      <line x1="280" y1="0" x2="200" y2="210" stroke="#FA6900" strokeWidth="4" />
+
+      {/* Logo circular dentro del bloque azul */}
+      <g transform="translate(110, 105)">
+        <circle r="50" fill="url(#hdrMalBg)" stroke="#5EEAD4" strokeWidth="1.5" />
+        <g transform="scale(0.21) translate(-256, -256)">
+          <rect x="154" y="80" width="58" height="198" rx="6" fill="#60A5FA" />
+          <polygon points="212,80 256,263 301,80 275,80 256,195 237,80" fill="#A3E635" />
+          <rect x="301" y="80" width="58" height="198" rx="6" fill="#FB923C" />
+          <text x="256" y="400" textAnchor="middle" fontFamily="Verdana, Geneva, sans-serif" fontWeight="800" fontSize="58" fill="#A3E635" letterSpacing="14">NEWS</text>
         </g>
       </g>
 
-      {/* Wordmark a la derecha */}
-      <text x="170" y="78" fontFamily="'Verdana', 'Geneva', sans-serif" fontSize="42" fontWeight="800" fill="#1A365D" letterSpacing="3">MAL</text>
-      <text x="170" y="118" fontFamily="'Verdana', 'Geneva', sans-serif" fontSize="28" fontWeight="600" fill="rgba(26,54,93,0.85)" letterSpacing="8">NEWS</text>
-      <text x="170" y="142" fontFamily="'Verdana', sans-serif" fontSize="10" fill="rgba(26,54,93,0.55)" letterSpacing="3" fontStyle="italic">Tu briefing diario</text>
+      {/* Zona derecha: día en serif Georgia */}
+      <text x="305" y="70" fontFamily="Georgia, 'Times New Roman', serif" fontStyle="italic" fontSize="42" fill="#1A365D">
+        {dayName}
+      </text>
 
-      {/* Línea decorativa inferior */}
-      <line x1="170" y1="148" x2="380" y2="148" stroke="rgba(26,54,93,0.3)" strokeWidth="1" />
-      <line x1="170" y1="148" x2="220" y2="148" stroke="#FA6900" strokeWidth="2" opacity="0.6" />
+      {/* Día número grande naranja + mes en azul */}
+      <text x="320" y="108" fontFamily="'Verdana', 'Geneva', sans-serif" fontWeight="900" fontSize="34" fill="#FA6900" letterSpacing="-0.02em">
+        {dayNumber}
+        <tspan fontSize="17" fill="#1A365D" fontWeight="700" dx="8">{month}</tspan>
+      </text>
+
+      {/* Año con letterspacing amplio */}
+      <text x="320" y="134" fontFamily="'Verdana', sans-serif" fontWeight="700" fontSize="13" fill="#5A6B7C" letterSpacing="0.32em">{year}</text>
+
+      {/* Separador sutil */}
+      <line x1="320" y1="156" x2="575" y2="156" stroke="#1A365D" strokeWidth="0.5" opacity="0.25" />
+
+      {/* Sub-etiquetas en dos líneas con color diferenciado */}
+      <text x="320" y="176" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#5A6B7C" letterSpacing="0.16em">ESPAÑA · OPINIÓN</text>
+      <text x="320" y="194" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#0F766E" letterSpacing="0.16em">MUNDO · INTERNACIONAL</text>
     </svg>
   );
 }
@@ -819,25 +849,30 @@ export default function App() {
       descriptor: 'Eventos concretos · prensa española · publicadas últimas 48h' },
   ] : [];
 
+  // Contadores reales devueltos por el API tras cada fetch
+  const realIntlCount = intlData ? ((intlData.worldNews?.length || 0) + (intlData.worldOpinion?.length || 0)) : 0;
+  const realSpainOpinionCount = spainOpinionData?.spainOpinion?.length || 0;
+  const realSpainNewsCount = spainNewsData?.spainNews?.length || 0;
+
   const intlBtnLabel = (() => {
     if (intlStatus === 'loading') return 'Buscando internacional...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
-    if (intlStatus === 'done') return '🔄 Recargar internacional';
-    return '🌍 Generar internacional (24)';
+    if (intlStatus === 'done') return `🔄 Recargar internacional (${realIntlCount})`;
+    return '🌍 Internacional (hasta 28)';
   })();
 
   const spainOpinionBtnLabel = (() => {
     if (spainOpinionStatus === 'loading') return 'Buscando opinión España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
-    if (spainOpinionStatus === 'done') return '🔄 Recargar opinión España';
-    return '✍️ Opinión España (10)';
+    if (spainOpinionStatus === 'done') return `🔄 Recargar opinión España (${realSpainOpinionCount})`;
+    return '✍️ Opinión España (hasta 16)';
   })();
 
   const spainNewsBtnLabel = (() => {
     if (spainNewsStatus === 'loading') return 'Buscando noticias España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
-    if (spainNewsStatus === 'done') return '🔄 Recargar noticias España';
-    return '🇪🇸 Noticias España (15)';
+    if (spainNewsStatus === 'done') return `🔄 Recargar noticias España (${realSpainNewsCount})`;
+    return '🇪🇸 Noticias España (hasta 15)';
   })();
 
   const hasAnyData = intlData || spainNewsData || spainOpinionData;
@@ -871,18 +906,9 @@ export default function App() {
       }} />
 
       <div style={{ position: 'relative', zIndex: 1, maxWidth: '780px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '18px', animation: 'fadeSlide 0.6s ease both' }}>
-          <MalNewsLogo maxWidth={420} />
-          <p style={{ margin: '16px 0 0', fontSize: '12px', letterSpacing: '0.3em', color: BRAND.orange, textTransform: 'uppercase', textAlign: 'center', fontWeight: '800', textShadow: '0 1px 2px rgba(30,58,138,0.15)' }}>
-            {today}
-          </p>
+        <div style={{ marginBottom: '24px', animation: 'fadeSlide 0.6s ease both' }}>
+          <DiagonalHeader dateObj={dateObj} />
         </div>
-
-        <p style={{ margin: '0 0 18px', fontSize: '10px', color: BRAND.orange, letterSpacing: '0.18em', textAlign: 'center', fontStyle: 'italic', opacity: 0.85 }}>
-          MUNDO · OPINIÓN INTL · LEGAL · ESPAÑA · OPINIÓN ESPAÑA
-        </p>
-
-        <div style={{ height: '1px', background: `linear-gradient(90deg, transparent 0%, ${BRAND.orange}66 50%, transparent 100%)`, margin: '0 0 24px' }} />
 
         {/* Selector de fecha del briefing */}
         <div style={{
@@ -1000,12 +1026,12 @@ export default function App() {
               cursor: (spainOpinionStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
               background: spainOpinionStatus === 'loading'
-                ? `linear-gradient(90deg, #4D7C0F, #84CC16, #4D7C0F)`
+                ? `linear-gradient(90deg, #65A30D, #FACC15, #65A30D)`
                 : BRAND.opinionGrad,
               backgroundSize: spainOpinionStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: spainOpinionStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
               color: 'white', opacity: (spainOpinionStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 6px 20px rgba(77,124,15,0.35)', textTransform: 'uppercase',
+              boxShadow: '0 6px 20px rgba(101,163,13,0.40)', textTransform: 'uppercase',
               textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
@@ -1022,12 +1048,12 @@ export default function App() {
               cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
               background: intlStatus === 'loading'
-                ? `linear-gradient(90deg, #1D4ED8, #0EA5E9, #1D4ED8)`
+                ? `linear-gradient(90deg, #0F766E, #5EEAD4, #0F766E)`
                 : BRAND.intlGrad,
               backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
               color: 'white', opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 6px 20px rgba(29,78,216,0.40)', textTransform: 'uppercase',
+              boxShadow: '0 6px 20px rgba(15,118,110,0.40)', textTransform: 'uppercase',
               textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
