@@ -339,9 +339,44 @@ function NewsCard({ item, index, sectionColor, type }) {
   );
 }
 
-function Section({ title, icon, items, color, gradient, count, descriptor, type, note, meta }) {
+function Section({ title, icon, items, color, gradient, count, descriptor, type, note, meta, groupByContinent }) {
   const realCount = items?.length || 0;
   const itemLabel = type === 'opinion' ? (realCount === 1 ? 'COLUMNA' : 'COLUMNAS') : (realCount === 1 ? 'PIEZA' : 'PIEZAS');
+
+  // Mapeo región → continente (para sección Mundo)
+  const REGION_TO_CONTINENT = {
+    'EEUU': 'América',
+    'LATAM': 'América',
+    'UK': 'Europa',
+    'Europa Occ.': 'Europa',
+    'Europa Este': 'Europa',
+    'Rusia': 'Europa',
+    'Oriente Medio': 'Oriente Medio',
+    'India': 'Asia',
+    'Asia': 'Asia',
+    'Turquía': 'Asia',
+    'África': 'África',
+    'Australia': 'Oceanía',
+  };
+  const CONTINENT_ORDER = ['América', 'Europa', 'Oriente Medio', 'Asia', 'África', 'Oceanía', 'Otros'];
+  const CONTINENT_ICONS = {
+    'América': '🌎',
+    'Europa': '🌍',
+    'Oriente Medio': '🕌',
+    'Asia': '🌏',
+    'África': '🌍',
+    'Oceanía': '🌏',
+    'Otros': '🌐',
+  };
+
+  // Agrupar items por continente si procede
+  const groupedItems = groupByContinent && realCount > 0
+    ? CONTINENT_ORDER.reduce((acc, cont) => {
+        const matching = items.filter(it => (REGION_TO_CONTINENT[it.region] || 'Otros') === cont);
+        if (matching.length > 0) acc.push({ continent: cont, items: matching });
+        return acc;
+      }, [])
+    : null;
 
   return (
     <div style={{ marginBottom: '20px' }}>
@@ -396,6 +431,33 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
               </p>
             )}
           </div>
+        ) : groupedItems ? (
+          // Render agrupado por continentes
+          groupedItems.map((group, gi) => (
+            <div key={group.continent} style={{ marginBottom: gi < groupedItems.length - 1 ? '12px' : '0' }}>
+              <div style={{
+                margin: '8px 4px 6px',
+                padding: '6px 12px',
+                background: `linear-gradient(90deg, ${color}15, transparent)`,
+                borderLeft: `3px solid ${color}`,
+                borderRadius: '4px',
+                fontFamily: "'Verdana', 'Geneva', sans-serif",
+                fontSize: '12px',
+                fontWeight: '700',
+                color: color,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                <span style={{ fontSize: '15px' }}>{CONTINENT_ICONS[group.continent]}</span>
+                <span>{group.continent}</span>
+                <span style={{ opacity: 0.6, fontWeight: '500' }}>· {group.items.length}</span>
+              </div>
+              {group.items.map((item, i) => <NewsCard key={`${group.continent}-${i}`} item={item} index={i} sectionColor={color} type={type} />)}
+            </div>
+          ))
         ) : (
           items.map((item, i) => <NewsCard key={i} item={item} index={i} sectionColor={color} type={type} />)
         )}
@@ -740,7 +802,7 @@ export default function App() {
 
   const intlSections = intlData ? [
     { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 20, type: 'news',
-      descriptor: 'Cobertura global plural · ≥6 regiones · equilibrio IZQ/DER · incluye sentencias relevantes' },
+      descriptor: 'Cobertura global plural · ≥6 regiones · equilibrio IZQ/DER · incluye sentencias relevantes', groupByContinent: true },
     { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 8, type: 'opinion',
       descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto' },
   ] : [];
@@ -1078,7 +1140,7 @@ export default function App() {
         {hasAnyData && (
           <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
             {[...spainNewsSections, ...spainOpinionSections, ...intlSections].map((s, i) => (
-              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} />
+              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} groupByContinent={s.groupByContinent} />
             ))}
           </div>
         )}
