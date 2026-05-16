@@ -3,7 +3,7 @@
 // Modelo: Claude Sonnet 4.6 con web_search (internacional, spainNews) o RSS pre-fetch (spainOpinion).
 
 // ============ MÓDULO RSS PARA OPINIÓN ESPAÑA ============
-// Para evitar limitaciones de web_search en Tier 1 (timeouts, indexación pobre),
+// Para evitar limitaciones de web_search en Tier 2 (timeouts, indexación pobre),
 // pre-fetcheamos los RSS de los 9 medios y pasamos la lista al modelo.
 
 const SPAIN_OPINION_FEEDS = [
@@ -303,6 +303,7 @@ THE OBJECTIVE (búsqueda web theobjective.com "[columnista]" [fecha]):
 - Victoria Carvajal — sábados, economía, ex-El País
 - Maite Rico — varios días, "Sujétame el vermú" martes, directora adjunta
 - Pablo Cambronero → theobjective.com/autor/pablo-cambronero/
+- Juan Luis Cebrián
 
 EL ESPAÑOL (búsqueda web):
 - Cristian Campos
@@ -320,21 +321,13 @@ EL DIARIO:
 
 EL PAÍS (de pago, usar almendron.com como agregador):
 - Estefanía Molina — jueves → almendron.com/tribuna/autor/estefania-molina/
-- Pablo de Lora
-- Juan Luis Cebrián
 
 LA GACETA DE LA IBEROSFERA:
 - Carmen Álvarez Vela → gaceta.es/opinion/
 
 EL DEBATE (búsqueda web eldebate.com/opinion/):
-- Luis Ventoso
-- Mayte Alcaraz
-- Gabriel Albiac
-- Ramón Pérez-Maura
-- Bieito Rubido (director)
 - Juan Carlos Girauta
 - Antonio R. Naranjo
-- Enrique García-Máiquez
 
 ESTRATEGIA DE BÚSQUEDA POR COLUMNISTA:
 1. Para cada columnista que toque ese día de la semana, hacer una búsqueda específica con su nombre + fecha.
@@ -375,7 +368,7 @@ const SECTIONS = {
 
 ${RULES_BASE}
 
-ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas energy, spainNews, spainOpinion ni legal):
+ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas spainNews ni spainOpinion):
 {
   "date": "DD/MM/YYYY",
   "worldOpinion": [
@@ -485,78 +478,10 @@ OUTPUT: solo JSON, sin texto antes ni después:
     },
     maxUses: 12,
   },
-  spainNews: {
-    label: 'Noticias España',
-    system: `Eres mi editor de noticias personal de élite. Tu tarea es buscar en web noticias de España publicadas en las ÚLTIMAS 48H y devolver hasta 15 piezas con eventos concretos del día.
-
-${RULES_BASE}
-
-ESQUEMA JSON EXACTO (devuelve SOLO esta clave, NO incluyas opinión ni nada más):
-{
-  "date": "DD/MM/YYYY",
-  "spainNews": [
-    /* HASTA 15 piezas con evento concreto del día (votación, declaración, sentencia, dato económico, suceso).
-       Fuentes: Vozpópuli, The Objective, Libertad Digital, VilaWeb, El Diario, El Debate, Artículo 14, Agenda Pública, El Confidencial, ABC, El País, El Mundo, La Razón. */
-    {"rank": 1, "title": "...", "summary": "...", "source": "...", "url": "...", "publishedDate": "2026-05-07"}
-  ]
-}`,
-    user: (today, todayFull, requestTime) => `FECHA DE REFERENCIA: ${todayFull || today}
-HORA ACTUAL DE LA PETICIÓN: ${requestTime}
-
-Genera SOLO la parte de NOTICIAS de España (sin opinión) del briefing MAL NEWS con piezas publicadas EN la fecha de referencia (priorizando) o el día anterior:
-- HASTA 15 noticias España con eventos concretos (votaciones, sentencias, datos económicos, declaraciones políticas, sucesos)
-
-REGLAS:
-- Prioriza noticias publicadas EN la fecha de referencia. Solo incluye del día anterior si son eventos relevantes que continúan o si la fecha es temprana.
-- Si la hora actual es temprana (<11:00) y la fecha de referencia es HOY, es esperable encontrar pocas noticias del día - devuelve las que haya, complementa con últimas horas del día anterior si aplica.
-
-CRÍTICO: Si solo encuentras 6 noticias verificables, devuelve 6 - NO rellenes con genéricas.
-
-Si la fecha de referencia es muy antigua (>1 mes), devuelve menos piezas pero con URL real.
-
-Cada pieza debe llevar campo "publishedDate". URLs permalink directos. Devuelve SOLO JSON con la clave spainNews (más date).`,
-    maxUses: 8,
-  },
-
-  spainOpinion: {
-    label: 'Opinión España',
-    system: `Eres mi editor de opinión personal de élite. Tu tarea es buscar en web COLUMNAS FIRMADAS de opinión española publicadas en las ÚLTIMAS 48H y devolver hasta 10 piezas. Esta es LA PARTE MÁS VALIOSA del briefing — busca con esmero columnas de los principales columnistas españoles.
-
-${RULES_BASE}
-
-ESQUEMA JSON EXACTO (devuelve SOLO esta clave, NO incluyas noticias ni nada más):
-{
-  "date": "DD/MM/YYYY",
-  "spainOpinion": [
-    /* HASTA 10 piezas. Columnas FIRMADAS publicadas en la fecha de referencia o el día anterior. NO editoriales sin firma. Máx 3 columnas del mismo medio, mín 5 medios distintos. */
-    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "...", "url": "...", "publishedDate": "2026-05-07"}
-  ]
-}
-
-${COLUMNISTS_GUIDE}`,
-    user: (today, todayFull, requestTime, allowedDates) => {
-      const dateList = (allowedDates && allowedDates.length === 2)
-        ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (fecha de referencia / HOY)\n- ${allowedDates[1]} (día anterior)\n\nCualquier columna con publishedDate distinto a estas dos fechas se RECHAZA. Sin excepción. Sin "del fin de semana", sin "anteayer". Ventana máxima: 48h.\n\nPRIORIDAD DE FRESCURA: dentro de las 48h, prefiere columnas de las últimas 24-36h. Las piezas de HOY son siempre superiores a las de ayer. Solo incluye piezas de ayer si añaden tema único no cubierto por las de hoy.`
-        : '';
-      return `FECHA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
-
-OPINIÓN ESPAÑA. Hasta 10 columnas firmadas, publicadas en una de las 3 fechas aceptadas.
-
-REGLAS:
-- Máx 2 columnas mismo medio · Mín 4 medios distintos
-- Solo firmadas (no editoriales sin autor)
-- publishedDate dentro de fechas aceptadas (rechazar otras)
-- Mejor 4 columnas variadas que 8 de 2 medios
-
-MEDIOS (los únicos): abc.es, vozpopuli.com, theobjective.com, elespanol.com, libertaddigital.com, eldiario.es, elpais.com (+ almendron.com), gaceta.es, eldebate.com
-
-BÚSQUEDA: usa site:medio.com/opinion para 4-5 medios distintos. Visita la página índice si search falla. Consulta COLUMNISTS_GUIDE para nombres por día.
-
-OUTPUT: solo JSON, sin texto:
-{"date":"DD/MM/YYYY","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
-    },
-    maxUses: 6,
-  },
+  // spainNews y spainOpinion usan flujo Plan B (RSS pre-fetch + prompts inline)
+  // No necesitan system/user aquí, solo label para validación de section válida
+  spainNews: { label: 'Noticias España' },
+  spainOpinion: { label: 'Opinión España' },
 };
 
 function extractJson(raw) {
@@ -688,6 +613,38 @@ Tienes a continuación una lista de ${candidates.length} piezas de medios españ
 
 ✅ PERMITIDO devolver MENOS columnas si no hay material fresco suficiente. Mejor 8-10 columnas de calidad fresca que 16 mediocres o de hace 36+ horas.
 
+⭐⭐⭐ COLUMNISTAS PRIORITARIOS A SEGUIR ⭐⭐⭐
+Si en CANDIDATAS aparece una columna firmada por uno de estos autores, DEBES INCLUIRLA (siempre respetando los hard caps por medio). Son los referentes que el usuario quiere ver en su briefing diario:
+
+ABC:
+- John Müller (lunes), Juan Soto Ivars (martes/domingos), Rebeca Argudo, Ignacio Camacho (L-V)
+
+VOZPÓPULI ⭐:
+- Jesús Cacho, Gorka Maneiro, Agustín Valladolid (jueves), Manuel Marín (lunes, director), Isaac Blasco, Rubén Manso, Víctor Lenore, Pablo Cambronero
+
+THE OBJECTIVE ⭐:
+- Guadalupe Sánchez, Antonio Caño, Manuel Arias Maldonado, Álvaro Nieto, Javier Benegas, Ketty Garat, Jorge San Miguel, Pablo de Lora, Manuel Fernández Ordóñez, Victoria Carvajal (sábados), Maite Rico (martes "Sujétame el vermú"), Pablo Cambronero, Juan Luis Cebrián
+
+EL ESPAÑOL:
+- Cristian Campos, Pedro J. Ramírez (domingos), Lorena G. Maldonado, Lorenzo Bernaldo de Quirós (domingos), José Ramón Pin Arboledas
+
+LIBERTAD DIGITAL:
+- Federico Jiménez Losantos (domingos, columna escrita)
+
+EL DIARIO:
+- Ignacio Escolar
+
+EL PAÍS:
+- Estefanía Molina (jueves)
+
+LA GACETA:
+- Carmen Álvarez Vela
+
+EL DEBATE:
+- Juan Carlos Girauta, Antonio R. Naranjo
+
+REGLA IMPORTANTE: si una pieza tiene como author/firma uno de estos nombres, esa columna VA dentro del briefing (respetando los caps por medio). Si la pieza tiene otro autor del mismo medio, la juzgas por su calidad y relevancia.
+
 ⭐ MEDIOS PREFERIDOS DEL USUARIO (orden de prioridad, prioriza los primeros):
 1. Vozpópuli ⭐
 2. Artículo 14 ⭐
@@ -714,11 +671,19 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - ABC: MÁX 2 columnas
    - OK Diario: MÁX 2 columnas
    - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo)
-2.bis PRIORIDADES SUAVES (no obligatorias):
-- Prioriza incluir 2 columnas de Vozpópuli si hay material de calidad.
-- Prioriza incluir 1-2 columnas de elDiario.es e InfoLibre si hay material para equilibrar paleta.
-- Prioriza incluir 1 columna de El País o Agenda Pública si hay material.
-Estas son preferencias, NO obligaciones. Si no hay material adecuado en algún medio, NO lo fuerces.
+2.bis MÍNIMOS OBLIGATORIOS (condicionales — solo aplican si hay material en CANDIDATAS):
+- Si en CANDIDATAS aparece ≥2 items de "Vozpópuli", DEBES incluir mínimo 2 columnas suyas. ⭐
+- Si aparece ≥2 items de "Artículo 14", DEBES incluir mínimo 2 columnas suyas. ⭐
+- Si aparece ≥2 items de "The Objective", DEBES incluir mínimo 2 columnas suyas.
+- Si aparece ≥2 items de "elDiario.es", DEBES incluir mínimo 2 columnas suyas.
+- Si aparece ≥2 items de "InfoLibre", DEBES incluir mínimo 2 columnas suyas.
+- Si aparece ≥1 item de "La Gaceta", DEBES incluir mínimo 1.
+- Si aparece ≥1 item de "Libertad Digital", DEBES incluir mínimo 1.
+- Si aparece ≥1 item de "Agenda Pública" o "El País", DEBES incluir mínimo 1 de cada uno.
+
+REGLA CLAVE: estos mínimos SOLO aplican si hay candidatos suficientes en los RSS. Si Vozpópuli ese día solo tiene 1 columna (o ninguna) en CANDIDATAS, no fuerzas un mínimo de 2.
+
+ESTAS PREFERENCIAS DEL USUARIO TIENEN PRIORIDAD sobre tu criterio editorial de "qué es más relevante". Si una columna de Vozpópuli existe y es válida, va dentro, aunque encuentres otras 3 que te parezcan más interesantes. El usuario quiere SUS medios, no los que tú prefieras.
 3. Selecciona HASTA 16 columnas en total — pero menos si no hay material fresco suficiente.
 4. MÍNIMO 3 medios distintos en el resultado (si hay material para ello).
 5. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
@@ -854,15 +819,15 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
 Tienes a continuación una lista de ${candidates.length} noticias de medios españoles, ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
 
 REGLAS DE SELECCIÓN (en orden de prioridad):
-1. Devuelve las noticias que haya. Si solo hay 5 noticias frescas y relevantes, devuelve 5. No fuerces el cupo.
-2. Selecciona HASTA 15 noticias (puedes devolver menos si la lista es corta).
+1. Devuelve las noticias que haya. Si solo hay 8 noticias frescas y relevantes, devuelve 8. No fuerces el cupo.
+2. Selecciona HASTA 25 noticias (puedes devolver menos si la lista es corta).
 3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos, decisiones gubernamentales, anuncios oficiales, hechos relevantes.
 4. DESCARTA: análisis genéricos, columnas de opinión, contenido evergreen sin actualidad.
-5. IDEAL si hay corpus suficiente: MÁX 3 noticias mismo medio, MÍN 5 medios distintos.
-6. ACEPTABLE si corpus limitado: hasta 3 noticias mismo medio, mín 3 medios distintos.
+5. IDEAL si hay corpus suficiente: MÁX 4 noticias mismo medio, MÍN 7 medios distintos.
+6. ACEPTABLE si corpus limitado: hasta 4 noticias mismo medio, mín 4 medios distintos.
 7. PLURALIDAD: prioriza incluir al menos 1 noticia de El País o elDiario.es o InfoLibre (voces izquierda), y al menos 1 de La Vanguardia (perspectiva catalana) si hay material relevante.
-7.bis BALEARES PRIORITARIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares", "elDiario.es Baleares" o "Economía de Mallorca", PRIORIZA incluir 1 noticia de Baleares. Si no hay material apropiado, no fuerces.
-8. Equilibrio temático: política, economía, sociedad, sucesos.
+7.bis BALEARES PRIORITARIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares", "elDiario.es Baleares" o "Economía de Mallorca", PRIORIZA incluir 1-2 noticias de Baleares. Si no hay material apropiado, no fuerces.
+8. Equilibrio temático: política, economía, sociedad, sucesos, internacional con foco España.
 9. Mejor pocas noticias relevantes y frescas que muchas mediocres o forzadas.
 
 Para cada noticia seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO).
@@ -882,7 +847,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 7000,
+          max_tokens: 10000,
           messages: [{ role: 'user', content: userPrompt }],
           // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
         }),
