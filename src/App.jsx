@@ -49,12 +49,11 @@ function formatCacheAge(timestamp) {
 // ============ FIN CACHE LOCALSTORAGE ============
 
 const RECIPIENT = 'tonipons91@gmail.com';
-const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Tier 1 de Anthropic
+const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Anthropic Tier 2
 
 const BRAND = {
-  // ============ NUEVA PALETA: Oxford Blue + Smoke Gray + 3 gradientes ============
+  // ============ PALETA: Oxford Blue + Smoke Gray + 3 gradientes (teal · lima-dorado · naranja) ============
   oxford: '#1A365D',           // Marca principal (Azul Oxford) - solo logo
-  blueAccent: '#0EA5E9',       // Acento brillante (final del gradiente internacional)
   bgGray: '#F0F4F8',           // Fondo (Gris Humo)
   bgGrayDeep: '#E2E8F0',       // Variante para gradientes sutiles del fondo
   cardWhite: '#FFFFFF',        // Tarjetas blancas
@@ -70,7 +69,6 @@ const BRAND = {
   newsColor: '#C2410C',
 
   // ============ ALIASES PARA RETROCOMPATIBILIDAD ============
-  // (todo el código existente que usa BRAND.navy, BRAND.card, etc. seguirá funcionando)
   navy: '#1A365D',
   navyDeep: '#102844',
   card: '#FFFFFF',
@@ -78,34 +76,12 @@ const BRAND = {
   ink: '#1A365D',
   inkSoft: 'rgba(26, 54, 93, 0.65)',
   orange: '#FA6900',           // Naranja Ciudadanos vivo (usado en decoraciones y botón HOY)
-  limeLight: '#F0F4F8',        // antes sage, ahora bgGray
-  limeDark: '#E2E8F0',         // antes sage dark, ahora bgGray deep
-  // Lean badges (mantenidos)
+  limeLight: '#F0F4F8',        // bgGray alias usado en gradientes decorativos
+  limeDark: '#E2E8F0',         // bgGrayDeep alias
+  // Lean badges (IZQ/DER indicador ideológico en algunas tarjetas)
   leftBlue: '#3B82F6',
   rightRed: '#EF4444',
 };
-
-const SOURCE_COLORS = {
-  BBC: '#FF8B8B', Reuters: '#FFB347', Guardian: '#7DD3FC', FT: '#FBBF77', AP: '#FCA5A5',
-  NYT: '#FCA5A5', 'Le Monde': '#7DD3FC', Economist: '#F87171', WSJ: '#FED7AA', Bloomberg: '#FBBF77',
-  EIA: '#FCD34D', IEA: '#FCD34D', 'S&P': '#FCD34D', Argus: '#FCD34D', tradingeconomics: '#FCD34D',
-  Law360: '#CBD5E1', 'American Lawyer': '#CBD5E1', GCR: '#CBD5E1', MLex: '#CBD5E1',
-  Justia: '#CBD5E1', Aranzadi: '#CBD5E1', 'El Derecho': '#CBD5E1', 'Expansión Jurídico': '#CBD5E1',
-  Vozpópuli: '#FDE68A', 'The Objective': '#FDE68A', 'Libertad Digital': '#FCA5A5',
-  VilaWeb: '#A5F3FC', 'El Diario': '#FCA5A5', 'El Debate': '#FED7AA',
-  'Artículo 14': '#FED7AA', 'Agenda Pública': '#A5F3FC',
-  ABC: '#FCA5A5', Mundo: '#FECACA', 'El País': '#93C5FD', 'El Español': '#FED7AA',
-  'La Gaceta': '#FECACA', almendron: '#93C5FD', enriquedans: '#A5F3FC',
-  default: BRAND.orange,
-};
-
-function getSourceColor(source) {
-  if (!source) return SOURCE_COLORS.default;
-  for (const key in SOURCE_COLORS) {
-    if (source.toLowerCase().includes(key.toLowerCase())) return SOURCE_COLORS[key];
-  }
-  return SOURCE_COLORS.default;
-}
 
 function DiagonalHeader({ dateObj }) {
   const dayNameRaw = dateObj.toLocaleDateString('es-ES', { weekday: 'long' });
@@ -189,18 +165,6 @@ function LeanBadge({ lean }) {
     }}>
       {symbol} {label}
     </span>
-  );
-}
-
-function RegionBadge({ region }) {
-  if (!region) return null;
-  return (
-    <span style={{
-      padding: '2px 7px', borderRadius: '10px',
-      fontSize: '9px', fontWeight: '600', letterSpacing: '0.04em',
-      background: 'rgba(30,58,138,0.08)', color: 'rgba(30,58,138,0.7)',
-      border: '1px solid rgba(30,58,138,0.15)',
-    }}>{region}</span>
   );
 }
 
@@ -491,6 +455,41 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
         ) : (
           items.map((item, i) => <NewsCard key={i} item={item} index={i} sectionColor={color} type={type} />)
         )}
+
+        {/* Panel de diagnóstico de feeds — solo si hay meta y al menos 1 feed con 0 piezas tras filtros */}
+        {meta?.feedDiagnostic && meta.feedDiagnostic.some(d => d.includedAfterCap === 0) && (
+          <details style={{
+            marginTop: '10px', padding: '8px 12px',
+            background: 'rgba(250,105,0,0.06)',
+            border: '1px solid rgba(250,105,0,0.18)',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontFamily: "'Verdana', sans-serif",
+            color: BRAND.navyDeep,
+          }}>
+            <summary style={{ cursor: 'pointer', fontWeight: '700', color: BRAND.orange, letterSpacing: '0.05em' }}>
+              ℹ️ Ver diagnóstico de feeds ({meta.feedDiagnostic.filter(d => d.includedAfterCap === 0).length} sin piezas)
+            </summary>
+            <div style={{ marginTop: '8px' }}>
+              {meta.feedDiagnostic
+                .filter(d => d.includedAfterCap === 0)
+                .map((d, i) => (
+                  <div key={i} style={{ padding: '4px 0', borderBottom: i < meta.feedDiagnostic.filter(d2 => d2.includedAfterCap === 0).length - 1 ? '1px solid rgba(26,54,93,0.08)' : 'none' }}>
+                    <strong style={{ color: BRAND.orange }}>{d.source}</strong>:{' '}
+                    <span style={{ color: 'rgba(26,54,93,0.7)' }}>
+                      {d.rawCount === 0
+                        ? '⚠️ feed vacío o sin respuesta'
+                        : `${d.rawCount} en RSS · ${d.passedDateFilter} en 48h · ${d.passedTimestampFilter} en 36h`
+                      }
+                      {d.hoursAgo !== null && d.hoursAgo !== undefined && (
+                        <em style={{ color: 'rgba(26,54,93,0.5)' }}> · último: hace {d.hoursAgo}h</em>
+                      )}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </details>
+        )}
       </div>
     </div>
   );
@@ -512,7 +511,7 @@ export default function App() {
 
   const [emailStatus, setEmailStatus] = useState('idle');
 
-  // Cooldown global compartido entre los TRES botones - evita el rate_limit_error 429 de Anthropic Tier 1
+  // Cooldown global compartido entre los TRES botones - evita el rate_limit_error 429 de Anthropic Tier 2
   const [nextAllowedAt, setNextAllowedAt] = useState(0);
   const [cooldownLeft, setCooldownLeft] = useState(0);
 
@@ -611,7 +610,7 @@ export default function App() {
   function sendEmail() {
     if (!intlData && !spainNewsData && !spainOpinionData) return;
     const merged = mergeBriefings();
-    const subject = `🕊️ MAL NEWS - Briefing ${todayShort}`;
+    const subject = `🦊 MAL NEWS - Briefing ${todayShort}`;
     const body = buildEmailPlainText(merged);
     const mailtoUrl = `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
@@ -643,23 +642,42 @@ export default function App() {
     }
   }
 
-  // Descarga el briefing como archivo .html en el dispositivo del usuario
-  // El archivo es autocontenido (CSS inline) y se puede abrir, archivar, adjuntar, imprimir
+  // Descarga el briefing como DOS archivos .html en el dispositivo del usuario
+  // 1) mal-news-espana-YYYY-MM-DD.html  → Noticias España + Opinión España
+  // 2) mal-news-internacional-YYYY-MM-DD.html → Mundo + Opinión Internacional
+  // Solo descarga los archivos cuyas secciones tengan al menos 1 pieza
   function downloadHtml() {
     if (!intlData && !spainNewsData && !spainOpinionData) return;
     const merged = mergeBriefings();
-    const html = buildHtml(merged);
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    // Nombre tipo: mal-news-2026-05-09.html
     const safeName = (todayShort || 'briefing').replace(/\//g, '-');
-    a.download = `mal-news-${safeName}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    const triggerDownload = (htmlContent, fileName) => {
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+
+    // 1) Archivo España (si hay material)
+    const hasSpain = (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0) > 0;
+    if (hasSpain) {
+      const htmlSpain = buildHtml(merged, 'spain');
+      triggerDownload(htmlSpain, `mal-news-espana-${safeName}.html`);
+    }
+
+    // 2) Archivo Internacional (si hay material) - retardo para evitar bloqueo del navegador
+    const hasIntl = (merged.worldNews?.length || 0) + (merged.worldOpinion?.length || 0) > 0;
+    if (hasIntl) {
+      setTimeout(() => {
+        const htmlIntl = buildHtml(merged, 'international');
+        triggerDownload(htmlIntl, `mal-news-internacional-${safeName}.html`);
+      }, hasSpain ? 350 : 0);
+    }
   }
 
   function mergeBriefings() {
@@ -667,22 +685,23 @@ export default function App() {
       date: (intlData?.date || spainOpinionData?.date || spainNewsData?.date || todayShort),
       worldNews: intlData?.worldNews || [],
       worldOpinion: intlData?.worldOpinion || [],
-      legal: intlData?.legal || [],
       spainNews: spainNewsData?.spainNews || [],
       spainOpinion: spainOpinionData?.spainOpinion || [],
     };
   }
 
   // Construye HTML formateado y autocontenido (CSS inline para compatibilidad email)
-  function buildHtml(b) {
+  // mode: 'spain' → solo secciones España (Noticias + Opinión)
+  //       'international' → solo Internacional (Mundo + Opinión Intl)
+  //       'all' → briefing completo (legacy, para vista HTML combinada)
+  function buildHtml(b, mode = 'all') {
     const escape = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
     // Mapeo de colores y gradientes por sección (debe coincidir con SECTION_COLORS/SECTION_GRADIENTS de la PWA)
     const SECTION_STYLES = {
-      worldOpinion: { color: '#1D4ED8', gradient: 'linear-gradient(90deg, #1D4ED8, #0EA5E9)' },
-      worldNews:    { color: '#1D4ED8', gradient: 'linear-gradient(90deg, #1D4ED8, #0EA5E9)' },
-      legal:        { color: '#1D4ED8', gradient: 'linear-gradient(90deg, #1D4ED8, #0EA5E9)' },
-      spainOpinion: { color: '#4D7C0F', gradient: 'linear-gradient(90deg, #4D7C0F, #84CC16)' },
+      worldOpinion: { color: '#0F766E', gradient: 'linear-gradient(90deg, #0F766E, #5EEAD4)' },
+      worldNews:    { color: '#0F766E', gradient: 'linear-gradient(90deg, #0F766E, #5EEAD4)' },
+      spainOpinion: { color: '#65A30D', gradient: 'linear-gradient(90deg, #65A30D, #FACC15)' },
       spainNews:    { color: '#C2410C', gradient: 'linear-gradient(90deg, #C2410C, #FA6900)' },
     };
 
@@ -729,20 +748,51 @@ export default function App() {
         </div>`;
     };
 
-    const total = (b.worldOpinion?.length || 0) + (b.worldNews?.length || 0) + (b.legal?.length || 0)
-                + (b.spainOpinion?.length || 0) + (b.spainNews?.length || 0);
+    // Calcular total según modo
+    let total = 0;
+    let sectionsHtml = '';
+    let headerTitle = 'MAL NEWS';
+    let pageSubtitle = '';
+
+    if (mode === 'spain') {
+      total = (b.spainNews?.length || 0) + (b.spainOpinion?.length || 0);
+      headerTitle = 'MAL NEWS · ESPAÑA';
+      pageSubtitle = 'Noticias y opinión nacional';
+      sectionsHtml =
+        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimas 48h', false) +
+        section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true);
+    } else if (mode === 'international') {
+      total = (b.worldNews?.length || 0) + (b.worldOpinion?.length || 0);
+      headerTitle = 'MAL NEWS · INTERNACIONAL';
+      pageSubtitle = 'Mundo y opinión global';
+      sectionsHtml =
+        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · publicadas en últimas 48h · incluye sentencias relevantes', false) +
+        section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true);
+    } else {
+      // mode = 'all' (briefing completo - solo para Vista HTML)
+      total = (b.worldOpinion?.length || 0) + (b.worldNews?.length || 0)
+            + (b.spainOpinion?.length || 0) + (b.spainNews?.length || 0);
+      headerTitle = 'MAL NEWS';
+      pageSubtitle = 'Briefing completo del día';
+      sectionsHtml =
+        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimas 48h', false) +
+        section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true) +
+        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · publicadas en últimas 48h · incluye sentencias relevantes', false) +
+        section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true);
+    }
 
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>MAL NEWS - ${escape(b.date || todayShort)}</title>
+<title>${escape(headerTitle)} - ${escape(b.date || todayShort)}</title>
 <style>
   body { margin:0; padding:24px; background:#F0F4F8; font-family:Verdana,Geneva,sans-serif; color:#1A365D; }
   .container { max-width:820px; margin:0 auto; }
   .header { text-align:center; margin-bottom:28px; padding:24px; background:#FFFFFF; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,0.08); }
-  .logo { font-size:34px; font-weight:800; color:#1A365D; letter-spacing:2px; margin:0; }
-  .date { font-size:12px; letter-spacing:0.3em; color:#1A365D; opacity:0.7; text-transform:uppercase; font-weight:800; margin:8px 0 0; }
+  .logo { font-size:28px; font-weight:800; color:#1A365D; letter-spacing:2px; margin:0; }
+  .subtitle { font-size:13px; font-style:italic; color:rgba(26,54,93,0.7); margin:6px 0 0; }
+  .date { font-size:12px; letter-spacing:0.3em; color:#1A365D; opacity:0.7; text-transform:uppercase; font-weight:800; margin:10px 0 0; }
   .total { font-size:11px; color:#0EA5E9; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
   .footer { text-align:center; margin-top:32px; padding:18px; font-size:10px; color:rgba(26,54,93,0.55); letter-spacing:0.15em; font-style:italic; border-top:1px solid rgba(26,54,93,0.12); }
   .copy-hint { background:#FFFFFF; border:1px solid rgba(26,54,93,0.15); border-radius:10px; padding:14px 18px; margin-bottom:20px; font-size:12px; color:#1A365D; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.05); }
@@ -755,14 +805,12 @@ export default function App() {
       💡 <strong>Copia para email:</strong> Ctrl+A &rarr; Ctrl+C &rarr; pega en Gmail (conserva formato). O imprime con Ctrl+P para PDF.
     </div>
     <div class="header">
-      <h1 class="logo">MAL NEWS</h1>
+      <h1 class="logo">${escape(headerTitle)}</h1>
+      <p class="subtitle">${escape(pageSubtitle)}</p>
       <p class="date">${escape(b.date || todayShort)}</p>
       <p class="total">${total} PIEZAS</p>
     </div>
-    ${section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimas 48h', false)}
-    ${section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true)}
-    ${section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · publicadas en últimas 48h · incluye sentencias relevantes', false)}
-    ${section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true)}
+    ${sectionsHtml}
     <div class="footer">
       MAL NEWS &middot; ${escape(RECIPIENT)} &middot; v3 PWA
     </div>
@@ -809,24 +857,19 @@ export default function App() {
   const merged = mergeBriefings();
   const totalPieces =
     (merged.worldNews?.length || 0) + (merged.worldOpinion?.length || 0) +
-    (merged.legal?.length || 0) +
     (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0);
 
-  // ============ COLORES POR SECCIÓN (Nueva paleta Oxford + gradientes) ============
-  // Mapeo por bucket: las 3 secciones internacionales comparten gradiente azul,
-  // Opinión España usa morado, Noticias España usa rojo-naranja.
+  // ============ COLORES POR SECCIÓN (paleta actual: teal + lima-dorado + naranja) ============
   const SECTION_COLORS = {
-    worldOpinion: BRAND.intlColor,    // Oxford Blue
+    worldOpinion: BRAND.intlColor,    // Teal
     worldNews:    BRAND.intlColor,
-    legal:        BRAND.intlColor,
-    spainOpinion: BRAND.opinionColor, // Morado
-    spainNews:    BRAND.newsColor,    // Rojo
+    spainOpinion: BRAND.opinionColor, // Lima
+    spainNews:    BRAND.newsColor,    // Naranja
   };
   const SECTION_GRADIENTS = {
-    worldOpinion: BRAND.intlGrad,     // azul oxford → azul brillante
+    worldOpinion: BRAND.intlGrad,     // teal oscuro → mint
     worldNews:    BRAND.intlGrad,
-    legal:        BRAND.intlGrad,
-    spainOpinion: BRAND.opinionGrad,  // morado oscuro → lila
+    spainOpinion: BRAND.opinionGrad,  // lima oscuro → dorado
     spainNews:    BRAND.newsGrad,     // rojo → naranja
   };
 
@@ -845,8 +888,10 @@ export default function App() {
   ] : [];
 
   const spainNewsSections = spainNewsData ? [
-    { title: 'España', icon: '🇪🇸', items: spainNewsData.spainNews, color: SECTION_COLORS.spainNews, gradient: SECTION_GRADIENTS.spainNews, count: 15, type: 'news',
-      descriptor: 'Eventos concretos · prensa española · publicadas últimas 48h' },
+    { title: 'España', icon: '🇪🇸', items: spainNewsData.spainNews, color: SECTION_COLORS.spainNews, gradient: SECTION_GRADIENTS.spainNews, count: 25, type: 'news',
+      descriptor: 'Eventos concretos · prensa española · publicadas últimas 48h',
+      note: spainNewsData._note,
+      meta: spainNewsData._meta },
   ] : [];
 
   // Contadores reales devueltos por el API tras cada fetch
@@ -872,7 +917,7 @@ export default function App() {
     if (spainNewsStatus === 'loading') return 'Buscando noticias España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainNewsStatus === 'done') return `🔄 Recargar noticias España (${realSpainNewsCount})`;
-    return '🇪🇸 Noticias España (hasta 15)';
+    return '🇪🇸 Noticias España (hasta 25)';
   })();
 
   const hasAnyData = intlData || spainNewsData || spainOpinionData;
@@ -1107,24 +1152,24 @@ export default function App() {
         {/* Mensajes de loading individuales */}
         {intlStatus === 'loading' && (
           <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            🌍 Buscando 24 piezas internacionales...
+            🌍 Buscando 28 piezas internacionales...
           </p>
         )}
         {spainOpinionStatus === 'loading' && (
           <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            ✍️ Buscando 10 columnas de opinión España...
+            ✍️ Buscando 16 columnas de opinión España...
           </p>
         )}
         {spainNewsStatus === 'loading' && (
           <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            🇪🇸 Buscando 10 noticias España...
+            🇪🇸 Buscando 25 noticias España...
           </p>
         )}
 
         {/* Mensaje de cooldown activo cuando NO hay carga en marcha */}
         {isInCooldown && !anyLoading && (
           <p style={{ textAlign: 'center', color: 'rgba(30,58,138,0.65)', fontSize: '11px', marginBottom: '8px', fontStyle: 'italic' }}>
-            ⏳ Esperando {cooldownLeft}s antes de poder hacer otra llamada (rate limit Anthropic Tier 1)
+            ⏳ Esperando {cooldownLeft}s antes de poder hacer otra llamada (rate limit Anthropic Tier 2)
           </p>
         )}
 
@@ -1173,12 +1218,56 @@ export default function App() {
 
         {!hasAnyData && intlStatus === 'idle' && spainOpinionStatus === 'idle' && spainNewsStatus === 'idle' && (
           <div style={{ textAlign: 'center', padding: '32px 20px 12px', color: 'rgba(30,58,138,0.75)' }}>
-            <div style={{ fontSize: '44px', marginBottom: '10px', opacity: 0.55, animation: 'float 3s ease-in-out infinite' }}>🕊️</div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px', animation: 'float 4s ease-in-out infinite' }}>
+              <svg width="130" height="130" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+                <g transform="translate(150,150)">
+                  {/* ZORRO ORIGAMI MINIMAL — 10 facetas plegadas */}
+
+                  {/* Mitad izquierda - tonos cálidos */}
+                  <polygon points="0,-90 -75,-30 -50,0" fill="#FB923C"/>
+                  <polygon points="-75,-30 -50,0 -65,40" fill="#DC2626"/>
+                  <polygon points="-50,0 -65,40 -25,55" fill="#EC4899"/>
+                  <polygon points="-25,55 0,80 -65,40" fill="#7E22CE"/>
+
+                  {/* Mitad derecha - tonos fríos */}
+                  <polygon points="0,-90 75,-30 50,0" fill="#FACC15"/>
+                  <polygon points="75,-30 50,0 65,40" fill="#06B6D4"/>
+                  <polygon points="50,0 65,40 25,55" fill="#3B82F6"/>
+                  <polygon points="25,55 0,80 65,40" fill="#0F766E"/>
+
+                  {/* Centro: plano blanco sutil */}
+                  <polygon points="0,-90 -50,0 0,80 50,0" fill="#FAFAFA" opacity="0.85"/>
+
+                  {/* Contorno completo del origami */}
+                  <polyline points="0,-90 -75,-30 -50,0 -65,40 -25,55 0,80 25,55 65,40 50,0 75,-30 0,-90"
+                            fill="none" stroke="#1A365D" strokeWidth="2.5" strokeLinejoin="round"/>
+
+                  {/* Líneas de pliegue interiores */}
+                  <line x1="0" y1="-90" x2="-50" y2="0" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
+                  <line x1="0" y1="-90" x2="50" y2="0" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
+                  <line x1="-50" y1="0" x2="0" y2="80" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
+                  <line x1="50" y1="0" x2="0" y2="80" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
+                  <line x1="-75" y1="-30" x2="-65" y2="40" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
+                  <line x1="75" y1="-30" x2="65" y2="40" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
+
+                  {/* Orejas como pliegues triangulares pequeños */}
+                  <polygon points="-40,-60 -65,-105 -20,-75" fill="#7E22CE" stroke="#1A365D" strokeWidth="1.5"/>
+                  <polygon points="40,-60 65,-105 20,-75" fill="#0F766E" stroke="#1A365D" strokeWidth="1.5"/>
+
+                  {/* Ojos diminutos: solo 2 puntos */}
+                  <circle cx="-15" cy="-15" r="3.5" fill="#1A365D"/>
+                  <circle cx="15" cy="-15" r="3.5" fill="#1A365D"/>
+
+                  {/* Nariz: triangulito */}
+                  <polygon points="-5,15 5,15 0,25" fill="#1A365D"/>
+                </g>
+              </svg>
+            </div>
             <p style={{ fontSize: '13px', margin: 0, fontFamily: "'Verdana', 'Geneva', sans-serif", fontStyle: 'italic' }}>
               Pulsa los botones para generar cada sección
             </p>
             <p style={{ fontSize: '11px', margin: '8px 0 0', color: 'rgba(30,58,138,0.55)' }}>
-              Internacional: 8 opinión + 20 mundo · Opinión España: 16 · Noticias España: 15
+              Internacional: 8 opinión + 20 mundo · Opinión España: 16 · Noticias España: 25
             </p>
           </div>
         )}
