@@ -1317,54 +1317,171 @@ export default function App() {
           <DiagonalHeader dateObj={dateObj} />
         </div>
 
-        {/* Selector de fecha del briefing */}
-        <div style={{
-          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px',
-          marginBottom: '14px', flexWrap: 'wrap',
-          background: 'rgba(255,255,255,0.55)',
-          border: `1px solid ${BRAND.navy}25`,
-          borderRadius: '8px',
-          padding: '10px 14px',
-          boxShadow: '0 2px 8px rgba(30,58,138,0.06)',
-        }}>
-          <span style={{ fontSize: '11px', color: BRAND.navyDeep, fontWeight: '700', letterSpacing: '0.05em' }}>
-            📅 FECHA DEL BRIEFING:
-          </span>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            max={todayIso}
-            disabled={isInCooldown || anyLoading}
-            style={{
-              fontFamily: "'Verdana', 'Geneva', sans-serif",
-              fontSize: '12px',
-              padding: '4px 8px',
-              border: `1px solid ${BRAND.navy}40`,
-              borderRadius: '6px',
-              color: BRAND.ink,
-              background: 'white',
-              cursor: 'pointer',
-              fontWeight: '600',
-            }}
-          />
-          {isPastDate && (
-            <button
-              onClick={() => setSelectedDate(todayIso)}
-              disabled={isInCooldown || anyLoading}
-              style={{
-                fontFamily: "'Verdana', 'Geneva', sans-serif",
-                fontSize: '10px', fontWeight: '700',
-                padding: '4px 10px', borderRadius: '6px',
-                border: `1px solid ${BRAND.orange}`,
-                background: 'transparent', color: BRAND.orange,
-                cursor: 'pointer', letterSpacing: '0.05em',
-              }}
-            >
-              ↻ HOY
-            </button>
-          )}
-        </div>
+        {/* Selector de fecha del briefing - R3 Diseño · círculo calendario + card */}
+        {(() => {
+          const d = new Date(selectedDate + 'T12:00:00');
+          const dayNum = d.getDate();
+          const monthShort = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'][d.getMonth()];
+          const fullDateStr = d.toLocaleDateString('es-ES', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+          });
+          const disabled = isInCooldown || anyLoading;
+
+          return (
+            <div style={{
+              display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '14px',
+              marginBottom: '14px', flexWrap: 'wrap',
+            }}>
+              {/* Círculo con día y mes - clickable (abre date picker nativo) */}
+              <label style={{
+                position: 'relative',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.6 : 1,
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #1A365D, #0A4D3A)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  boxShadow: '0 6px 20px rgba(26,54,93,0.3)',
+                  position: 'relative',
+                  transition: 'transform 0.15s ease',
+                }}>
+                  {/* Tira amarilla decorativa estilo "page binding" */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '9px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '26px',
+                    height: '3px',
+                    background: '#FACC15',
+                    borderRadius: '2px',
+                  }} />
+                  <div style={{
+                    fontFamily: 'Georgia, serif',
+                    fontStyle: 'italic',
+                    fontSize: '24px',
+                    fontWeight: '800',
+                    lineHeight: 1,
+                    marginTop: '7px',
+                  }}>
+                    {dayNum}
+                  </div>
+                  <div style={{
+                    fontSize: '8.5px',
+                    fontWeight: '800',
+                    letterSpacing: '0.14em',
+                    opacity: 0.9,
+                    marginTop: '3px',
+                  }}>
+                    {monthShort}
+                  </div>
+                </div>
+                {/* Input invisible que cubre el círculo - abre el date picker nativo al pulsar */}
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  max={todayIso}
+                  disabled={disabled}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    opacity: 0,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    border: 'none',
+                    background: 'transparent',
+                  }}
+                />
+              </label>
+
+              {/* Card a la derecha con la fecha completa - también clickable */}
+              <label style={{
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                position: 'relative',
+              }}>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  background: 'white',
+                  padding: '12px 20px',
+                  borderRadius: '14px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+                  borderLeft: '4px solid #0A4D3A',
+                  opacity: disabled ? 0.6 : 1,
+                }}>
+                  <div style={{
+                    fontSize: '9px',
+                    fontWeight: '800',
+                    letterSpacing: '0.16em',
+                    color: '#0A4D3A',
+                    marginBottom: '3px',
+                  }}>
+                    📅 BRIEFING DEL
+                  </div>
+                  <div style={{
+                    fontFamily: 'Georgia, serif',
+                    fontStyle: 'italic',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    color: '#1A365D',
+                    lineHeight: 1.2,
+                  }}>
+                    {fullDateStr}
+                  </div>
+                </div>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  max={todayIso}
+                  disabled={disabled}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    opacity: 0,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    border: 'none',
+                    background: 'transparent',
+                  }}
+                />
+              </label>
+
+              {/* Botón volver a hoy - solo si fecha pasada */}
+              {isPastDate && (
+                <button
+                  onClick={() => setSelectedDate(todayIso)}
+                  disabled={disabled}
+                  style={{
+                    fontFamily: "'Verdana', 'Geneva', sans-serif",
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    border: `2px solid ${BRAND.orange}`,
+                    background: 'white',
+                    color: BRAND.orange,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    letterSpacing: '0.08em',
+                    boxShadow: '0 2px 8px rgba(250,105,0,0.15)',
+                  }}
+                >
+                  ↻ HOY
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {isPastDate && (
           <p style={{ textAlign: 'center', color: BRAND.inkSoft, fontSize: '10px', marginBottom: '10px', fontStyle: 'italic' }}>
@@ -1628,7 +1745,7 @@ export default function App() {
             <p style={{ fontSize: '13px', margin: 0, fontFamily: "'Verdana', 'Geneva', sans-serif", fontStyle: 'italic' }}>
               Pulsa los botones para generar cada sección
             </p>
-            <p style={{ fontSize: '11px', margin: '8px 0 0', color: 'rgba(30,58,138,0.55)' }}>
+            <p style={{ fontSize: '14px', margin: '12px 0 0', color: '#65A30D', fontWeight: '700', letterSpacing: '0.02em', fontFamily: "'Verdana', 'Geneva', sans-serif" }}>
               Internacional: 8 opinión + 20 mundo · Opinión España: 16 · Noticias España: 25
             </p>
           </div>
