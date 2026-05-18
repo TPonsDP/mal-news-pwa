@@ -177,155 +177,232 @@ function getDayOfWeek(isoDate) {
   } catch (_) { return ''; }
 }
 
+// ============================================================
+// PALETA DE COLORES POR MEDIO — para badge de fuente en tarjetas
+// ============================================================
+const SOURCE_BADGE_COLORS = {
+  // España opinión
+  'Vozpópuli': '#E63946',
+  'The Objective': '#1A1A1A',
+  'El País': '#D32F2F',
+  'elDiario.es': '#DC2626',
+  'ABC': '#9B2335',
+  'El Español': '#ED1C24',
+  'InfoLibre': '#047857',
+  'La Gaceta': '#991B1B',
+  'Libertad Digital': '#7E22CE',
+  'El Debate': '#D97706',
+  'Artículo 14': '#4A5568',
+  'Agenda Pública': '#0F766E',
+  'almendron': '#FB923C',
+  'El Blog Salmón': '#16A34A',
+  // España noticias adicionales
+  'El Mundo': '#C8102E',
+  'OK Diario Baleares': '#F59E0B',
+  'OK Diario': '#F59E0B',
+  'elDiario.es Baleares': '#DC2626',
+  'Economía de Mallorca': '#0F766E',
+  'La Vanguardia': '#1A365D',
+  'Crónica Global': '#475569',
+  // Internacional
+  'NYT': '#000000', 'New York Times': '#000000',
+  'WSJ': '#1A1A1A', 'Wall Street Journal': '#1A1A1A',
+  'FT': '#990F3D', 'Financial Times': '#990F3D',
+  'Guardian': '#052962', 'The Guardian': '#052962',
+  'BBC': '#BB1919',
+  'Reuters': '#FF8000',
+  'AP': '#000000', 'Associated Press': '#000000',
+  'Bloomberg': '#FA0000',
+  'Economist': '#E3120B', 'The Economist': '#E3120B',
+  'Le Monde': '#003366',
+  'Hindu': '#1F3864', 'The Hindu': '#1F3864',
+  'Times of Israel': '#0F4C81',
+  'Haaretz': '#103D6E',
+  'Politico': '#E11D48',
+  'Atlantic': '#0F2D52', 'The Atlantic': '#0F2D52',
+  'Washington Post': '#0E1828', 'WaPo': '#0E1828',
+};
+
+function getSourceColor(source) {
+  if (!source) return '#1A365D';
+  // Buscar match parcial (case insensitive)
+  const sourceL = source.toLowerCase();
+  for (const key in SOURCE_BADGE_COLORS) {
+    if (sourceL.includes(key.toLowerCase())) {
+      return SOURCE_BADGE_COLORS[key];
+    }
+  }
+  return '#1A365D'; // fallback navy
+}
+
+// Calcula tiempo de lectura en minutos basado en title + summary
+// Aproximación: 1000 caracteres ≈ 1 minuto de lectura cómoda
+function calculateReadTime(item) {
+  const text = `${item.title || ''} ${item.summary || ''}`;
+  const chars = text.length;
+  const minutes = Math.max(1, Math.ceil(chars / 1000));
+  return minutes;
+}
+
+// Formatea fecha como "LUN 18 MAY"
+function formatDateBadge(isoDate) {
+  if (!isoDate) return '';
+  try {
+    const d = new Date(isoDate + 'T12:00:00');
+    const dayNames = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
+    const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+    return `${dayNames[d.getDay()]} ${d.getDate()} ${monthNames[d.getMonth()]}`;
+  } catch (_) {
+    return '';
+  }
+}
+
 function NewsCard({ item, index, sectionColor, type }) {
   const isOpinion = type === 'opinion';
-  const dayOfWeek = getDayOfWeek(item.publishedDate);
-
-  // Variante OPINION simplificada: titulo + 2 lineas resumen + autor.medio.dia
-  if (isOpinion) {
-    const meta = [item.author, item.source, dayOfWeek].filter(Boolean).join(' \u00B7 ');
-
-    return (
-      <div style={{
-        background: BRAND.card,
-        borderLeft: `4px solid ${sectionColor}`,
-        borderRadius: '0 8px 8px 0',
-        padding: '12px 16px',
-        marginBottom: '6px',
-        boxShadow: BRAND.shadow,
-        animation: `fadeSlide 0.35s ease ${Math.min(index * 0.03, 0.5)}s both`,
-      }}>
-        {/* Titulo (clickable si hay URL) */}
-        {item.url ? (
-          <a href={item.url} target="_blank" rel="noopener noreferrer"
-            style={{ textDecoration: 'none', color: 'inherit' }}>
-            <h3 style={{
-              margin: '0 0 5px',
-              fontSize: '14px',
-              fontFamily: "'Verdana', 'Geneva', sans-serif",
-              fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
-              cursor: 'pointer',
-            }}>
-              {item.title}
-            </h3>
-          </a>
-        ) : (
-          <h3 style={{
-            margin: '0 0 5px',
-            fontSize: '14px',
-            fontFamily: "'Verdana', 'Geneva', sans-serif",
-            fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
-          }}>
-            {item.title}
-          </h3>
-        )}
-
-        {/* Resumen recortado a 2 lineas */}
-        {item.summary && (
-          <p style={{
-            margin: '0 0 6px', fontSize: '11.5px',
-            color: BRAND.inkSoft, lineHeight: 1.45,
-            fontFamily: "'Verdana', 'Geneva', sans-serif",
-            fontStyle: 'italic',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}>
-            {item.summary}
-          </p>
-        )}
-
-        {/* autor . medio . dia + link leer */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px',
-          fontSize: '10.5px', color: BRAND.navyDeep, fontWeight: '700',
-          letterSpacing: '0.02em',
-          fontFamily: "'Verdana', 'Geneva', sans-serif",
-        }}>
-          <span style={{ opacity: 0.85 }}>{meta}</span>
-          {item.url && (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: sectionColor,
-                textDecoration: 'none',
-                borderBottom: `1px dotted ${sectionColor}`,
-                fontWeight: '700',
-                fontSize: '10.5px',
-                whiteSpace: 'nowrap',
-                marginLeft: '8px',
-              }}
-            >
-              leer →
-            </a>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Variante NEWS (original con linea de byline, lean badge, etc.)
-  let byline = '';
-  const parts = [item.source].filter(Boolean);
-  if (item.region) parts.push(item.region);
-  if (dayOfWeek) parts.push(dayOfWeek);
-  byline = parts.join(' \u00B7 ');
+  const sourceColor = getSourceColor(item.source);
+  const dateBadge = formatDateBadge(item.publishedDate);
+  const readTime = calculateReadTime(item);
 
   return (
     <div style={{
       background: BRAND.card,
       borderLeft: `4px solid ${sectionColor}`,
       borderRadius: '0 8px 8px 0',
-      padding: '12px 16px',
+      padding: '12px 14px',
       marginBottom: '6px',
       boxShadow: BRAND.shadow,
       animation: `fadeSlide 0.35s ease ${Math.min(index * 0.03, 0.5)}s both`,
     }}>
-      {/* Linea de byline */}
+      {/* TOP ROW · Badges de medio + fecha + tiempo lectura + lean */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
-        fontSize: '11px', color: BRAND.navyDeep, fontWeight: '700',
-        letterSpacing: '0.02em', marginBottom: '6px',
-        fontFamily: "'Verdana', 'Geneva', sans-serif",
+        marginBottom: '8px',
       }}>
-        <span style={{ flex: 1, minWidth: 0 }}>{byline}</span>
-        <LeanBadge lean={item.lean} />
-      </div>
-
-      {/* Titulo */}
-      <h3 style={{
-        margin: '0 0 4px',
-        fontSize: '13px',
-        fontFamily: "'Verdana', 'Geneva', sans-serif",
-        fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
-      }}>
-        {item.title}
-      </h3>
-
-      {/* Resumen */}
-      <p style={{
-        margin: '0 0 6px', fontSize: '11.5px',
-        color: BRAND.inkSoft, lineHeight: 1.5,
-        fontFamily: "'Verdana', 'Geneva', sans-serif",
-      }}>
-        {item.summary}
-      </p>
-
-      {/* Footer */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '9.5px', color: BRAND.inkSoft, opacity: 0.75 }}>
-        {item.publishedDate && (
-          <span style={{ fontFamily: "'Verdana', 'Geneva', sans-serif", fontStyle: 'italic' }}>
-            {item.publishedDate}
+        {/* Badge medio (color del medio) */}
+        {item.source && (
+          <span style={{
+            background: sourceColor,
+            color: 'white',
+            fontSize: '9px',
+            fontWeight: '800',
+            letterSpacing: '0.08em',
+            padding: '3px 8px',
+            borderRadius: '4px',
+            fontFamily: "'Verdana', 'Geneva', sans-serif",
+            textTransform: 'uppercase',
+          }}>
+            {item.source}
           </span>
         )}
+
+        {/* Badge fecha */}
+        {dateBadge && (
+          <span style={{
+            background: 'rgba(26,54,93,0.08)',
+            color: 'rgba(26,54,93,0.75)',
+            fontSize: '9px',
+            fontWeight: '700',
+            letterSpacing: '0.08em',
+            padding: '3px 8px',
+            borderRadius: '4px',
+            fontFamily: "'Verdana', 'Geneva', sans-serif",
+          }}>
+            {dateBadge}
+          </span>
+        )}
+
+        {/* Badge tiempo de lectura */}
+        <span style={{
+          background: 'rgba(250,105,0,0.10)',
+          color: '#C2410C',
+          fontSize: '9px',
+          fontWeight: '700',
+          letterSpacing: '0.04em',
+          padding: '3px 8px',
+          borderRadius: '4px',
+          fontFamily: "'Verdana', 'Geneva', sans-serif",
+        }}>
+          {readTime} min
+        </span>
+
+        {/* Lean badge (solo si existe) - empujado a la derecha */}
+        {item.lean && (
+          <span style={{ marginLeft: 'auto' }}>
+            <LeanBadge lean={item.lean} />
+          </span>
+        )}
+      </div>
+
+      {/* Título (clickable si hay URL) */}
+      {item.url ? (
+        <a href={item.url} target="_blank" rel="noopener noreferrer"
+          style={{ textDecoration: 'none', color: 'inherit' }}>
+          <h3 style={{
+            margin: '0 0 5px',
+            fontSize: isOpinion ? '14px' : '13px',
+            fontFamily: "'Verdana', 'Geneva', sans-serif",
+            fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
+            cursor: 'pointer',
+          }}>
+            {item.title}
+          </h3>
+        </a>
+      ) : (
+        <h3 style={{
+          margin: '0 0 5px',
+          fontSize: isOpinion ? '14px' : '13px',
+          fontFamily: "'Verdana', 'Geneva', sans-serif",
+          fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
+        }}>
+          {item.title}
+        </h3>
+      )}
+
+      {/* Resumen */}
+      {item.summary && (
+        <p style={{
+          margin: '0 0 6px', fontSize: '11.5px',
+          color: BRAND.inkSoft, lineHeight: 1.5,
+          fontFamily: "'Verdana', 'Geneva', sans-serif",
+          fontStyle: isOpinion ? 'italic' : 'normal',
+          display: '-webkit-box',
+          WebkitLineClamp: isOpinion ? 2 : 3,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}>
+          {item.summary}
+        </p>
+      )}
+
+      {/* Footer · autor (si opinion) + link "leer" */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        gap: '8px', fontSize: '10.5px', color: BRAND.navyDeep,
+        fontFamily: "'Verdana', 'Geneva', sans-serif",
+      }}>
+        <span style={{
+          fontWeight: '700',
+          fontStyle: 'italic',
+          opacity: 0.8,
+        }}>
+          {isOpinion && item.author && `— ${item.author}`}
+          {!isOpinion && item.region && item.region}
+        </span>
         {item.url && (
-          <a href={item.url} target="_blank" rel="noopener noreferrer"
-            style={{ fontSize: '10px', color: sectionColor, textDecoration: 'none', borderBottom: `1px dotted ${sectionColor}80`, fontWeight: '700', marginLeft: 'auto' }}>
-            leer
+          <a
+            href={item.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: sectionColor,
+              textDecoration: 'none',
+              borderBottom: `1px dotted ${sectionColor}`,
+              fontWeight: '700',
+              fontSize: '10.5px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            leer →
           </a>
         )}
       </div>
@@ -812,41 +889,49 @@ export default function App() {
   //       'international' → solo Internacional (Mundo + Opinión Intl)
   //       'all' → briefing completo (legacy, para vista HTML combinada)
   // ===================================================
-  // FORMATO DINÁMICO: cuándo se recomienda el próximo briefing
-  // Camino 2 (sesión única) — un solo momento al día para los 3 botones
+  // FORMATO DINÁMICO · 2 HORARIOS INDEPENDIENTES
+  // España: optimizado para columnas firmadas españolas
+  // Internacional: optimizado para pico US + LATAM
   // ===================================================
-  const BRIEFING_SCHEDULE = {
-    // 0 = domingo, 1 = lunes, ..., 6 = sábado
+  const SCHEDULE_SPAIN = {
     1: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
     2: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
     3: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
-    4: { hour: 19, minute: 0,  label: 'Estefanía Molina y Agustín Valladolid hoy' },
+    4: { hour: 19, minute: 0,  label: 'Día de Estefanía Molina y Agustín Valladolid' },
     5: { hour: 19, minute: 0,  label: 'Cierra la semana laboral' },
     6: { hour: 12, minute: 0,  label: 'Mañana relajada de sábado' },
     0: { hour: 19, minute: 0,  label: 'Domingo completo · FJL, Pedro J., Cebrián' },
   };
 
-  function calculateNextBriefing() {
+  const SCHEDULE_INTL = {
+    1: { hour: 21, minute: 30, label: 'Pico US business · LATAM activo' },
+    2: { hour: 21, minute: 30, label: 'Pico US business · LATAM activo' },
+    3: { hour: 21, minute: 30, label: 'Pico US business · LATAM activo' },
+    4: { hour: 21, minute: 30, label: 'US tarde · Europa cerrada · LATAM peak' },
+    5: { hour: 21, minute: 30, label: 'Cierre semanal · setup de fin de semana US' },
+    6: { hour: 18, minute: 0,  label: 'US Saturday cycle · LATAM despertando' },
+    0: { hour: 18, minute: 30, label: 'NYT Sunday Review · WSJ Weekend · análisis dominical' },
+  };
+
+  function calculateNextBriefingForSchedule(schedule) {
     const now = new Date();
     const currentDay = now.getDay();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
 
-    const todaySchedule = BRIEFING_SCHEDULE[currentDay];
+    const todaySchedule = schedule[currentDay];
     const todayMinutes = todaySchedule.hour * 60 + todaySchedule.minute;
     const nowMinutes = currentHour * 60 + currentMinute;
 
     let targetDay = currentDay;
     let targetDate = new Date(now);
 
-    // Si todavía no ha pasado la hora de hoy, recomendar hoy
-    // Si ya pasó, recomendar mañana
     if (nowMinutes >= todayMinutes) {
       targetDay = (currentDay + 1) % 7;
       targetDate.setDate(targetDate.getDate() + 1);
     }
 
-    const targetSchedule = BRIEFING_SCHEDULE[targetDay];
+    const targetSchedule = schedule[targetDay];
     const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
     const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
@@ -857,6 +942,13 @@ export default function App() {
       hour: String(targetSchedule.hour).padStart(2, '0'),
       minute: String(targetSchedule.minute).padStart(2, '0'),
       label: targetSchedule.label,
+    };
+  }
+
+  function calculateNextBriefing() {
+    return {
+      spain: calculateNextBriefingForSchedule(SCHEDULE_SPAIN),
+      international: calculateNextBriefingForSchedule(SCHEDULE_INTL),
     };
   }
 
@@ -880,19 +972,38 @@ export default function App() {
     };
 
     const card = (item, color, isOpinion) => {
-      const meta = isOpinion
-        ? [item.author, item.source, getDay(item.publishedDate)].filter(Boolean).join(' &middot; ')
-        : [item.source, item.region, getDay(item.publishedDate)].filter(Boolean).join(' &middot; ');
+      const sourceColor = getSourceColor(item.source);
+      const dateBadge = formatDateBadge(item.publishedDate);
+      const readTime = calculateReadTime(item);
       const summaryStyle = isOpinion ? 'font-style:italic;' : '';
       const link = item.url
-        ? `<div style="margin-top:6px;font-size:11px;"><a href="${escape(item.url)}" style="color:${color};text-decoration:none;border-bottom:1px dotted ${color};font-weight:700;">leer &rarr;</a></div>`
+        ? `<a href="${escape(item.url)}" style="color:${color};text-decoration:none;border-bottom:1px dotted ${color};font-weight:700;font-size:10.5px;white-space:nowrap;">leer &rarr;</a>`
         : '';
+      const sourceBadge = item.source
+        ? `<span style="background:${sourceColor};color:white;font-size:9px;font-weight:800;letter-spacing:0.08em;padding:3px 8px;border-radius:4px;text-transform:uppercase;">${escape(item.source)}</span>`
+        : '';
+      const dateBadgeHtml = dateBadge
+        ? `<span style="background:rgba(26,54,93,0.08);color:rgba(26,54,93,0.75);font-size:9px;font-weight:700;letter-spacing:0.08em;padding:3px 8px;border-radius:4px;">${escape(dateBadge)}</span>`
+        : '';
+      const readBadge = `<span style="background:rgba(250,105,0,0.10);color:#C2410C;font-size:9px;font-weight:700;letter-spacing:0.04em;padding:3px 8px;border-radius:4px;">${readTime} min</span>`;
+      const footerText = isOpinion && item.author
+        ? `<span style="font-weight:700;font-style:italic;opacity:0.8;">&mdash; ${escape(item.author)}</span>`
+        : !isOpinion && item.region
+        ? `<span style="font-weight:700;font-style:italic;opacity:0.8;">${escape(item.region)}</span>`
+        : '<span></span>';
       return `
-        <div style="background:#FFFFFF;border-left:4px solid ${color};border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:Verdana,Geneva,sans-serif;">
-          <div style="font-size:13px;font-weight:700;color:#1A365D;line-height:1.3;margin-bottom:4px;">${escape(item.title)}</div>
-          <div style="font-size:11.5px;color:rgba(26,54,93,0.72);line-height:1.45;${summaryStyle}margin-bottom:5px;">${escape(item.summary)}</div>
-          <div style="font-size:10.5px;color:rgba(26,54,93,0.85);font-weight:700;">${meta}</div>
-          ${link}
+        <div style="background:#FFFFFF;border-left:4px solid ${color};border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:Verdana,Geneva,sans-serif;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+            ${sourceBadge}
+            ${dateBadgeHtml}
+            ${readBadge}
+          </div>
+          <div style="font-size:${isOpinion ? '14px' : '13px'};font-weight:700;color:#1A365D;line-height:1.3;margin-bottom:5px;">${escape(item.title)}</div>
+          <div style="font-size:11.5px;color:rgba(26,54,93,0.72);line-height:1.5;${summaryStyle}margin-bottom:6px;">${escape(item.summary)}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;color:#1A365D;">
+            ${footerText}
+            ${link}
+          </div>
         </div>`;
     };
 
@@ -962,14 +1073,26 @@ export default function App() {
   .date { font-size:12px; letter-spacing:0.3em; color:#1A365D; opacity:0.7; text-transform:uppercase; font-weight:800; margin:10px 0 0; }
   .total { font-size:11px; color:#0EA5E9; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
   .footer { text-align:center; margin-top:32px; padding:18px; font-size:10px; color:rgba(26,54,93,0.55); letter-spacing:0.15em; font-style:italic; border-top:1px solid rgba(26,54,93,0.12); }
-  .next-briefing { background:linear-gradient(135deg, #FFF7ED, #FFEDD5); border:2px solid rgba(250,105,0,0.3); border-radius:14px; padding:20px 24px; margin:32px 0 0; text-align:center; box-shadow:0 4px 16px rgba(250,105,0,0.12); }
-  .next-briefing-label { font-size:10px; font-weight:800; letter-spacing:0.18em; color:#C2410C; margin-bottom:8px; }
-  .next-briefing-date { font-family:Georgia,serif; font-style:italic; font-size:20px; font-weight:700; color:#1A365D; margin:4px 0 6px; }
-  .next-briefing-reason { font-size:11px; font-style:italic; color:rgba(26,54,93,0.7); margin-bottom:14px; }
-  .next-briefing-schedule { border-top:1px dashed rgba(250,105,0,0.25); padding-top:12px; margin-top:8px; }
-  .schedule-title { font-size:10px; font-weight:800; letter-spacing:0.12em; color:#1A365D; margin-bottom:8px; opacity:0.7; }
-  .schedule-row { display:flex; justify-content:space-between; font-size:11px; color:#1A365D; padding:3px 16px; }
-  .schedule-row em { font-style:italic; color:rgba(26,54,93,0.5); font-size:10px; }
+  .next-briefing { background:#FAFBFC; border-radius:14px; padding:20px 22px; margin:32px 0 0; box-shadow:0 4px 16px rgba(0,0,0,0.05); border:1px solid rgba(26,54,93,0.08); }
+  .next-briefing-label { text-align:center; font-size:10px; font-weight:800; letter-spacing:0.18em; color:#1A365D; margin-bottom:14px; opacity:0.75; }
+  .schedule-card { display:flex; gap:14px; align-items:center; padding:14px 16px; border-radius:10px; margin-bottom:10px; }
+  .spain-card { background:linear-gradient(135deg, rgba(101,163,13,0.10), rgba(250,204,21,0.15)); border-left:4px solid #C2410C; }
+  .intl-card { background:linear-gradient(135deg, rgba(15,118,110,0.10), rgba(94,234,212,0.15)); border-left:4px solid #0F766E; }
+  .card-icon { font-size:32px; flex-shrink:0; }
+  .card-body { flex:1; }
+  .card-title { font-size:10px; font-weight:800; letter-spacing:0.16em; color:#1A365D; margin-bottom:3px; opacity:0.7; }
+  .spain-card .card-title { color:#C2410C; opacity:1; }
+  .intl-card .card-title { color:#0F766E; opacity:1; }
+  .card-time { font-family:Georgia,serif; font-style:italic; font-size:17px; font-weight:700; color:#1A365D; margin-bottom:3px; line-height:1.2; }
+  .card-reason { font-size:10.5px; font-style:italic; color:rgba(26,54,93,0.65); line-height:1.3; }
+  .next-briefing-schedule { border-top:1px dashed rgba(26,54,93,0.12); padding-top:14px; margin-top:8px; }
+  .schedule-title { font-size:10px; font-weight:800; letter-spacing:0.12em; color:#1A365D; margin-bottom:10px; opacity:0.7; text-align:center; }
+  .schedule-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .schedule-col-title { font-size:9px; font-weight:800; letter-spacing:0.14em; padding:4px 0; margin-bottom:4px; text-align:center; border-radius:4px; }
+  .spain-title { background:linear-gradient(90deg, rgba(101,163,13,0.12), rgba(250,204,21,0.15)); color:#C2410C; }
+  .intl-title { background:linear-gradient(90deg, rgba(15,118,110,0.12), rgba(94,234,212,0.15)); color:#0F766E; }
+  .schedule-row { display:flex; justify-content:space-between; font-size:11px; color:#1A365D; padding:3px 6px; border-bottom:1px dashed rgba(26,54,93,0.06); }
+  .schedule-row:last-child { border-bottom:none; }
   .copy-hint { background:#FFFFFF; border:1px solid rgba(26,54,93,0.15); border-radius:10px; padding:14px 18px; margin-bottom:20px; font-size:12px; color:#1A365D; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.05); }
   .next-brief { margin-top:36px; padding:22px 26px; background:linear-gradient(135deg, #FFFFFF, #FAFBFC); border:1px solid rgba(250,105,0,0.25); border-left:4px solid #FA6900; border-radius:14px; box-shadow:0 8px 24px rgba(250,105,0,0.10); }
   .next-brief-label { font-size:9px; font-weight:800; letter-spacing:0.22em; color:#FA6900; text-transform:uppercase; margin-bottom:8px; }
@@ -1012,14 +1135,42 @@ export default function App() {
     </div>`;
     })()}
     <div class="next-briefing">
-      <div class="next-briefing-label">🔔 PRÓXIMO BRIEFING RECOMENDADO</div>
-      <div class="next-briefing-date">${escape(nextBriefing.dayName)} ${nextBriefing.dayNumber} ${escape(nextBriefing.monthName)} · ${nextBriefing.hour}:${nextBriefing.minute}</div>
-      <div class="next-briefing-reason">"${escape(nextBriefing.label)}"</div>
+      <div class="next-briefing-label">🔔 PRÓXIMOS BRIEFINGS RECOMENDADOS</div>
+
+      <div class="schedule-card spain-card">
+        <div class="card-icon">🇪🇸</div>
+        <div class="card-body">
+          <div class="card-title">ESPAÑA</div>
+          <div class="card-time">${escape(nextBriefing.spain.dayName)} ${nextBriefing.spain.dayNumber} ${escape(nextBriefing.spain.monthName)} · ${nextBriefing.spain.hour}:${nextBriefing.spain.minute}</div>
+          <div class="card-reason">"${escape(nextBriefing.spain.label)}"</div>
+        </div>
+      </div>
+
+      <div class="schedule-card intl-card">
+        <div class="card-icon">🌍</div>
+        <div class="card-body">
+          <div class="card-title">INTERNACIONAL</div>
+          <div class="card-time">${escape(nextBriefing.international.dayName)} ${nextBriefing.international.dayNumber} ${escape(nextBriefing.international.monthName)} · ${nextBriefing.international.hour}:${nextBriefing.international.minute}</div>
+          <div class="card-reason">"${escape(nextBriefing.international.label)}"</div>
+        </div>
+      </div>
+
       <div class="next-briefing-schedule">
         <div class="schedule-title">📅 Horario semanal</div>
-        <div class="schedule-row"><span>Lun-Vie</span><span>19:00 <em>tarde laboral</em></span></div>
-        <div class="schedule-row"><span>Sábado</span><span>12:00 <em>mañana relajada</em></span></div>
-        <div class="schedule-row"><span>Domingo</span><span>19:00 <em>fin de semana completo</em></span></div>
+        <div class="schedule-grid">
+          <div class="schedule-col">
+            <div class="schedule-col-title spain-title">🇪🇸 ESPAÑA</div>
+            <div class="schedule-row"><span>Lun-Vie</span><span>19:00</span></div>
+            <div class="schedule-row"><span>Sábado</span><span>12:00</span></div>
+            <div class="schedule-row"><span>Domingo</span><span>19:00</span></div>
+          </div>
+          <div class="schedule-col">
+            <div class="schedule-col-title intl-title">🌍 INTERNACIONAL</div>
+            <div class="schedule-row"><span>Lun-Vie</span><span>21:30</span></div>
+            <div class="schedule-row"><span>Sábado</span><span>18:00</span></div>
+            <div class="schedule-row"><span>Domingo</span><span>18:30</span></div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="footer">
@@ -1483,7 +1634,192 @@ export default function App() {
           </div>
         )}
 
-        <div style={{ textAlign: 'center', marginTop: '44px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+        {/* Bloque "próximos briefings recomendados" — 2 horarios separados con colores de sección */}
+        {(() => {
+          const next = calculateNextBriefing();
+          return (
+            <div style={{
+              marginTop: '32px',
+              padding: '20px 22px',
+              background: '#FAFBFC',
+              border: '1px solid rgba(26,54,93,0.08)',
+              borderRadius: '14px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.05)',
+              fontFamily: "'Verdana', 'Geneva', sans-serif",
+            }}>
+              <div style={{
+                textAlign: 'center',
+                fontSize: '10px',
+                fontWeight: '800',
+                letterSpacing: '0.18em',
+                color: '#1A365D',
+                opacity: 0.75,
+                marginBottom: '14px',
+              }}>
+                🔔 PRÓXIMOS BRIEFINGS RECOMENDADOS
+              </div>
+
+              {/* Card ESPAÑA · gradiente lima-dorado + naranja */}
+              <div style={{
+                display: 'flex',
+                gap: '14px',
+                alignItems: 'center',
+                padding: '14px 16px',
+                borderRadius: '10px',
+                marginBottom: '10px',
+                background: 'linear-gradient(135deg, rgba(101,163,13,0.10), rgba(250,204,21,0.15))',
+                borderLeft: `4px solid ${BRAND.newsColor}`,
+              }}>
+                <div style={{ fontSize: '32px', flexShrink: 0 }}>🇪🇸</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: '10px',
+                    fontWeight: '800',
+                    letterSpacing: '0.16em',
+                    color: BRAND.newsColor,
+                    marginBottom: '3px',
+                  }}>
+                    ESPAÑA
+                  </div>
+                  <div style={{
+                    fontFamily: 'Georgia, serif',
+                    fontStyle: 'italic',
+                    fontSize: '17px',
+                    fontWeight: '700',
+                    color: '#1A365D',
+                    marginBottom: '3px',
+                    lineHeight: 1.2,
+                  }}>
+                    {next.spain.dayName} {next.spain.dayNumber} {next.spain.monthName} · {next.spain.hour}:{next.spain.minute}
+                  </div>
+                  <div style={{
+                    fontSize: '10.5px',
+                    fontStyle: 'italic',
+                    color: 'rgba(26,54,93,0.65)',
+                    lineHeight: 1.3,
+                  }}>
+                    "{next.spain.label}"
+                  </div>
+                </div>
+              </div>
+
+              {/* Card INTERNACIONAL · gradiente teal */}
+              <div style={{
+                display: 'flex',
+                gap: '14px',
+                alignItems: 'center',
+                padding: '14px 16px',
+                borderRadius: '10px',
+                marginBottom: '14px',
+                background: 'linear-gradient(135deg, rgba(15,118,110,0.10), rgba(94,234,212,0.15))',
+                borderLeft: `4px solid ${BRAND.intlColor}`,
+              }}>
+                <div style={{ fontSize: '32px', flexShrink: 0 }}>🌍</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: '10px',
+                    fontWeight: '800',
+                    letterSpacing: '0.16em',
+                    color: BRAND.intlColor,
+                    marginBottom: '3px',
+                  }}>
+                    INTERNACIONAL
+                  </div>
+                  <div style={{
+                    fontFamily: 'Georgia, serif',
+                    fontStyle: 'italic',
+                    fontSize: '17px',
+                    fontWeight: '700',
+                    color: '#1A365D',
+                    marginBottom: '3px',
+                    lineHeight: 1.2,
+                  }}>
+                    {next.international.dayName} {next.international.dayNumber} {next.international.monthName} · {next.international.hour}:{next.international.minute}
+                  </div>
+                  <div style={{
+                    fontSize: '10.5px',
+                    fontStyle: 'italic',
+                    color: 'rgba(26,54,93,0.65)',
+                    lineHeight: 1.3,
+                  }}>
+                    "{next.international.label}"
+                  </div>
+                </div>
+              </div>
+
+              {/* Horario semanal · 2 columnas */}
+              <div style={{
+                borderTop: '1px dashed rgba(26,54,93,0.12)',
+                paddingTop: '14px',
+                marginTop: '4px',
+              }}>
+                <div style={{
+                  textAlign: 'center',
+                  fontSize: '10px',
+                  fontWeight: '800',
+                  letterSpacing: '0.12em',
+                  color: '#1A365D',
+                  opacity: 0.7,
+                  marginBottom: '10px',
+                }}>
+                  📅 HORARIO SEMANAL
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div>
+                    <div style={{
+                      fontSize: '9px',
+                      fontWeight: '800',
+                      letterSpacing: '0.14em',
+                      padding: '4px 0',
+                      marginBottom: '4px',
+                      textAlign: 'center',
+                      borderRadius: '4px',
+                      background: 'linear-gradient(90deg, rgba(101,163,13,0.12), rgba(250,204,21,0.15))',
+                      color: BRAND.newsColor,
+                    }}>
+                      🇪🇸 ESPAÑA
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
+                      <span>Lun-Vie</span><span>19:00</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
+                      <span>Sábado</span><span>12:00</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px' }}>
+                      <span>Domingo</span><span>19:00</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{
+                      fontSize: '9px',
+                      fontWeight: '800',
+                      letterSpacing: '0.14em',
+                      padding: '4px 0',
+                      marginBottom: '4px',
+                      textAlign: 'center',
+                      borderRadius: '4px',
+                      background: 'linear-gradient(90deg, rgba(15,118,110,0.12), rgba(94,234,212,0.15))',
+                      color: BRAND.intlColor,
+                    }}>
+                      🌍 INTERNACIONAL
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
+                      <span>Lun-Vie</span><span>21:30</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
+                      <span>Sábado</span><span>18:00</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px' }}>
+                      <span>Domingo</span><span>18:30</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        <div style={{ textAlign: 'center', marginTop: '32px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
           <p style={{ fontSize: '10px', color: 'rgba(30,58,138,0.5)', margin: 0, letterSpacing: '0.15em', fontStyle: 'italic' }}>
             MAL NEWS · {RECIPIENT}
           </p>
