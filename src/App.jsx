@@ -672,16 +672,27 @@ export default function App() {
   }
 
   // Abre el briefing en una pestaña nueva como HTML estilizado
-  // Desde ahí el usuario puede Ctrl+A, Ctrl+C y pegar en Gmail (Gmail conserva formato)
+  // Abre DOS ventanas HTML separadas (España + Internacional) — solo abre las que tienen contenido
   function openHtmlView() {
     if (!intlData && !spainNewsData && !spainOpinionData) return;
     const merged = mergeBriefings();
-    const html = buildHtml(merged);
-    const newWindow = window.open('', '_blank');
-    if (newWindow) {
-      newWindow.document.open();
-      newWindow.document.write(html);
-      newWindow.document.close();
+
+    const openTab = (htmlContent) => {
+      const newWindow = window.open('', '_blank');
+      if (newWindow) {
+        newWindow.document.open();
+        newWindow.document.write(htmlContent);
+        newWindow.document.close();
+      }
+    };
+
+    const hasSpain = (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0) > 0;
+    const hasIntl = (merged.worldNews?.length || 0) + (merged.worldOpinion?.length || 0) > 0;
+
+    if (hasSpain) openTab(buildHtml(merged, 'spain'));
+    if (hasIntl) {
+      // pequeño delay para evitar que el navegador bloquee el segundo popup
+      setTimeout(() => openTab(buildHtml(merged, 'international')), hasSpain ? 250 : 0);
     }
   }
 
@@ -733,12 +744,125 @@ export default function App() {
     };
   }
 
+  // Calcula el próximo horario recomendado de briefing según día de la semana y sección
+  // section: 'spain' o 'international'
+  // Devuelve { day: 'Martes 20 mayo', time: '19:00', reason: '...' }
+  function getNextRecommended(section = 'spain') {
+    const now = new Date();
+    const today = now.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTime = currentHour * 60 + currentMinute;
+
+    // Horarios óptimos por día de la semana y sección
+    const schedules = {
+      spain: {
+        0: { hour: 19, minute: 0, label: 'Domingo · todos los columnistas dominicales publicados' },
+        1: { hour: 19, minute: 0, label: 'Lunes · post-laboral · pico Vozpópuli' },
+        2: { hour: 19, minute: 0, label: 'Martes · día completo · Maite Rico' },
+        3: { hour: 19, minute: 0, label: 'Miércoles · máxima diversidad editorial' },
+        4: { hour: 19, minute: 0, label: 'Jueves · día de Estefanía Molina y Agustín Valladolid' },
+        5: { hour: 19, minute: 0, label: 'Viernes · cierre de semana laboral' },
+        6: { hour: 12, minute: 0, label: 'Sábado · mañana relajada · Maite Rico, Victoria Carvajal' },
+      },
+      international: {
+        0: { hour: 18, minute: 30, label: 'Domingo · NYT Sunday Review · WSJ Weekend · análisis dominical US' },
+        1: { hour: 21, minute: 30, label: 'Lunes · pico US business · LATAM activo · Europa cerrada' },
+        2: { hour: 21, minute: 30, label: 'Martes · pico US business · LATAM activo' },
+        3: { hour: 21, minute: 30, label: 'Miércoles · pico US business · LATAM activo' },
+        4: { hour: 21, minute: 30, label: 'Jueves · pico US business · LATAM activo' },
+        5: { hour: 21, minute: 30, label: 'Viernes · cierre semana US · análisis del finde' },
+        6: { hour: 18, minute: 0, label: 'Sábado · US Saturday news · LATAM despertando' },
+      },
+    };
+
+    const schedule = schedules[section] || schedules.spain;
+    const todaySchedule = schedule[today];
+    const todayTargetTime = todaySchedule.hour * 60 + todaySchedule.minute;
+
+    // Si todavía no ha pasado la hora recomendada de HOY, el próximo es HOY
+    // Si ya ha pasado, el próximo es MAÑANA
+    let targetDate = new Date(now);
+    if (currentTime < todayTargetTime) {
+      // Es hoy
+    } else {
+      // Mañana
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+
+    const targetDay = targetDate.getDay();
+    const targetSchedule = schedule[targetDay];
+
+    // Formatear día y mes
+    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const isToday = targetDate.toDateString() === now.toDateString();
+
+    return {
+      day: isToday
+        ? `Hoy · ${dayNames[targetDay].toLowerCase()} ${targetDate.getDate()} ${monthNames[targetDate.getMonth()]}`
+        : `${dayNames[targetDay]} ${targetDate.getDate()} ${monthNames[targetDate.getMonth()]}`,
+      time: `${String(targetSchedule.hour).padStart(2, '0')}:${String(targetSchedule.minute).padStart(2, '0')}`,
+      reason: targetSchedule.label,
+    };
+  }
+
   // Construye HTML formateado y autocontenido (CSS inline para compatibilidad email)
   // mode: 'spain' → solo secciones España (Noticias + Opinión)
   //       'international' → solo Internacional (Mundo + Opinión Intl)
   //       'all' → briefing completo (legacy, para vista HTML combinada)
+  // ===================================================
+  // FORMATO DINÁMICO: cuándo se recomienda el próximo briefing
+  // Camino 2 (sesión única) — un solo momento al día para los 3 botones
+  // ===================================================
+  const BRIEFING_SCHEDULE = {
+    // 0 = domingo, 1 = lunes, ..., 6 = sábado
+    1: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
+    2: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
+    3: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
+    4: { hour: 19, minute: 0,  label: 'Estefanía Molina y Agustín Valladolid hoy' },
+    5: { hour: 19, minute: 0,  label: 'Cierra la semana laboral' },
+    6: { hour: 12, minute: 0,  label: 'Mañana relajada de sábado' },
+    0: { hour: 19, minute: 0,  label: 'Domingo completo · FJL, Pedro J., Cebrián' },
+  };
+
+  function calculateNextBriefing() {
+    const now = new Date();
+    const currentDay = now.getDay();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    const todaySchedule = BRIEFING_SCHEDULE[currentDay];
+    const todayMinutes = todaySchedule.hour * 60 + todaySchedule.minute;
+    const nowMinutes = currentHour * 60 + currentMinute;
+
+    let targetDay = currentDay;
+    let targetDate = new Date(now);
+
+    // Si todavía no ha pasado la hora de hoy, recomendar hoy
+    // Si ya pasó, recomendar mañana
+    if (nowMinutes >= todayMinutes) {
+      targetDay = (currentDay + 1) % 7;
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+
+    const targetSchedule = BRIEFING_SCHEDULE[targetDay];
+    const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+    return {
+      dayName: dayNames[targetDay],
+      dayNumber: targetDate.getDate(),
+      monthName: monthNames[targetDate.getMonth()],
+      hour: String(targetSchedule.hour).padStart(2, '0'),
+      minute: String(targetSchedule.minute).padStart(2, '0'),
+      label: targetSchedule.label,
+    };
+  }
+
   function buildHtml(b, mode = 'all') {
     const escape = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const nextBriefing = calculateNextBriefing();
 
     // Mapeo de colores y gradientes por sección (debe coincidir con SECTION_COLORS/SECTION_GRADIENTS de la PWA)
     const SECTION_STYLES = {
@@ -838,7 +962,22 @@ export default function App() {
   .date { font-size:12px; letter-spacing:0.3em; color:#1A365D; opacity:0.7; text-transform:uppercase; font-weight:800; margin:10px 0 0; }
   .total { font-size:11px; color:#0EA5E9; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
   .footer { text-align:center; margin-top:32px; padding:18px; font-size:10px; color:rgba(26,54,93,0.55); letter-spacing:0.15em; font-style:italic; border-top:1px solid rgba(26,54,93,0.12); }
+  .next-briefing { background:linear-gradient(135deg, #FFF7ED, #FFEDD5); border:2px solid rgba(250,105,0,0.3); border-radius:14px; padding:20px 24px; margin:32px 0 0; text-align:center; box-shadow:0 4px 16px rgba(250,105,0,0.12); }
+  .next-briefing-label { font-size:10px; font-weight:800; letter-spacing:0.18em; color:#C2410C; margin-bottom:8px; }
+  .next-briefing-date { font-family:Georgia,serif; font-style:italic; font-size:20px; font-weight:700; color:#1A365D; margin:4px 0 6px; }
+  .next-briefing-reason { font-size:11px; font-style:italic; color:rgba(26,54,93,0.7); margin-bottom:14px; }
+  .next-briefing-schedule { border-top:1px dashed rgba(250,105,0,0.25); padding-top:12px; margin-top:8px; }
+  .schedule-title { font-size:10px; font-weight:800; letter-spacing:0.12em; color:#1A365D; margin-bottom:8px; opacity:0.7; }
+  .schedule-row { display:flex; justify-content:space-between; font-size:11px; color:#1A365D; padding:3px 16px; }
+  .schedule-row em { font-style:italic; color:rgba(26,54,93,0.5); font-size:10px; }
   .copy-hint { background:#FFFFFF; border:1px solid rgba(26,54,93,0.15); border-radius:10px; padding:14px 18px; margin-bottom:20px; font-size:12px; color:#1A365D; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.05); }
+  .next-brief { margin-top:36px; padding:22px 26px; background:linear-gradient(135deg, #FFFFFF, #FAFBFC); border:1px solid rgba(250,105,0,0.25); border-left:4px solid #FA6900; border-radius:14px; box-shadow:0 8px 24px rgba(250,105,0,0.10); }
+  .next-brief-label { font-size:9px; font-weight:800; letter-spacing:0.22em; color:#FA6900; text-transform:uppercase; margin-bottom:8px; }
+  .next-brief-day { font-family:Georgia,serif; font-size:20px; font-style:italic; color:#1A365D; font-weight:700; margin-bottom:4px; }
+  .next-brief-time { font-size:32px; font-weight:900; color:#FA6900; letter-spacing:0.02em; margin-bottom:8px; line-height:1; }
+  .next-brief-reason { font-size:11px; color:rgba(26,54,93,0.7); font-style:italic; line-height:1.5; }
+  .next-brief-table { margin-top:16px; padding-top:14px; border-top:1px dashed rgba(250,105,0,0.25); font-size:10px; color:rgba(26,54,93,0.65); line-height:1.7; }
+  .next-brief-table strong { color:#1A365D; font-weight:700; letter-spacing:0.05em; }
   @media print { .copy-hint { display:none; } body { background:white; } }
 </style>
 </head>
@@ -854,6 +993,35 @@ export default function App() {
       <p class="total">${total} PIEZAS</p>
     </div>
     ${sectionsHtml}
+    ${(() => {
+      // Solo mostrar bloque de próximo briefing si el modo es spain o international
+      if (mode === 'all') return '';
+      const next = getNextRecommended(mode);
+      const sectionLabel = mode === 'spain' ? 'ESPAÑA' : 'INTERNACIONAL';
+      return `
+    <div class="next-brief">
+      <div class="next-brief-label">🔔 PRÓXIMO BRIEFING ${sectionLabel}</div>
+      <div class="next-brief-day">${escape(next.day)}</div>
+      <div class="next-brief-time">${escape(next.time)}</div>
+      <div class="next-brief-reason">${escape(next.reason)}</div>
+      <div class="next-brief-table">
+        ${mode === 'spain'
+          ? '<strong>Horario semanal España:</strong> Lun-Vie 19:00 &middot; Sábado 12:00 &middot; Domingo 19:00'
+          : '<strong>Horario semanal Internacional:</strong> Lun-Vie 21:30 &middot; Sábado 18:00 &middot; Domingo 18:30'}
+      </div>
+    </div>`;
+    })()}
+    <div class="next-briefing">
+      <div class="next-briefing-label">🔔 PRÓXIMO BRIEFING RECOMENDADO</div>
+      <div class="next-briefing-date">${escape(nextBriefing.dayName)} ${nextBriefing.dayNumber} ${escape(nextBriefing.monthName)} · ${nextBriefing.hour}:${nextBriefing.minute}</div>
+      <div class="next-briefing-reason">"${escape(nextBriefing.label)}"</div>
+      <div class="next-briefing-schedule">
+        <div class="schedule-title">📅 Horario semanal</div>
+        <div class="schedule-row"><span>Lun-Vie</span><span>19:00 <em>tarde laboral</em></span></div>
+        <div class="schedule-row"><span>Sábado</span><span>12:00 <em>mañana relajada</em></span></div>
+        <div class="schedule-row"><span>Domingo</span><span>19:00 <em>fin de semana completo</em></span></div>
+      </div>
+    </div>
     <div class="footer">
       MAL NEWS &middot; ${escape(RECIPIENT)} &middot; v3 PWA
     </div>
@@ -1326,4 +1494,4 @@ export default function App() {
       </div>
     </div>
   );
-  }
+}
