@@ -401,6 +401,83 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
             {descriptor}
           </p>
         )}
+
+        {/* Panel de diagnóstico de feeds DENTRO de la cabecera — visible inmediatamente al cargar */}
+        {meta?.feedDiagnostic && meta.feedDiagnostic.length > 0 && (
+          <details style={{
+            marginTop: '12px',
+            padding: '10px 14px',
+            background: 'rgba(255,255,255,0.18)',
+            border: '1px solid rgba(255,255,255,0.35)',
+            borderRadius: '8px',
+            fontSize: '11px',
+            fontFamily: "'Verdana', sans-serif",
+            color: 'white',
+            backdropFilter: 'blur(8px)',
+          }}>
+            <summary style={{
+              cursor: 'pointer',
+              fontWeight: '800',
+              color: 'white',
+              letterSpacing: '0.06em',
+              fontSize: '11.5px',
+              listStyle: 'none',
+            }}>
+              📊 Diagnóstico de feeds ({meta.feedDiagnostic.length} fuentes · {meta.feedDiagnostic.filter(d => d.includedAfterCap === 0).length} sin piezas) ▼
+            </summary>
+            <div style={{ marginTop: '10px' }}>
+              {meta.feedDiagnostic
+                .slice()
+                .sort((a, b) => (b.includedAfterCap || 0) - (a.includedAfterCap || 0))
+                .map((d, i) => {
+                  const included = d.includedAfterCap || 0;
+                  const statusIcon = included === 0 ? '⚪' : included >= 2 ? '✅' : '⚠️';
+                  return (
+                    <div key={i} style={{
+                      padding: '5px 8px',
+                      marginBottom: '3px',
+                      background: included === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.14)',
+                      borderRadius: '5px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
+                      gap: '8px',
+                      flexWrap: 'wrap',
+                      fontSize: '10.5px',
+                    }}>
+                      <strong style={{ color: 'white', fontSize: '11px', minWidth: '105px', fontWeight: '700' }}>
+                        {statusIcon} {d.source}
+                      </strong>
+                      <span style={{ color: 'rgba(255,255,255,0.92)', fontSize: '10px', flex: 1, textAlign: 'right' }}>
+                        {d.rawCount === 0
+                          ? <em style={{ color: 'rgba(255,255,255,0.65)' }}>⚠️ feed vacío</em>
+                          : <>
+                              <span style={{ fontWeight: '800' }}>{included} incluidas</span>
+                              {' · '}
+                              <span>{d.rawCount} en RSS</span>
+                              {' · '}
+                              <span>{d.passedDateFilter} en 48h</span>
+                              {d.hoursAgo !== null && d.hoursAgo !== undefined && (
+                                <em style={{ opacity: 0.7, marginLeft: '4px' }}>· hace {d.hoursAgo}h</em>
+                              )}
+                            </>
+                        }
+                      </span>
+                    </div>
+                  );
+                })}
+              <div style={{
+                marginTop: '8px', padding: '6px 8px',
+                fontSize: '9.5px', fontStyle: 'italic',
+                color: 'rgba(255,255,255,0.75)',
+                borderTop: '1px dashed rgba(255,255,255,0.25)',
+                paddingTop: '7px',
+              }}>
+                ✅ ≥2 piezas · ⚠️ 1 pieza · ⚪ 0 piezas
+              </div>
+            </div>
+          </details>
+        )}
       </div>
 
       {/* Items */}
@@ -456,78 +533,6 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
           items.map((item, i) => <NewsCard key={i} item={item} index={i} sectionColor={color} type={type} />)
         )}
 
-        {/* Panel de diagnóstico de feeds — siempre visible si hay meta, muestra TODOS los feeds */}
-        {meta?.feedDiagnostic && meta.feedDiagnostic.length > 0 && (
-          <details style={{
-            marginTop: '16px', padding: '12px 16px',
-            background: 'rgba(250,105,0,0.10)',
-            border: '2px solid rgba(250,105,0,0.35)',
-            borderRadius: '10px',
-            fontSize: '11.5px',
-            fontFamily: "'Verdana', sans-serif",
-            color: BRAND.navyDeep,
-            boxShadow: '0 2px 8px rgba(250,105,0,0.12)',
-          }}>
-            <summary style={{
-              cursor: 'pointer', fontWeight: '800', color: BRAND.orange,
-              letterSpacing: '0.06em', fontSize: '12px',
-              padding: '4px 0',
-            }}>
-              📊 Diagnóstico de feeds ({meta.feedDiagnostic.length} fuentes · {meta.feedDiagnostic.filter(d => d.includedAfterCap === 0).length} sin piezas)
-            </summary>
-            <div style={{ marginTop: '12px' }}>
-              {meta.feedDiagnostic
-                .slice()
-                .sort((a, b) => (b.includedAfterCap || 0) - (a.includedAfterCap || 0))
-                .map((d, i) => {
-                  const included = d.includedAfterCap || 0;
-                  const statusIcon = included === 0 ? '⚪' : included >= 2 ? '✅' : '⚠️';
-                  const statusColor = included === 0 ? 'rgba(26,54,93,0.5)' : included >= 2 ? '#15803D' : '#CA8A04';
-                  return (
-                    <div key={i} style={{
-                      padding: '6px 8px',
-                      marginBottom: '4px',
-                      background: included === 0 ? 'rgba(26,54,93,0.04)' : 'rgba(255,255,255,0.5)',
-                      borderRadius: '6px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'baseline',
-                      gap: '8px',
-                      flexWrap: 'wrap',
-                    }}>
-                      <strong style={{ color: BRAND.orange, fontSize: '11.5px', minWidth: '110px' }}>
-                        {statusIcon} {d.source}
-                      </strong>
-                      <span style={{ color: 'rgba(26,54,93,0.75)', fontSize: '10.5px', flex: 1, textAlign: 'right' }}>
-                        {d.rawCount === 0
-                          ? <em style={{ color: 'rgba(26,54,93,0.5)' }}>⚠️ feed vacío o sin respuesta</em>
-                          : <>
-                              <span style={{ color: statusColor, fontWeight: '700' }}>{included} incluidas</span>
-                              {' · '}
-                              <span>{d.rawCount} en RSS</span>
-                              {' · '}
-                              <span>{d.passedDateFilter} en 48h</span>
-                              {d.hoursAgo !== null && d.hoursAgo !== undefined && (
-                                <em style={{ color: 'rgba(26,54,93,0.5)', marginLeft: '4px' }}>· último hace {d.hoursAgo}h</em>
-                              )}
-                            </>
-                        }
-                      </span>
-                    </div>
-                  );
-                })}
-            </div>
-            <div style={{
-              marginTop: '10px', padding: '6px 8px',
-              fontSize: '10px', fontStyle: 'italic',
-              color: 'rgba(26,54,93,0.55)',
-              borderTop: '1px dashed rgba(250,105,0,0.25)',
-              paddingTop: '8px',
-            }}>
-              ✅ ≥2 piezas · ⚠️ 1 pieza (por debajo del mín ideal) · ⚪ 0 piezas
-            </div>
-          </details>
-        )}
       </div>
     </div>
   );
