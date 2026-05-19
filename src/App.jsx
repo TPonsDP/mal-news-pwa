@@ -510,37 +510,106 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
                   const included = d.includedAfterCap || 0;
                   const statusIcon = included === 0 ? '⚪' : included >= 2 ? '✅' : '⚠️';
                   return (
-                    <div key={i} style={{
-                      padding: '5px 8px',
-                      marginBottom: '3px',
+                    <details key={i} style={{
+                      padding: '6px 8px',
+                      marginBottom: '4px',
                       background: included === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.14)',
                       borderRadius: '5px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'baseline',
-                      gap: '8px',
-                      flexWrap: 'wrap',
                       fontSize: '10.5px',
                     }}>
-                      <strong style={{ color: 'white', fontSize: '11px', minWidth: '105px', fontWeight: '700' }}>
-                        {statusIcon} {d.source}
-                      </strong>
-                      <span style={{ color: 'rgba(255,255,255,0.92)', fontSize: '10px', flex: 1, textAlign: 'right' }}>
-                        {d.rawCount === 0
-                          ? <em style={{ color: 'rgba(255,255,255,0.65)' }}>⚠️ feed vacío</em>
-                          : <>
-                              <span style={{ fontWeight: '800' }}>{included} incluidas</span>
-                              {' · '}
-                              <span>{d.rawCount} en RSS</span>
-                              {' · '}
-                              <span>{d.passedDateFilter} en 48h</span>
-                              {d.hoursAgo !== null && d.hoursAgo !== undefined && (
-                                <em style={{ opacity: 0.7, marginLeft: '4px' }}>· hace {d.hoursAgo}h</em>
-                              )}
-                            </>
-                        }
-                      </span>
-                    </div>
+                      <summary style={{
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'baseline',
+                        gap: '8px',
+                        flexWrap: 'wrap',
+                        listStyle: 'none',
+                      }}>
+                        <strong style={{ color: 'white', fontSize: '11px', minWidth: '105px', fontWeight: '700' }}>
+                          {statusIcon} {d.source} {d.urlsCount > 1 && <em style={{ opacity: 0.6, fontSize: '9.5px', fontWeight: '600' }}>· {d.urlsCount} URLs</em>}
+                        </strong>
+                        <span style={{ color: 'rgba(255,255,255,0.92)', fontSize: '10px', flex: 1, textAlign: 'right' }}>
+                          {d.rawCount === 0
+                            ? <em style={{ color: 'rgba(255,255,255,0.65)' }}>⚠️ todas las URLs vacías ▼</em>
+                            : <>
+                                <span style={{ fontWeight: '800' }}>{included} incluidas</span>
+                                {' · '}
+                                <span>{d.rawCount} en RSS</span>
+                                {' · '}
+                                <span>{d.passedDateFilter} en 48h</span>
+                                {d.hoursAgo !== null && d.hoursAgo !== undefined && (
+                                  <em style={{ opacity: 0.7, marginLeft: '4px' }}>· hace {d.hoursAgo}h</em>
+                                )}
+                              </>
+                          }
+                        </span>
+                      </summary>
+
+                      {/* SUGERENCIA AUTOMÁTICA */}
+                      {d.suggestion && (
+                        <div style={{
+                          marginTop: '6px',
+                          padding: '4px 8px',
+                          background: 'rgba(252,204,21,0.15)',
+                          border: '1px solid rgba(252,204,21,0.4)',
+                          borderRadius: '4px',
+                          color: '#FACC15',
+                          fontSize: '9.5px',
+                          fontWeight: '700',
+                        }}>
+                          {d.suggestion}
+                        </div>
+                      )}
+
+                      {/* DETALLE POR URL */}
+                      {d.urlDetails && d.urlDetails.length > 0 && (
+                        <div style={{ marginTop: '6px' }}>
+                          {d.urlDetails.map((u, j) => {
+                            const statusColor =
+                              u.status === 'ok' && u.itemCount > 0 ? '#4ADE80' :
+                              u.status === 'empty' || u.itemCount === 0 ? '#FACC15' :
+                              '#FCA5A5';
+                            const statusEmoji =
+                              u.status === 'ok' && u.itemCount > 0 ? '🟢' :
+                              u.status === 'empty' || u.itemCount === 0 ? '🟡' :
+                              '🔴';
+                            return (
+                              <div key={j} style={{
+                                marginBottom: '3px',
+                                padding: '4px 6px',
+                                background: 'rgba(0,0,0,0.15)',
+                                borderRadius: '3px',
+                                fontSize: '9.5px',
+                                lineHeight: 1.4,
+                              }}>
+                                <div style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'baseline',
+                                  gap: '6px',
+                                }}>
+                                  <span style={{ color: statusColor, fontWeight: '700' }}>
+                                    {statusEmoji} {u.tier}
+                                  </span>
+                                  <span style={{ opacity: 0.85 }}>
+                                    {u.itemCount} items · {u.status}{u.httpCode && ` ${u.httpCode}`}
+                                  </span>
+                                </div>
+                                <div style={{ opacity: 0.55, fontSize: '9px', marginTop: '2px', wordBreak: 'break-all' }}>
+                                  {u.url}
+                                </div>
+                                {u.errorMsg && (
+                                  <div style={{ opacity: 0.65, fontSize: '9px', color: '#FCA5A5', fontStyle: 'italic' }}>
+                                    {u.errorMsg}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </details>
                   );
                 })}
               <div style={{
@@ -550,7 +619,7 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
                 borderTop: '1px dashed rgba(255,255,255,0.25)',
                 paddingTop: '7px',
               }}>
-                ✅ ≥2 piezas · ⚠️ 1 pieza · ⚪ 0 piezas
+                ✅ ≥2 piezas · ⚠️ 1 pieza · ⚪ 0 piezas · Pulsa cada medio para ver detalle por URL · 🟢 URL ok · 🟡 vacía · 🔴 error
               </div>
             </div>
           </details>
@@ -1244,7 +1313,7 @@ export default function App() {
 
   const spainOpinionSections = spainOpinionData ? [
     { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 16, type: 'opinion',
-      descriptor: 'Columnas firmadas · 3+ medios · publicadas en últimas 72h',
+      descriptor: 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer',
       note: spainOpinionData._note,
       meta: spainOpinionData._meta },
   ] : [];
