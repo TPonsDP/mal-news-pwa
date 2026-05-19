@@ -8,22 +8,46 @@
 
 const SPAIN_OPINION_FEEDS = [
   // ============ FEEDS RSS DIRECTOS CONFIRMADOS ============
-  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_opinioncompleto.xml' },
-  { source: 'The Objective', url: 'https://theobjective.com/feed/' },
-  { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada' },
-  { source: 'La Gaceta', url: 'https://gaceta.es/opinion/feed/' },
-  { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml' },
-  { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
-  { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/' },
-  { source: 'El Mundo', url: 'https://www.elmundo.es/rss/opinion.xml' },
-  { source: 'OK Diario', url: 'https://www.okdiario.com/opinion/feed/' },
-  { source: 'El Blog Salmón', url: 'https://www.elblogsalmon.com/feed' },
+  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_opinioncompleto.xml', tier: 'main' },
 
-  // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo o no tienen RSS) ============
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'Artículo 14', url: 'https://news.google.com/rss/search?q=site:articulo14.es&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'Agenda Pública', url: 'https://news.google.com/rss/search?q=site:agendapublica.es&hl=es-ES&gl=ES&ceid=ES:es' },
+  // The Objective - múltiples URLs (A) + autores VIP (D)
+  { source: 'The Objective', url: 'https://theobjective.com/feed/', tier: 'main' },
+  { source: 'The Objective', url: 'https://theobjective.com/elsubjetivo/feed/', tier: 'section' },
+  { source: 'The Objective', url: 'https://theobjective.com/category/opinion/feed/', tier: 'category' },
+  // VIP autores The Objective (D)
+  { source: 'The Objective', url: 'https://theobjective.com/autor/juan-luis-cebrian/feed/', tier: 'vip:Cebrián' },
+  { source: 'The Objective', url: 'https://theobjective.com/autor/pablo-de-lora/feed/', tier: 'vip:de Lora' },
+  { source: 'The Objective', url: 'https://theobjective.com/autor/javier-benegas/feed/', tier: 'vip:Benegas' },
+  { source: 'The Objective', url: 'https://theobjective.com/autor/guadalupe-sanchez-baena/feed/', tier: 'vip:G.Sánchez' },
+  { source: 'The Objective', url: 'https://theobjective.com/autor/maite-rico/feed/', tier: 'vip:M.Rico' },
+  { source: 'The Objective', url: 'https://theobjective.com/autor/pablo-cambronero/feed/', tier: 'vip:Cambronero' },
+
+  { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada', tier: 'main' },
+
+  // La Gaceta - 2 URLs (A)
+  { source: 'La Gaceta', url: 'https://gaceta.es/opinion/feed/', tier: 'main' },
+  { source: 'La Gaceta', url: 'https://gaceta.es/feed/', tier: 'alt' },
+
+  { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml', tier: 'main' },
+  { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/', tier: 'main' },
+  { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/', tier: 'main' },
+  { source: 'El Mundo', url: 'https://www.elmundo.es/rss/opinion.xml', tier: 'main' },
+  { source: 'OK Diario', url: 'https://www.okdiario.com/opinion/feed/', tier: 'main' },
+  { source: 'El Blog Salmón', url: 'https://www.elblogsalmon.com/feed', tier: 'main' },
+
+  // El Debate - nuevo (A)
+  { source: 'El Debate', url: 'https://www.eldebate.com/opinion/feed/', tier: 'main' },
+  { source: 'El Debate', url: 'https://www.eldebate.com/rss/opinion/', tier: 'alt' },
+
+  // El Español - nuevo (A)
+  { source: 'El Español', url: 'https://www.elespanol.com/rss/opinion.xml', tier: 'main' },
+  { source: 'El Español', url: 'https://www.elespanol.com/rss/', tier: 'general' },
+
+  // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo) ============
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
+  { source: 'Artículo 14', url: 'https://news.google.com/rss/search?q=site:articulo14.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
+  { source: 'Agenda Pública', url: 'https://news.google.com/rss/search?q=site:agendapublica.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
 ];
 
 // ============ FEEDS RSS PARA NOTICIAS ESPAÑA ============
@@ -55,6 +79,15 @@ const SPAIN_NEWS_FEEDS = [
 ];
 
 async function fetchOneFeed(feed, timeoutMs = 8000) {
+  const result = {
+    source: feed.source,
+    url: feed.url,
+    tier: feed.tier || 'main',
+    items: [],
+    status: 'ok',          // ok | http_error | timeout | fetch_error | empty | parse_error
+    httpCode: null,
+    errorMsg: null,
+  };
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -67,11 +100,24 @@ async function fetchOneFeed(feed, timeoutMs = 8000) {
       redirect: 'follow',
     });
     clearTimeout(timer);
-    if (!res.ok) return [];
+    result.httpCode = res.status;
+    if (!res.ok) {
+      result.status = 'http_error';
+      result.errorMsg = `HTTP ${res.status}`;
+      return result;
+    }
     const xml = await res.text();
-    return parseFeedItems(xml, feed.source);
-  } catch (_err) {
-    return []; // Resilient: si un feed falla, los demás siguen
+    const items = parseFeedItems(xml, feed.source);
+    result.items = items;
+    if (items.length === 0) {
+      result.status = xml.length < 200 ? 'parse_error' : 'empty';
+      result.errorMsg = items.length === 0 ? `Sin items (XML ${xml.length} chars)` : null;
+    }
+    return result;
+  } catch (err) {
+    result.status = err.name === 'AbortError' ? 'timeout' : 'fetch_error';
+    result.errorMsg = err.message || 'Error desconocido';
+    return result;
   }
 }
 
@@ -142,22 +188,25 @@ function rfcToISODate(dateStr) {
 }
 
 async function fetchSpainOpinionRss(allowedISODates) {
-  return fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48);
+  const result = await fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48);
+  return { candidates: result.items.slice(0, 80), diagnostic: result.diagnostic };
 }
 
 async function fetchSpainNewsRss(allowedISODates) {
-  return fetchFeedsAndFilter(SPAIN_NEWS_FEEDS, allowedISODates, 36);
+  const result = await fetchFeedsAndFilter(SPAIN_NEWS_FEEDS, allowedISODates, 36);
+  return { candidates: result.items.slice(0, 80), diagnostic: result.diagnostic };
 }
 
 async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
-  // Para cada feed, fetchear y registrar diagnóstico
-  const feedResults = await Promise.all(feedList.map(async (feed) => {
-    const items = await fetchOneFeed(feed);
-    return { source: feed.source, count: items.length, items };
-  }));
-  const flat = feedResults.flatMap(r => r.items);
+  // Para cada feed, fetchear y registrar resultado completo
+  const feedResults = await Promise.all(feedList.map(feed => fetchOneFeed(feed)));
 
-  // Deduplicar por URL
+  // Aplanar items, manteniendo trazabilidad de la URL origen
+  const flat = feedResults.flatMap(r =>
+    r.items.map(item => ({ ...item, _fromUrl: r.url, _fromTier: r.tier }))
+  );
+
+  // Deduplicar por URL final del artículo
   const seen = new Set();
   const dedup = flat.filter(item => {
     if (seen.has(item.url)) return false;
@@ -172,22 +221,19 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
   });
 
   // Filtro adicional por timestamp si se especifica maxHoursAgo
-  // (más estricto que el filtro de fecha)
   if (maxHoursAgo && Number.isFinite(maxHoursAgo)) {
     const cutoffMs = Date.now() - (maxHoursAgo * 60 * 60 * 1000);
     inDate = inDate.filter(it => {
-      if (!it.pubDate) return true; // sin timestamp, dejamos pasar
+      if (!it.pubDate) return true;
       try {
         const ts = new Date(it.pubDate).getTime();
-        if (isNaN(ts)) return true; // timestamp inválido, dejamos pasar
+        if (isNaN(ts)) return true;
         return ts >= cutoffMs;
       } catch (_) { return true; }
     });
   }
 
-  // CAP POR FUENTE PERSONALIZADO: más cuota para medios preferidos.
-  // The Objective, El Español y Vozpópuli tienen prioridad — más candidatos
-  // para que el modelo tenga muchas opciones de donde escoger.
+  // CAP POR FUENTE PERSONALIZADO
   const PER_SOURCE_CAPS = {
     'Vozpópuli': 8,
     'Artículo 14': 8,
@@ -208,6 +254,7 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
     'Economía de Mallorca': 4,
     'El País': 4,
     'El Español': 8,
+    'El Debate': 6,
   };
   const DEFAULT_CAP = 4;
   const perSourceCounts = {};
@@ -219,13 +266,34 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
     return true;
   });
 
-  // Diagnóstico mejorado: para cada feed, contar cuántas piezas pasaron cada filtro
+  // ============ DIAGNÓSTICO AVANZADO (E) ============
+  // Agrupar resultados por source y mostrar URLs individuales
   const cutoffMs = maxHoursAgo && Number.isFinite(maxHoursAgo)
     ? Date.now() - (maxHoursAgo * 60 * 60 * 1000)
     : null;
 
-  const diagnostic = feedResults.map(r => {
-    const passedDate = r.items.filter(it => allowedISODates.includes(it.publishedDate));
+  // Agrupar feedResults por source
+  const grouped = {};
+  feedResults.forEach(r => {
+    if (!grouped[r.source]) grouped[r.source] = [];
+    grouped[r.source].push(r);
+  });
+
+  const diagnostic = Object.keys(grouped).map(source => {
+    const urls = grouped[source];
+
+    // Item-level stats agregados (suma de todas las URLs del source)
+    const allItems = urls.flatMap(u => u.items);
+    const uniqueItems = [];
+    const seenUrls = new Set();
+    for (const item of allItems) {
+      if (!seenUrls.has(item.url)) {
+        seenUrls.add(item.url);
+        uniqueItems.push(item);
+      }
+    }
+
+    const passedDate = uniqueItems.filter(it => allowedISODates.includes(it.publishedDate));
     let passedTimestamp = passedDate.length;
     if (cutoffMs !== null) {
       passedTimestamp = passedDate.filter(it => {
@@ -237,37 +305,59 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
         } catch (_) { return true; }
       }).length;
     }
-    const latestDate = r.items.length > 0
-      ? [...new Set(r.items.map(it => it.publishedDate).filter(Boolean))].sort().reverse()[0]
-      : null;
-    // Encontrar el timestamp más reciente para mostrar la última publicación
-    const latestTs = r.items.length > 0
-      ? r.items.reduce((max, it) => {
-          if (!it.pubDate) return max;
-          try {
-            const t = new Date(it.pubDate).getTime();
-            return (!isNaN(t) && t > max) ? t : max;
-          } catch (_) { return max; }
-        }, 0)
-      : 0;
+
+    const latestTs = uniqueItems.reduce((max, it) => {
+      if (!it.pubDate) return max;
+      try {
+        const t = new Date(it.pubDate).getTime();
+        return (!isNaN(t) && t > max) ? t : max;
+      } catch (_) { return max; }
+    }, 0);
     const hoursAgo = latestTs > 0
       ? Math.round((Date.now() - latestTs) / (60 * 60 * 1000) * 10) / 10
       : null;
+
+    // Sugerencia automática según status de las URLs
+    let suggestion = null;
+    const allFailed = urls.every(u => u.status !== 'ok' || u.items.length === 0);
+    const hasAuthor = urls.some(u => u.tier && u.tier.startsWith('vip:'));
+    if (allFailed && !hasAuthor) {
+      suggestion = '⚠️ Añadir URLs alternativas o feeds de autor específico';
+    } else if (allFailed && hasAuthor) {
+      suggestion = '⚠️ Feeds de autor también fallan · revisar URL del medio';
+    } else if (uniqueItems.length > 0 && passedDate.length === 0) {
+      suggestion = `📅 Tiene contenido pero ninguno de las fechas aceptadas (último hace ${hoursAgo}h)`;
+    } else if (passedDate.length > 0 && passedTimestamp === 0) {
+      suggestion = '⏰ Items dentro de fecha pero anteriores al timestamp cutoff';
+    }
+
+    // Detalle por URL (parte E)
+    const urlDetails = urls.map(u => ({
+      url: u.url.length > 60 ? u.url.slice(0, 57) + '...' : u.url,
+      tier: u.tier,
+      status: u.status,
+      httpCode: u.httpCode,
+      itemCount: u.items.length,
+      errorMsg: u.errorMsg,
+    }));
+
     return {
-      source: r.source,
-      rawCount: r.count,
+      source,
+      rawCount: uniqueItems.length,
       passedDateFilter: passedDate.length,
       passedTimestampFilter: passedTimestamp,
-      includedAfterCap: perSourceCounts[r.source] || 0,
-      latestDateSeen: latestDate || 'sin fecha',
+      includedAfterCap: perSourceCounts[source] || 0,
+      latestDateSeen: uniqueItems.length > 0
+        ? [...new Set(uniqueItems.map(it => it.publishedDate).filter(Boolean))].sort().reverse()[0]
+        : 'sin fecha',
       hoursAgo: hoursAgo,
+      urlsCount: urls.length,
+      urlDetails: urlDetails,
+      suggestion: suggestion,
     };
   });
 
-  return {
-    candidates: balanced.slice(0, 80),
-    diagnostic,
-  };
+  return { items: balanced, diagnostic, perSourceCounts };
 }
 
 // ============ FIN MÓDULO RSS ============
