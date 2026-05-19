@@ -41,10 +41,14 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'OK Diario', url: 'https://www.okdiario.com/opinion/feed/', tier: 'main' },
   { source: 'OK Diario', url: 'https://okdiario.com/autor/graciano-palomo/feed/', tier: 'vip:G.Palomo' },
   { source: 'El Blog Salmón', url: 'https://www.elblogsalmon.com/feed', tier: 'main' },
+  { source: 'El Blog Salmón', url: 'https://www.elblogsalmon.com/rss2.xml', tier: 'rss2' },
+  { source: 'El Blog Salmón', url: 'https://feeds.weblogssl.com/elblogsalmon', tier: 'weblogssl' },
 
-  // El Debate - nuevo (A)
-  { source: 'El Debate', url: 'https://www.eldebate.com/opinion/feed/', tier: 'main' },
-  { source: 'El Debate', url: 'https://www.eldebate.com/rss/opinion/', tier: 'alt' },
+  // El Debate - varias URLs alternativas (A)
+  { source: 'El Debate', url: 'https://www.eldebate.com/feed/', tier: 'main' },
+  { source: 'El Debate', url: 'https://www.eldebate.com/opinion/feed/', tier: 'opinion' },
+  { source: 'El Debate', url: 'https://www.eldebate.com/rss/', tier: 'rss-root' },
+  { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'google-news' },
 
   // El Español - nuevo (A)
   { source: 'El Español', url: 'https://www.elespanol.com/rss/opinion.xml', tier: 'main' },
@@ -707,7 +711,7 @@ export default async function handler(req, res) {
 
       const userPrompt = `FECHA: ${todayFull || todayShort}
 
-Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (mayoritariamente opinión, algunas noticias o análisis), ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
+    Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (mayoritariamente opinión, algunas noticias o análisis), ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
 
 ✅ PERMITIDO devolver MENOS columnas si no hay material fresco suficiente. Mejor 8-10 columnas de calidad fresca que 16 mediocres o de hace 36+ horas.
 
@@ -768,12 +772,18 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
 2.bis MÍNIMOS OBLIGATORIOS (condicionales — solo aplican si hay material en CANDIDATAS):
 - Si en CANDIDATAS aparece ≥2 items de "Vozpópuli", DEBES incluir mínimo 2 columnas suyas. ⭐
 - Si aparece ≥2 items de "Artículo 14", DEBES incluir mínimo 2 columnas suyas. ⭐
-- Si aparece ≥2 items de "The Objective", DEBES incluir mínimo 2 columnas suyas.
+- Si aparece ≥2 items de "The Objective", DEBES incluir mínimo 3 columnas suyas (cap MÁX 3). ⭐⭐⭐ INELUDIBLE
 - Si aparece ≥2 items de "elDiario.es", DEBES incluir mínimo 2 columnas suyas.
 - Si aparece ≥2 items de "InfoLibre", DEBES incluir mínimo 2 columnas suyas.
 - Si aparece ≥1 item de "La Gaceta", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "Libertad Digital", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "Agenda Pública" o "El País", DEBES incluir mínimo 1 de cada uno.
+
+CHEQUEO PRE-RESPUESTA OBLIGATORIO:
+Antes de devolver el JSON, RECUENTA cuántas columnas hay de cada medio prioritario.
+Si The Objective < 3 y había ≥3 candidatos de The Objective en la lista → REHAZ la selección.
+Si Vozpópuli < 2 y había ≥2 candidatos suyos → REHAZ la selección.
+Este chequeo NO ES OPCIONAL.
 
 REGLA CLAVE: estos mínimos SOLO aplican si hay candidatos suficientes en los RSS. Si Vozpópuli ese día solo tiene 1 columna (o ninguna) en CANDIDATAS, no fuerzas un mínimo de 2.
 
@@ -838,9 +848,9 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           step: 'anthropic-data',
           candidatesFound: candidates.length,
         });
-      }
+  }
 
-      currentStep = 'extract-json';
+    currentStep = 'extract-json';
       const text = (data.content || [])
         .filter(b => b.type === 'text')
         .map(b => b.text)
@@ -849,7 +859,65 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
       const briefing = extractJson(text);
       // Añadir info diagnóstica útil
       if (briefing && typeof briefing === 'object') {
-        const selectedCount = (briefing.spainOpinion || []).length;
+        // ============ ENFORCEMENT POST-MODELO ============
+        // Si el modelo no cumple los mínimos obligatorios, FORZAR añadiendo del pool de candidatos
+        const REQUIRED_MIN = {
+          'Vozpópuli': 2,
+          'Artículo 14': 2,
+          'The Objective': 3,
+          'elDiario.es': 2,
+          'InfoLibre': 2,
+          'La Gaceta': 1,
+          'Libertad Digital': 1,
+          'Agenda Pública': 1,
+          'El País': 1,
+        };
+
+        let items = briefing.spainOpinion || [];
+        const enforcementLog = [];
+
+        const countPerSource = (arr) => arr.reduce((acc, x) => {
+          acc[x.source] = (acc[x.source] || 0) + 1;
+          return acc;
+        }, {});
+
+        for (const [source, minRequired] of Object.entries(REQUIRED_MIN)) {
+          const candidatesFromSource = candidates.filter(c => c.source === source);
+          if (candidatesFromSource.length === 0) continue;
+
+          const currentCounts = countPerSource(items);
+          const current = currentCounts[source] || 0;
+          const effectiveMin = Math.min(minRequired, candidatesFromSource.length);
+
+          if (current < effectiveMin) {
+            const usedUrls = new Set(items.map(i => i.url));
+            const usedTitles = new Set(items.map(i => i.title));
+            const available = candidatesFromSource.filter(c =>
+              !usedUrls.has(c.url) && !usedTitles.has(c.title)
+            );
+            const needed = effectiveMin - current;
+            const toAdd = available.slice(0, needed);
+
+            toAdd.forEach(c => {
+              items.push({
+                title: c.title,
+                summary: c.description ? c.description.slice(0, 220) : '(Resumen pendiente — pieza incluida por regla de mínimo obligatorio)',
+                author: c.author || c.source,
+                source: c.source,
+                url: c.url,
+                publishedDate: c.publishedDate,
+                lean: null,
+                _forced: true,
+              });
+              enforcementLog.push(`+${c.source}: ${c.title.slice(0, 60)}`);
+            });
+          }
+        }
+
+        briefing.spainOpinion = items;
+        // ============ FIN ENFORCEMENT ============
+
+        const selectedCount = items.length;
         const sourceCounts = candidates.reduce((acc, c) => {
           acc[c.source] = (acc[c.source] || 0) + 1;
           return acc;
@@ -861,10 +929,14 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           candidatesPerSource: sourceCounts,
           allowedDates: allowedISODates,
           feedDiagnostic: diagnostic,
+          enforcementLog: enforcementLog,
+          enforcedCount: enforcementLog.length,
         };
         // Si el modelo IGNORÓ la regla "NUNCA vacío", añadir diagnóstico crítico
         if (selectedCount === 0 && candidates.length > 0) {
           briefing._note = `⚠️ El modelo recibió ${candidates.length} candidatos de ${briefing._meta.mediumsAvailable} medios pero seleccionó 0. Posible filtro excesivo. Detalle: ${JSON.stringify(sourceCounts)}`;
+        } else if (enforcementLog.length > 0) {
+          briefing._note = `🔧 Se forzó la inclusión de ${enforcementLog.length} columna(s) por incumplimiento de cuotas mínimas: ${enforcementLog.join(' | ')}`;
         }
       } else {
         // El modelo no devolvió JSON válido — devolvemos diagnóstico
@@ -883,6 +955,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
       });
     }
   }
+
   // ============ FIN FLUJO RSS spainOpinion ============
 
   // ============ FLUJO ESPECIAL RSS PARA spainNews ============
