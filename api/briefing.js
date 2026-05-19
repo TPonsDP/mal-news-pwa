@@ -8,7 +8,7 @@
 
 const SPAIN_OPINION_FEEDS = [
   // ============ FEEDS RSS DIRECTOS CONFIRMADOS ============
-  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_opinioncompleto.xml', tier: 'main' },
+  // ABC eliminado por preferencia del usuario
 
   // The Objective - múltiples URLs (A) + autores VIP (D)
   { source: 'The Objective', url: 'https://theobjective.com/feed/', tier: 'main' },
@@ -23,6 +23,12 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'The Objective', url: 'https://theobjective.com/autor/pablo-cambronero/feed/', tier: 'vip:Cambronero' },
 
   { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada', tier: 'main' },
+  { source: 'El País', url: 'https://elpais.com/autor/estefania-molina/a/rss/', tier: 'vip:E.Molina' },
+  { source: 'El País', url: 'https://elpais.com/autor/diego-sebastian-garrocho-salcedo/a/rss/', tier: 'vip:Garrocho' },
+  { source: 'El País', url: 'https://elpais.com/autor/lluis-bassets/a/rss/', tier: 'vip:Bassets' },
+  { source: 'El País', url: 'https://elpais.com/autor/ana-iris-simon/a/rss/', tier: 'vip:A.I.Simón' },
+  { source: 'El País', url: 'https://elpais.com/autor/angeles-caballero/a/rss/', tier: 'vip:Á.Caballero' },
+  { source: 'El País', url: 'https://elpais.com/autor/daniel-gascon/a/rss/', tier: 'vip:D.Gascón' },
 
   // La Gaceta - 2 URLs (A)
   { source: 'La Gaceta', url: 'https://gaceta.es/opinion/feed/', tier: 'main' },
@@ -33,6 +39,7 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/', tier: 'main' },
   { source: 'El Mundo', url: 'https://www.elmundo.es/rss/opinion.xml', tier: 'main' },
   { source: 'OK Diario', url: 'https://www.okdiario.com/opinion/feed/', tier: 'main' },
+  { source: 'OK Diario', url: 'https://okdiario.com/autor/graciano-palomo/feed/', tier: 'vip:G.Palomo' },
   { source: 'El Blog Salmón', url: 'https://www.elblogsalmon.com/feed', tier: 'main' },
 
   // El Debate - nuevo (A)
@@ -364,31 +371,28 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
 
 const COLUMNISTS_GUIDE = `COLUMNISTAS A SEGUIR (priorízalos si han publicado HOY o ayer):
 
-ABC (verificar primero en paralalibertad.org/category/opinion/, indexa L-V desde ~10:30h y S-D desde ~12:00h. Si no aparece, usar URL de autor directa):
-- John Müller — lunes → abc.es/autor/john-muller-4283/
-- Juan Soto Ivars — martes y domingos → abc.es/autor/juan-soto-ivars-7455/
-- Rebeca Argudo — variable → abc.es/autor/rebeca-argudo-5867/
-- Ignacio Camacho — L-V
-
 VOZPÓPULI (búsqueda web vozpopuli.com "[columnista]" [fecha], accesible desde primera hora):
-- Jesús Cacho — habitual
-- Gorka Maneiro — habitual
-- Agustín Valladolid — jueves
-- Manuel Marín — director, lunes
-- Isaac Blasco — subdirector, irregular
-- Rubén Manso — economía, semanal/quincenal, inspector Banco España → vozpopuli.com/redaccion/ruben-manso
-- Víctor Lenore — cultura, jefe sección Cultura → vozpopuli.com/redaccion/victor-lenore
-- Pablo Cambronero — variable, ex Ciudadanos → vozpopuli.com/redaccion/pablo-cambronero
+- Ignacia de Pano — martes
+- Gorka Maneiro — habitual (2-3 veces por semana, especialmente L-V)
+- Carlos Martínez Gorriarán — semanal (variable, ex-UPyD)
+- Jesús Banegas — quincenal/mensual (economía)
+- José Alejandro Vara — variable (sin día fijo)
+- Manuel Marín — lunes (director, columna semanal)
+- Irene González — variable
+- Rubén Manso — semanal/quincenal (economía), inspector Banco España → vozpopuli.com/redaccion/ruben-manso
+- Jesús Cacho — domingo (columna semanal habitual, ocasionalmente otros días)
+- Agustín Valladolid — jueves (columna semanal)
+- Pablo Sebastián — variable (veterano, habitual sin día fijo)
 
 THE OBJECTIVE (búsqueda web theobjective.com "[columnista]" [fecha]):
 - Guadalupe Sánchez
 - Antonio Caño
 - Manuel Arias Maldonado
 - Álvaro Nieto
-- Javier Benegas
+- Javier Benegas — viernes
 - Ketty Garat (análisis)
 - Jorge San Miguel (variable, 1-2/semana)
-- Pablo de Lora → theobjective.com/autor/pablo-de-lora/
+- Pablo de Lora — sábados → theobjective.com/autor/pablo-de-lora/
 - Manuel Fernández Ordóñez (Doctor Física Nuclear, energía/tecnología)
 - Victoria Carvajal — sábados, economía, ex-El País
 - Maite Rico — varios días, "Sujétame el vermú" martes, directora adjunta
@@ -410,10 +414,15 @@ EL DIARIO:
 - Ignacio Escolar — habitual
 
 EL PAÍS (de pago, usar almendron.com como agregador):
-- Estefanía Molina — jueves → almendron.com/tribuna/autor/estefania-molina/
+- Estefanía Molina — jueves (columna "Café Pendiente") → almendron.com/tribuna/autor/estefania-molina/
+- Diego S. Garrocho Salcedo — variable (filósofo, columnas temáticas) → elpais.com/autor/diego-sebastian-garrocho-salcedo/
+- Lluís Bassets — habitual (2-3 veces semana, internacional) → elpais.com/autor/lluis-bassets/
+- Ana Iris Simón — esporádica (escritora, columnas largas) → elpais.com/autor/ana-iris-simon/
+- Ángeles Caballero — lunes (columna semanal) → elpais.com/autor/angeles-caballero/
+- Daniel Gascón — viernes (columnista habitual semanal) → elpais.com/autor/daniel-gascon/
 
 LA GACETA DE LA IBEROSFERA:
-- Carmen Álvarez Vela → gaceta.es/opinion/
+- (sin columnistas prioritarios específicos) → gaceta.es/opinion/
 
 EL DEBATE (búsqueda web eldebate.com/opinion/):
 - Juan Carlos Girauta
@@ -422,8 +431,7 @@ EL DEBATE (búsqueda web eldebate.com/opinion/):
 ESTRATEGIA DE BÚSQUEDA POR COLUMNISTA:
 1. Para cada columnista que toque ese día de la semana, hacer una búsqueda específica con su nombre + fecha.
 2. Si la URL del autor está disponible (listada arriba), usarla como verificación directa antes de hacer búsqueda general.
-3. Para ABC: paralalibertad.org/category/opinion/ es agregador útil (más rápido que abc.es directo).
-4. Para El País: usar almendron.com como puerta de entrada (su contenido tiene paywall).`;
+3. Para El País: usar almendron.com como puerta de entrada (su contenido tiene paywall).`;
 
 const RULES_BASE = `REGLAS ABSOLUTAS DE FRESCURA Y CALIDAD:
 
@@ -706,14 +714,11 @@ Tienes a continuación una lista de ${candidates.length} piezas de medios españ
 ⭐⭐⭐ COLUMNISTAS PRIORITARIOS A SEGUIR ⭐⭐⭐
 Si en CANDIDATAS aparece una columna firmada por uno de estos autores, DEBES INCLUIRLA (siempre respetando los hard caps por medio). Son los referentes que el usuario quiere ver en su briefing diario:
 
-ABC:
-- John Müller (lunes), Juan Soto Ivars (martes/domingos), Rebeca Argudo, Ignacio Camacho (L-V)
-
 VOZPÓPULI ⭐:
-- Jesús Cacho, Gorka Maneiro, Agustín Valladolid (jueves), Manuel Marín (lunes, director), Isaac Blasco, Rubén Manso, Víctor Lenore, Pablo Cambronero
+- Ignacia de Pano (martes), Gorka Maneiro, Carlos Martínez Gorriarán, Jesús Banegas, José Alejandro Vara, Manuel Marín (lunes, director), Irene González, Rubén Manso, Jesús Cacho (domingo), Agustín Valladolid (jueves), Pablo Sebastián
 
 THE OBJECTIVE ⭐:
-- Guadalupe Sánchez, Antonio Caño, Manuel Arias Maldonado, Álvaro Nieto, Javier Benegas, Ketty Garat, Jorge San Miguel, Pablo de Lora, Manuel Fernández Ordóñez, Victoria Carvajal (sábados), Maite Rico (martes "Sujétame el vermú"), Pablo Cambronero, Juan Luis Cebrián
+- Guadalupe Sánchez, Antonio Caño, Manuel Arias Maldonado, Álvaro Nieto, Javier Benegas (viernes), Ketty Garat, Jorge San Miguel, Pablo de Lora (sábados), Manuel Fernández Ordóñez, Victoria Carvajal (sábados), Maite Rico (martes "Sujétame el vermú"), Pablo Cambronero, Juan Luis Cebrián
 
 EL ESPAÑOL:
 - Cristian Campos, Pedro J. Ramírez (domingos), Lorena G. Maldonado, Lorenzo Bernaldo de Quirós (domingos), José Ramón Pin Arboledas
@@ -725,13 +730,13 @@ EL DIARIO:
 - Ignacio Escolar
 
 EL PAÍS:
-- Estefanía Molina (jueves)
-
-LA GACETA:
-- Carmen Álvarez Vela
+- Estefanía Molina (jueves), Diego S. Garrocho Salcedo, Lluís Bassets, Ana Iris Simón, Ángeles Caballero, Daniel Gascón
 
 EL DEBATE:
 - Juan Carlos Girauta, Antonio R. Naranjo
+
+OK DIARIO:
+- Graciano Palomo
 
 REGLA IMPORTANTE: si una pieza tiene como author/firma uno de estos nombres, esa columna VA dentro del briefing (respetando los caps por medio). Si la pieza tiene otro autor del mismo medio, la juzgas por su calidad y relevancia.
 
@@ -756,9 +761,8 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - Libertad Digital: MÁX 3 columnas
    - Agenda Pública: MÁX 2 columnas
    - elDiario.es: MÁX 3 columnas
-   - El País: MÁX 2 columnas
+   - El País: MÁX 3 columnas
    - El Mundo: MÁX 2 columnas
-   - ABC: MÁX 2 columnas
    - OK Diario: MÁX 2 columnas
    - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo)
 2.bis MÍNIMOS OBLIGATORIOS (condicionales — solo aplican si hay material en CANDIDATAS):
@@ -791,7 +795,7 @@ EJEMPLO DE DISTRIBUCIÓN IDEAL si hay corpus suficiente:
 - El País: 1 (mínimo)
 - Total: 18 → ajusta a 16 según calidad
 
-Si un medio preferido no tiene candidatas, completa con los siguientes en orden de preferencia (después la lista de 7 preferidos, viene El Mundo, ABC y El País).
+Si un medio preferido no tiene candidatas, completa con los siguientes en orden de preferencia (después la lista de 7 preferidos, viene El Mundo y El País).
 
 Para cada columna seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú).
 
