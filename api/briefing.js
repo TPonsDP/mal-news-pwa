@@ -855,6 +855,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           selectedCount,
           mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
           candidatesPerSource: sourceCounts,
+          allowedDates: allowedISODates,
+          feedDiagnostic: diagnostic,
         };
         // Si el modelo IGNORÓ la regla "NUNCA vacío", añadir diagnóstico crítico
         if (selectedCount === 0 && candidates.length > 0) {
@@ -966,6 +968,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           totalCandidates: candidates.length,
           selectedCount: (briefing.spainNews || []).length,
           mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
+          allowedDates: allowedISODates,
+          feedDiagnostic: diagnostic,
         };
       }
       return res.status(200).json({ briefing, section });
