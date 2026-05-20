@@ -1308,7 +1308,9 @@ export default function App() {
     { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 20, type: 'news',
       descriptor: 'Cobertura global plural · ≥6 regiones · equilibrio IZQ/DER · incluye sentencias relevantes', groupByContinent: true },
     { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 8, type: 'opinion',
-      descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto' },
+      descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto',
+      note: intlData._note,
+      meta: intlData._meta },
   ] : [];
 
   const spainOpinionSections = spainOpinionData ? [
