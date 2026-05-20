@@ -198,6 +198,72 @@ function rfcToISODate(dateStr) {
   } catch (_) { return ''; }
 }
 
+// ============ FEEDS RSS PARA OPINIÓN INTERNACIONAL ============
+const INTERNATIONAL_OPINION_FEEDS = [
+  // 🇺🇸 EEUU
+  { source: 'NYT', url: 'https://rss.nytimes.com/services/xml/rss/nyt/Opinion.xml', tier: 'main' },
+  { source: 'Washington Post', url: 'https://feeds.washingtonpost.com/rss/opinions', tier: 'main' },
+  { source: 'The Atlantic', url: 'https://www.theatlantic.com/feed/all/', tier: 'main' },
+  { source: 'National Review', url: 'https://www.nationalreview.com/feed/', tier: 'main' },
+  { source: 'Politico', url: 'https://rss.politico.com/politics-news.xml', tier: 'main' },
+  { source: 'The Hill', url: 'https://thehill.com/rss/syndicator/19110', tier: 'opinion' },
+
+  // 🇬🇧 UK
+  { source: 'The Guardian', url: 'https://www.theguardian.com/commentisfree/rss', tier: 'opinion' },
+  { source: 'The Spectator', url: 'https://www.spectator.co.uk/feed', tier: 'main' },
+  { source: 'UnHerd', url: 'https://unherd.com/feed/', tier: 'main' },
+
+  // 💰 ECONÓMICO GLOBAL
+  { source: 'Bloomberg', url: 'https://feeds.bloomberg.com/opinion/news.rss', tier: 'opinion' },
+  { source: 'Reuters', url: 'https://www.reutersagency.com/feed/?best-topics=business-finance', tier: 'business' },
+  { source: 'MarketWatch', url: 'https://feeds.marketwatch.com/marketwatch/topstories/', tier: 'main' },
+  { source: 'Quartz', url: 'https://qz.com/feed', tier: 'main' },
+  { source: 'Forbes', url: 'https://www.forbes.com/business/feed/', tier: 'business' },
+
+  // 🇪🇺 EUROPA OCC.
+  { source: 'Le Figaro', url: 'https://www.lefigaro.fr/rss/figaro_actualites.xml', tier: 'main' },
+  { source: 'Le Monde', url: 'https://www.lemonde.fr/rss/une.xml', tier: 'main' },
+
+  // 🌐 MULTILATERAL OPINIÓN
+  { source: 'Project Syndicate', url: 'https://www.project-syndicate.org/rss', tier: 'main' },
+  { source: 'Foreign Policy', url: 'https://foreignpolicy.com/feed/', tier: 'main' },
+  { source: 'Foreign Affairs', url: 'https://www.foreignaffairs.com/rss.xml', tier: 'main' },
+
+  // 🌍 EUROPA ESTE
+  { source: 'Kyiv Independent', url: 'https://kyivindependent.com/feed', tier: 'main' },
+
+  // 🇷🇺 RUSIA (independiente)
+  { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/opinion', tier: 'opinion' },
+
+  // 🕌 ORIENTE MEDIO
+  { source: 'Haaretz', url: 'https://www.haaretz.com/srv/htz---rss-opinion', tier: 'opinion' },
+  { source: 'Times of Israel', url: 'https://www.timesofisrael.com/feed/', tier: 'main' },
+
+  // 🇮🇳 INDIA
+  { source: 'The Hindu', url: 'https://www.thehindu.com/opinion/feeder/default.rss', tier: 'opinion' },
+  { source: 'Indian Express', url: 'https://indianexpress.com/section/opinion/feed/', tier: 'opinion' },
+
+  // 🌏 ASIA ESTE
+  { source: 'Japan Times', url: 'https://www.japantimes.co.jp/feed/', tier: 'main' },
+
+  // 🌏 SUDESTE ASIÁTICO
+  { source: 'Jakarta Post', url: 'https://www.thejakartapost.com/feed', tier: 'main' },
+  { source: 'Bangkok Post', url: 'https://www.bangkokpost.com/rss/data/most-recent.xml', tier: 'main' },
+
+  // 🌍 ÁFRICA
+  { source: 'Daily Maverick', url: 'https://www.dailymaverick.co.za/feed/', tier: 'main' },
+  { source: 'Mail & Guardian', url: 'https://mg.co.za/feed/', tier: 'main' },
+  { source: 'Premium Times', url: 'https://www.premiumtimesng.com/feed', tier: 'main' },
+  { source: 'Africa Report', url: 'https://www.theafricareport.com/feed/', tier: 'main' },
+
+  // 🌎 LATAM
+  { source: 'Infobae', url: 'https://www.infobae.com/feeds/rss/', tier: 'main' },
+  { source: 'Clarín', url: 'https://www.clarin.com/rss/lo-ultimo/', tier: 'main' },
+  { source: 'El Espectador', url: 'https://www.elespectador.com/arc/outboundfeeds/rss/category/opinion/', tier: 'opinion' },
+  { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss/rss_actualidad.asp', tier: 'main' },
+  { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss.asp', tier: 'general' },
+];
+
 async function fetchSpainOpinionRss(allowedISODates) {
   const result = await fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48);
   return { candidates: result.items.slice(0, 80), diagnostic: result.diagnostic };
@@ -206,6 +272,11 @@ async function fetchSpainOpinionRss(allowedISODates) {
 async function fetchSpainNewsRss(allowedISODates) {
   const result = await fetchFeedsAndFilter(SPAIN_NEWS_FEEDS, allowedISODates, 36);
   return { candidates: result.items.slice(0, 80), diagnostic: result.diagnostic };
+}
+
+async function fetchInternationalOpinionRss(allowedISODates) {
+  const result = await fetchFeedsAndFilter(INTERNATIONAL_OPINION_FEEDS, allowedISODates, 48);
+  return { candidates: result.items.slice(0, 60), diagnostic: result.diagnostic };
 }
 
 async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
@@ -515,26 +586,37 @@ WORLDNEWS (hasta 20 noticias):
   · 🇪🇺 Europa Occidental (FR/DE/IT): MÍNIMO 2
   · 🌍 Europa Este (Ucrania/Polonia): MÍNIMO 1
   · 🕌 Oriente Medio (Israel/Mundo árabe): MÍNIMO 2
-  · 🇮🇳🌏 Asia (India + Asia Este/SE): MÍNIMO 2
+  · 🇮🇳 India: MÍNIMO 1
+  · 🌏 Asia Este (Japón/China/Corea): MÍNIMO 1
+  · 🌏 Sudeste Asiático (Singapur/Indonesia/Tailandia/Filipinas): MÍNIMO 1
   · 🌎 LATAM (Argentina/México/Brasil/Colombia): MÍNIMO 2
-  · 🌍 África (Sudáfrica): MÍNIMO 1
+  · 🌍 África (Sudáfrica/Nigeria/Kenia): MÍNIMO 1
+  · 💰 Económico global (Bloomberg/Reuters/FT/Forbes): MÍNIMO 2
   · 🇷🇺 Rusia: MÍNIMO 1
   · 🇦🇺 Australia / 🇹🇷 Turquía: opcionales, priorizar si hay material relevante
-- Total mínimos: ~11 piezas garantizadas globalmente, 9 piezas flexibles
+- Total mínimos: ~14 piezas garantizadas globalmente, 6 piezas flexibles
 - Si una región NO tiene material fresco real, deja el slot vacío (PROHIBIDO rellenar con USA/UK extras o inventar piezas)
 - Equilibrio IZQ/DER
 - Eventos concretos del día (no análisis evergreen)
 - Mejor 16 piezas reales y distribuidas que 20 todas anglo
 - LEGAL EMBEBIDO: si hay sentencias internacionales relevantes del día (TJUE, CIJ, TPI, Supreme Court USA, antitrust CE/FTC, etc.), inclúyelas como pieza más en worldNews con la región del tribunal. Busca en: site:law360.com, site:mlex.com, site:reuters.com/legal, site:bloomberg.com/law
 
-⭐ MEDIOS PRIORIZADOS POR REGIÓN (28 medios con cobertura global plural):
+⭐ MEDIOS PRIORIZADOS POR REGIÓN (50+ medios con cobertura global plural):
 
-🇺🇸 EEUU (5):
-- nytimes.com (centro-izq) · washingtonpost.com (centro-izq) · theatlantic.com (centro-izq)
-- wsj.com (centro-der financiero) · nationalreview.com (derecha intelectual)
+🇺🇸 EEUU (6):
+- nytimes.com (centro-izq) · washingtonpost.com (centro-izq) · theatlantic.com (centro-izq intelectual)
+- wsj.com (centro-der financiero) · nationalreview.com (derecha intelectual) · politico.com (centro)
 
-🇬🇧 UK (3):
+🇬🇧 UK (5):
 - ft.com (centro financiero) · economist.com (centro liberal) · theguardian.com (izquierda)
+- spectator.co.uk (derecha tradicional) · unherd.com (heterodoxo)
+
+💰 ECONÓMICO GLOBAL (5):
+- bloomberg.com / bloomberg.com/opinion (centro financiero, EEUU)
+- reuters.com (centro factual)
+- forbes.com (centro-der business)
+- marketwatch.com (mercados EEUU)
+- qz.com / quartz.com (centro tech/business)
 
 🇪🇺 EUROPA OCCIDENTAL (3):
 - lefigaro.fr (centro-der) · lemonde.fr (centro-izq) · faz.net (centro-der alemán)
@@ -542,30 +624,40 @@ WORLDNEWS (hasta 20 noticias):
 🌍 EUROPA ESTE (2):
 - kyivindependent.com (pro-occidental, guerra Ucrania) · wyborcza.pl (centro-izq polaco)
 
-🇮🇱 ISRAEL (1):
-- haaretz.com (izquierda)
+🕌 ORIENTE MEDIO (3):
+- haaretz.com (Israel izquierda) · timesofisrael.com (Israel centro) · thenationalnews.com (Emiratos establishment Golfo)
 
-🇮🇳 INDIA (1):
-- thehindu.com (centro-izq intelectual)
+🇮🇳 INDIA (3):
+- thehindu.com (centro-izq intelectual) · indianexpress.com (centro) · timesofindia.com (popular)
 
-🌏 ASIA ESTE/SE (3):
-- asia.nikkei.com (financiero Japón) · scmp.com (Hong Kong) · straitstimes.com (Singapur centrista)
+🌏 ASIA ESTE (4):
+- asia.nikkei.com (Japón financiero) · scmp.com (Hong Kong) · japantimes.co.jp (Japón centrista) · koreaherald.com (Corea Sur centro)
 
-🌎 LATAM (4):
-- clarin.com (Argentina centro-der) · jornada.com.mx (México izquierda)
-- folha.uol.com.br (Brasil centro) · elespectador.com (Colombia centro-izq)
+🌏 SUDESTE ASIÁTICO (4):
+- straitstimes.com (Singapur centrista) · thejakartapost.com (Indonesia centro) · bangkokpost.com (Tailandia centro) · manilatimes.net (Filipinas)
+
+🌎 LATAM POLÍTICO (7):
+- clarin.com (Argentina centro-der) · lanacion.com.ar (Argentina centro-der)
+- jornada.com.mx (México izquierda) · folha.uol.com.br (Brasil centro)
+- oglobo.globo.com (Brasil centro-der) · elespectador.com (Colombia centro-izq)
+- emol.com / elmercurio.com (Chile centro-der, decano de la prensa chilena)
+
+🌎 LATAM ECONÓMICO (2):
+- infobae.com (panregional) · valor.globo.com (Brasil financiero)
 
 🇷🇺 RUSIA (1):
 - themoscowtimes.com (independiente en exilio)
 
-🌐 MULTILATERAL (1):
-- project-syndicate.org (columnistas globales)
+🌐 MULTILATERAL OPINIÓN (3):
+- project-syndicate.org (Stiglitz, Krugman, Rajan, Acemoglu)
+- foreignpolicy.com · foreignaffairs.com
 
-🌍 ÁFRICA (1):
+🌍 ÁFRICA (5):
 - dailymaverick.co.za (Sudáfrica investigativo)
-
-🕌 MUNDO ÁRABE (1):
-- thenationalnews.com (Emiratos establishment Golfo)
+- mg.co.za / Mail & Guardian (Sudáfrica centro-izq)
+- premiumtimesng.com (Nigeria centro)
+- theafricareport.com (panafricano francés/inglés)
+- theeastafrican.co.ke (Kenia/Tanzania)
 
 🇦🇺 AUSTRALIA (1):
 - theaustralian.com.au (centro-der, Murdoch)
@@ -711,7 +803,7 @@ export default async function handler(req, res) {
 
       const userPrompt = `FECHA: ${todayFull || todayShort}
 
-    Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (mayoritariamente opinión, algunas noticias o análisis), ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
+Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (mayoritariamente opinión, algunas noticias o análisis), ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
 
 ✅ PERMITIDO devolver MENOS columnas si no hay material fresco suficiente. Mejor 8-10 columnas de calidad fresca que 16 mediocres o de hace 36+ horas.
 
@@ -848,9 +940,9 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           step: 'anthropic-data',
           candidatesFound: candidates.length,
         });
-  }
+      }
 
-    currentStep = 'extract-json';
+      currentStep = 'extract-json';
       const text = (data.content || [])
         .filter(b => b.type === 'text')
         .map(b => b.text)
@@ -859,8 +951,30 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
       const briefing = extractJson(text);
       // Añadir info diagnóstica útil
       if (briefing && typeof briefing === 'object') {
+        // ============ FILTRO OPINIÓN ESTRICTO ============
+        // Detecta si una pieza es realmente columna firmada (no noticia/editorial/sumario)
+        const isOpinionLike = (item) => {
+          if (!item.author) return false;
+          const author = String(item.author).trim();
+          if (!author) return false;
+          const authorLow = author.toLowerCase();
+          const sourceLow = String(item.source || '').toLowerCase();
+          if (authorLow === sourceLow) return false;                  // "THE OBJECTIVE" como autor
+          if (authorLow.includes('redacción') || authorLow.includes('redaccion')) return false;
+          if (authorLow === 'editorial' || authorLow === 'opinión' || authorLow === 'opinion') return false;
+          if (authorLow.includes('sumario')) return false;
+
+          const title = String(item.title || '').trim().toLowerCase();
+          if (title.startsWith('sumario')) return false;
+          if (title.startsWith('en sumario')) return false;
+          if (title.startsWith('boletín')) return false;
+          if (title.includes('claves del día')) return false;
+          return true;
+        };
+
         // ============ ENFORCEMENT POST-MODELO ============
         // Si el modelo no cumple los mínimos obligatorios, FORZAR añadiendo del pool de candidatos
+        // SOLO se fuerzan piezas que pasen isOpinionLike (autor real, no sumarios, no editoriales)
         const REQUIRED_MIN = {
           'Vozpópuli': 2,
           'Artículo 14': 2,
@@ -875,6 +989,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
 
         let items = briefing.spainOpinion || [];
         const enforcementLog = [];
+        const skippedNonOpinion = [];
 
         const countPerSource = (arr) => arr.reduce((acc, x) => {
           acc[x.source] = (acc[x.source] || 0) + 1;
@@ -882,19 +997,39 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         }, {});
 
         for (const [source, minRequired] of Object.entries(REQUIRED_MIN)) {
-          const candidatesFromSource = candidates.filter(c => c.source === source);
-          if (candidatesFromSource.length === 0) continue;
+          // Solo candidatos de este source QUE SEAN OPINIÓN (con autor real)
+          const allFromSource = candidates.filter(c => c.source === source);
+          const opinionFromSource = allFromSource.filter(isOpinionLike);
+
+          const rejected = allFromSource.length - opinionFromSource.length;
+          if (rejected > 0) {
+            skippedNonOpinion.push(`${source}: ${rejected} no-opinión filtradas`);
+          }
+
+          if (opinionFromSource.length === 0) continue;
 
           const currentCounts = countPerSource(items);
           const current = currentCounts[source] || 0;
-          const effectiveMin = Math.min(minRequired, candidatesFromSource.length);
+          const effectiveMin = Math.min(minRequired, opinionFromSource.length);
 
           if (current < effectiveMin) {
             const usedUrls = new Set(items.map(i => i.url));
             const usedTitles = new Set(items.map(i => i.title));
-            const available = candidatesFromSource.filter(c =>
+            let available = opinionFromSource.filter(c =>
               !usedUrls.has(c.url) && !usedTitles.has(c.title)
             );
+
+            // Preferir feeds VIP de autor sobre feed general
+            available = available.sort((a, b) => {
+              const aVip = String(a._fromTier || '').startsWith('vip:') ? 0 : 1;
+              const bVip = String(b._fromTier || '').startsWith('vip:') ? 0 : 1;
+              if (aVip !== bVip) return aVip - bVip;
+              // Después, secciones de opinión sobre feed general
+              const aOpinion = (a._fromTier === 'section' || a._fromTier === 'category' || a._fromTier === 'opinion') ? 0 : 1;
+              const bOpinion = (b._fromTier === 'section' || b._fromTier === 'category' || b._fromTier === 'opinion') ? 0 : 1;
+              return aOpinion - bOpinion;
+            });
+
             const needed = effectiveMin - current;
             const toAdd = available.slice(0, needed);
 
@@ -902,14 +1037,14 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
               items.push({
                 title: c.title,
                 summary: c.description ? c.description.slice(0, 220) : '(Resumen pendiente — pieza incluida por regla de mínimo obligatorio)',
-                author: c.author || c.source,
+                author: c.author,
                 source: c.source,
                 url: c.url,
                 publishedDate: c.publishedDate,
                 lean: null,
                 _forced: true,
               });
-              enforcementLog.push(`+${c.source}: ${c.title.slice(0, 60)}`);
+              enforcementLog.push(`+${c.source} [${c._fromTier || 'main'}]: ${c.author} - ${c.title.slice(0, 50)}`);
             });
           }
         }
@@ -931,12 +1066,13 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           feedDiagnostic: diagnostic,
           enforcementLog: enforcementLog,
           enforcedCount: enforcementLog.length,
+          skippedNonOpinion: skippedNonOpinion,
         };
         // Si el modelo IGNORÓ la regla "NUNCA vacío", añadir diagnóstico crítico
         if (selectedCount === 0 && candidates.length > 0) {
           briefing._note = `⚠️ El modelo recibió ${candidates.length} candidatos de ${briefing._meta.mediumsAvailable} medios pero seleccionó 0. Posible filtro excesivo. Detalle: ${JSON.stringify(sourceCounts)}`;
         } else if (enforcementLog.length > 0) {
-          briefing._note = `🔧 Se forzó la inclusión de ${enforcementLog.length} columna(s) por incumplimiento de cuotas mínimas: ${enforcementLog.join(' | ')}`;
+          briefing._note = `🔧 Se forzó la inclusión de ${enforcementLog.length} columna(s) de opinión por cuotas mínimas: ${enforcementLog.join(' | ')}`;
         }
       } else {
         // El modelo no devolvió JSON válido — devolvemos diagnóstico
@@ -955,7 +1091,6 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
       });
     }
   }
-
   // ============ FIN FLUJO RSS spainOpinion ============
 
   // ============ FLUJO ESPECIAL RSS PARA spainNews ============
@@ -1059,6 +1194,28 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
   // ============ FIN FLUJO RSS spainNews ============
 
   try {
+    // ============ PRE-FETCH RSS OPINIÓN INTERNACIONAL ============
+    let intlOpinionCandidates = [];
+    let intlOpinionDiagnostic = [];
+    if (section === 'international') {
+      try {
+        const intlResult = await fetchInternationalOpinionRss(allowedISODates);
+        intlOpinionCandidates = intlResult.candidates || [];
+        intlOpinionDiagnostic = intlResult.diagnostic || [];
+      } catch (e) {
+        // Si falla el pre-fetch, seguimos solo con web_search
+        intlOpinionDiagnostic = [{ source: 'PRE-FETCH ERROR', errorMsg: e.message }];
+      }
+    }
+
+    const candidatesText = (section === 'international' && intlOpinionCandidates.length > 0)
+      ? `\n\n📰 CANDIDATAS DE OPINIÓN INTERNACIONAL PRE-RECOLECTADAS (RSS directos, últimas 48h):\n${
+          intlOpinionCandidates.map((c, i) =>
+            `[${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.author || 'sin autor'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${(c.description || '').slice(0, 200)}`
+          ).join('\n\n')
+        }\n\n⭐ IMPORTANTE: Estas ${intlOpinionCandidates.length} candidatas son material PRE-VERIFICADO de medios internacionales. ÚSALAS PRIORITARIAMENTE para llenar worldOpinion (mínimo 5-6 deben venir de esta lista). Si una candidata es buena, INCLÚYELA con su URL exacta. Combina con web_search SOLO para cobertura adicional (LATAM, Asia, África, OM, otras zonas no representadas arriba).`
+      : '';
+
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -1073,7 +1230,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: cfg.maxUses }],
         messages: [{
           role: 'user',
-          content: cfg.user(todayShort, todayFull, nowTime, allowedISODates),
+          content: cfg.user(todayShort, todayFull, nowTime, allowedISODates) + candidatesText,
         }],
       }),
     });
@@ -1096,6 +1253,14 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
       .join('');
 
     const briefing = extractJson(text);
+    if (briefing && typeof briefing === 'object' && section === 'international') {
+      briefing._meta = {
+        ...briefing._meta,
+        intlOpinionCandidatesCount: intlOpinionCandidates.length,
+        feedDiagnostic: intlOpinionDiagnostic,
+        allowedDates: allowedISODates,
+      };
+    }
     return res.status(200).json({ briefing, section });
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Error desconocido' });
