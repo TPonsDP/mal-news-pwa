@@ -1,2021 +1,1335 @@
-import { useState, useEffect } from 'react';
+// Vercel serverless function (Node runtime)
+// La API key NUNCA sale del servidor.
+// Modelo: Claude Sonnet 4.6 con web_search (internacional, spainNews) o RSS pre-fetch (spainOpinion).
 
-// ============ CACHE LOCALSTORAGE ============
-// Persiste el briefing entre sesiones: si cierras la PWA y vuelves a abrir,
-// recuperas el último briefing generado de cada botón.
-// SIN TTL: la última generación de cada uno (Internacional, Opinión, Noticias)
-// queda guardada hasta que regeneres ese botón o pulses "limpiar".
+// ============ MÓDULO RSS PARA OPINIÓN ESPAÑA ============
+// Para evitar limitaciones de web_search en Tier 2 (timeouts, indexación pobre),
+// pre-fetcheamos los RSS de los 9 medios y pasamos la lista al modelo.
 
-const CACHE_KEY = 'mal-news-briefing-v1';
+const SPAIN_OPINION_FEEDS = [
+  // ============ FEEDS RSS DIRECTOS CONFIRMADOS ============
+  // ABC eliminado por preferencia del usuario
 
-function loadBriefingCache() {
+  // The Objective - múltiples URLs (A) + autores VIP (D)
+  { source: 'The Objective', url: 'https://theobjective.com/feed/', tier: 'main' },
+  { source: 'The Objective', url: 'https://theobjective.com/elsubjetivo/feed/', tier: 'section' },
+  { source: 'The Objective', url: 'https://theobjective.com/category/opinion/feed/', tier: 'category' },
+  // VIP autores The Objective (D)
+  { source: 'The Objective', url: 'https://theobjective.com/autor/juan-luis-cebrian/feed/', tier: 'vip:Cebrián' },
+  { source: 'The Objective', url: 'https://theobjective.com/autor/pablo-de-lora/feed/', tier: 'vip:de Lora' },
+  { source: 'The Objective', url: 'https://theobjective.com/autor/javier-benegas/feed/', tier: 'vip:Benegas' },
+  { source: 'The Objective', url: 'https://theobjective.com/autor/guadalupe-sanchez/feed/', tier: 'vip:G.Sánchez' },
+  { source: 'The Objective', url: 'https://theobjective.com/autor/maite-rico/feed/', tier: 'vip:M.Rico' },
+  { source: 'The Objective', url: 'https://theobjective.com/autor/pablo-cambronero/feed/', tier: 'vip:Cambronero' },
+
+  { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/opinion/portada', tier: 'main' },
+  { source: 'El País', url: 'https://elpais.com/autor/estefania-molina/a/rss/', tier: 'vip:E.Molina' },
+  { source: 'El País', url: 'https://elpais.com/autor/diego-sebastian-garrocho-salcedo/a/rss/', tier: 'vip:Garrocho' },
+  { source: 'El País', url: 'https://elpais.com/autor/lluis-bassets/a/rss/', tier: 'vip:Bassets' },
+  { source: 'El País', url: 'https://elpais.com/autor/ana-iris-simon/a/rss/', tier: 'vip:A.I.Simón' },
+  { source: 'El País', url: 'https://elpais.com/autor/angeles-caballero/a/rss/', tier: 'vip:Á.Caballero' },
+  { source: 'El País', url: 'https://elpais.com/autor/daniel-gascon/a/rss/', tier: 'vip:D.Gascón' },
+
+  // La Gaceta - 2 URLs (A)
+  { source: 'La Gaceta', url: 'https://gaceta.es/opinion/feed/', tier: 'main' },
+  { source: 'La Gaceta', url: 'https://gaceta.es/feed/', tier: 'alt' },
+
+  { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml', tier: 'main' },
+  { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/', tier: 'main' },
+  { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/', tier: 'main' },
+  { source: 'El Mundo', url: 'https://www.elmundo.es/rss/opinion.xml', tier: 'main' },
+  { source: 'OK Diario', url: 'https://www.okdiario.com/opinion/feed/', tier: 'main' },
+  { source: 'OK Diario', url: 'https://okdiario.com/autor/graciano-palomo/feed/', tier: 'vip:G.Palomo' },
+  { source: 'El Blog Salmón', url: 'https://www.elblogsalmon.com/feed', tier: 'main' },
+  { source: 'El Blog Salmón', url: 'https://www.elblogsalmon.com/rss2.xml', tier: 'rss2' },
+  { source: 'El Blog Salmón', url: 'https://feeds.weblogssl.com/elblogsalmon', tier: 'weblogssl' },
+
+  // El Debate - varias URLs alternativas (A)
+  { source: 'El Debate', url: 'https://www.eldebate.com/feed/', tier: 'main' },
+  { source: 'El Debate', url: 'https://www.eldebate.com/opinion/feed/', tier: 'opinion' },
+  { source: 'El Debate', url: 'https://www.eldebate.com/rss/', tier: 'rss-root' },
+  { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'google-news' },
+
+  // El Español: eliminado de opinion (queda solo en spainNews)
+
+  // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo) ============
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
+  { source: 'Artículo 14', url: 'https://news.google.com/rss/search?q=site:articulo14.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
+  { source: 'Agenda Pública', url: 'https://news.google.com/rss/search?q=site:agendapublica.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
+];
+
+// ============ FEEDS RSS PARA NOTICIAS ESPAÑA ============
+// Para noticias usamos los portadas/general de cada medio (no la sección opinion).
+// Cubre eventos del día: política, economía, sociedad, sucesos.
+const SPAIN_NEWS_FEEDS = [
+  // RSS oficiales directos (los que tengan)
+  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_PortadaCompleta.xml' },
+  { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada' },
+  { source: 'The Objective', url: 'https://theobjective.com/feed/' },
+  { source: 'La Gaceta', url: 'https://gaceta.es/feed/' },
+  { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml' },
+  { source: 'El Español', url: 'https://www.elespanol.com/rss' },
+  { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
+  { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/' },
+  { source: 'La Vanguardia', url: 'https://www.lavanguardia.com/mvc/feed/rss/home' },
+  { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/rss' },
+
+  // Demócrata - WordPress feed estándar + alternativos
+  { source: 'Demócrata', url: 'https://democrata.es/feed/' },
+  { source: 'Demócrata', url: 'https://democrata.es/rss/' },
+
+  // BALEARES regional
+  { source: 'OK Diario Baleares', url: 'https://okdiario.com/baleares/feed/' },
+  { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/illes-balears/rss/' },
+  { source: 'Economía de Mallorca', url: 'https://www.economiademallorca.com/feed/' },
+
+  // Google News RSS (fallback solo para medios sin RSS público fiable)
+  { source: 'El Mundo', url: 'https://news.google.com/rss/search?q=site:elmundo.es&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
+];
+
+async function fetchOneFeed(feed, timeoutMs = 8000) {
+  const result = {
+    source: feed.source,
+    url: feed.url,
+    tier: feed.tier || 'main',
+    items: [],
+    status: 'ok',          // ok | http_error | timeout | fetch_error | empty | parse_error
+    httpCode: null,
+    errorMsg: null,
+  };
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed?.timestamp) return null;
-    return parsed;
-  } catch (_) { return null; }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(feed.url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml, */*',
+      },
+      redirect: 'follow',
+    });
+    clearTimeout(timer);
+    result.httpCode = res.status;
+    if (!res.ok) {
+      result.status = 'http_error';
+      result.errorMsg = `HTTP ${res.status}`;
+      return result;
+    }
+    const xml = await res.text();
+    const items = parseFeedItems(xml, feed.source);
+    result.items = items;
+    if (items.length === 0) {
+      result.status = xml.length < 200 ? 'parse_error' : 'empty';
+      result.errorMsg = items.length === 0 ? `Sin items (XML ${xml.length} chars)` : null;
+    }
+    return result;
+  } catch (err) {
+    result.status = err.name === 'AbortError' ? 'timeout' : 'fetch_error';
+    result.errorMsg = err.message || 'Error desconocido';
+    return result;
+  }
 }
 
-function saveBriefingCache(payload) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
-      ...payload,
-      timestamp: new Date().toISOString(),
-    }));
-  } catch (_) { /* localStorage no disponible o quota lleno: silencioso */ }
-}
-
-function clearBriefingCache() {
-  try { localStorage.removeItem(CACHE_KEY); } catch (_) { /* silencioso */ }
-}
-
-// Formatea hace cuánto se generó el briefing en texto humano
-function formatCacheAge(timestamp) {
-  if (!timestamp) return '';
-  try {
-    const ms = Date.now() - new Date(timestamp).getTime();
-    const minutes = Math.floor(ms / 60000);
-    if (minutes < 1) return 'ahora mismo';
-    if (minutes < 60) return `hace ${minutes} min`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `hace ${hours} h`;
-    const days = Math.floor(hours / 24);
-    return `hace ${days} d`;
-  } catch (_) { return ''; }
-}
-
-// ============ FIN CACHE LOCALSTORAGE ============
-
-const RECIPIENT = 'tonipons91@gmail.com';
-const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Anthropic Tier 2
-
-const BRAND = {
-  // ============ PALETA: Oxford Blue + Smoke Gray + 3 gradientes (teal · lima-dorado · naranja) ============
-  oxford: '#1A365D',           // Marca principal (Azul Oxford) - solo logo
-  bgGray: '#F0F4F8',           // Fondo (Gris Humo)
-  bgGrayDeep: '#E2E8F0',       // Variante para gradientes sutiles del fondo
-  cardWhite: '#FFFFFF',        // Tarjetas blancas
-  shadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-  shadowLg: '0 8px 24px rgba(0, 0, 0, 0.12)',
-  // Gradientes oficiales por bucket
-  intlGrad: 'linear-gradient(90deg, #0F766E, #5EEAD4)',
-  opinionGrad: 'linear-gradient(90deg, #65A30D, #FACC15)',
-  newsGrad: 'linear-gradient(90deg, #C2410C, #FA6900)',
-  // Colores sólidos para bordes/badges (start de cada gradiente)
-  intlColor: '#0F766E',
-  opinionColor: '#65A30D',
-  newsColor: '#C2410C',
-
-  // ============ ALIASES PARA RETROCOMPATIBILIDAD ============
-  navy: '#1A365D',
-  navyDeep: '#102844',
-  card: '#FFFFFF',
-  cardSubtle: 'rgba(255,255,255,0.95)',
-  ink: '#1A365D',
-  inkSoft: 'rgba(26, 54, 93, 0.65)',
-  orange: '#FA6900',           // Naranja Ciudadanos vivo (usado en decoraciones y botón HOY)
-  limeLight: '#F0F4F8',        // bgGray alias usado en gradientes decorativos
-  limeDark: '#E2E8F0',         // bgGrayDeep alias
-  // Lean badges (IZQ/DER indicador ideológico en algunas tarjetas)
-  leftBlue: '#3B82F6',
-  rightRed: '#EF4444',
-};
-
-function DiagonalHeader({ dateObj }) {
-  const dayNameRaw = dateObj.toLocaleDateString('es-ES', { weekday: 'long' });
-  const dayName = dayNameRaw.charAt(0).toUpperCase() + dayNameRaw.slice(1);
-  const dayNumber = dateObj.getDate();
-  const month = dateObj.toLocaleDateString('es-ES', { month: 'long' }).toUpperCase();
-  const year = dateObj.getFullYear();
-
-  return (
-    <svg viewBox="0 0 600 210" width="100%" style={{
-      maxWidth: '640px',
-      height: 'auto',
-      display: 'block',
-      margin: '0 auto',
-      filter: 'drop-shadow(0 6px 20px rgba(26,54,93,0.15))',
-    }} xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="hdrMalBg" cx="38%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#5685BD" />
-          <stop offset="45%" stopColor="#1A365D" />
-          <stop offset="100%" stopColor="#04101F" />
-        </radialGradient>
-      </defs>
-
-      {/* Fondo gris humo con esquinas redondeadas */}
-      <rect x="0" y="0" width="600" height="210" fill="#F0F4F8" rx="10" />
-
-      {/* Bloque azul Oxford con corte diagonal */}
-      <path d="M 0 0 L 280 0 L 200 210 L 0 210 Z" fill="#1A365D" />
-
-      {/* Línea naranja siguiendo el corte diagonal */}
-      <line x1="280" y1="0" x2="200" y2="210" stroke="#FA6900" strokeWidth="4" />
-
-      {/* Logo circular dentro del bloque azul */}
-      <g transform="translate(110, 105)">
-        <circle r="50" fill="url(#hdrMalBg)" stroke="#5EEAD4" strokeWidth="1.5" />
-        <g transform="scale(0.21) translate(-256, -256)">
-          <rect x="154" y="80" width="58" height="198" rx="6" fill="#60A5FA" />
-          <polygon points="212,80 256,263 301,80 275,80 256,195 237,80" fill="#A3E635" />
-          <rect x="301" y="80" width="58" height="198" rx="6" fill="#FB923C" />
-          <text x="256" y="400" textAnchor="middle" fontFamily="Verdana, Geneva, sans-serif" fontWeight="800" fontSize="58" fill="#A3E635" letterSpacing="14">NEWS</text>
-        </g>
-      </g>
-
-      {/* Zona derecha: día en serif Georgia */}
-      <text x="305" y="70" fontFamily="Georgia, 'Times New Roman', serif" fontStyle="italic" fontSize="42" fill="#1A365D">
-        {dayName}
-      </text>
-
-      {/* Día número grande naranja + mes en azul */}
-      <text x="320" y="108" fontFamily="'Verdana', 'Geneva', sans-serif" fontWeight="900" fontSize="34" fill="#FA6900" letterSpacing="-0.02em">
-        {dayNumber}
-        <tspan fontSize="17" fill="#1A365D" fontWeight="700" dx="8">{month}</tspan>
-      </text>
-
-      {/* Año con letterspacing amplio */}
-      <text x="320" y="134" fontFamily="'Verdana', sans-serif" fontWeight="700" fontSize="13" fill="#5A6B7C" letterSpacing="0.32em">{year}</text>
-
-      {/* Separador sutil */}
-      <line x1="320" y1="156" x2="575" y2="156" stroke="#1A365D" strokeWidth="0.5" opacity="0.25" />
-
-      {/* Sub-etiquetas en dos líneas con color diferenciado */}
-      <text x="320" y="176" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#5A6B7C" letterSpacing="0.16em">ESPAÑA · OPINIÓN</text>
-      <text x="320" y="194" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#0F766E" letterSpacing="0.16em">MUNDO · INTERNACIONAL</text>
-    </svg>
-  );
-}
-
-function LeanBadge({ lean }) {
-  if (!lean) return null;
-  const isLeft = lean === 'left';
-  const color = isLeft ? BRAND.leftBlue : BRAND.rightRed;
-  const symbol = isLeft ? '◀' : '▶';
-  const label = isLeft ? 'IZQ' : 'DER';
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: '3px',
-      padding: '2px 7px', borderRadius: '10px',
-      fontSize: '9px', fontWeight: '700', letterSpacing: '0.05em',
-      background: `${color}18`, color, border: `1px solid ${color}40`,
-    }}>
-      {symbol} {label}
-    </span>
-  );
-}
-
-// Helper: deriva nombre del día de la semana en español desde fecha ISO
-function getDayOfWeek(isoDate) {
-  if (!isoDate) return '';
-  try {
-    const d = new Date(isoDate + 'T12:00:00');
-    return d.toLocaleDateString('es-ES', { weekday: 'long' });
-  } catch (_) { return ''; }
-}
-
-// ============================================================
-// PALETA DE COLORES POR MEDIO — para badge de fuente en tarjetas
-// ============================================================
-const SOURCE_BADGE_COLORS = {
-  // España opinión
-  'Vozpópuli': '#E63946',
-  'The Objective': '#1A1A1A',
-  'El País': '#D32F2F',
-  'elDiario.es': '#DC2626',
-  'ABC': '#9B2335',
-  'El Español': '#ED1C24',
-  'InfoLibre': '#047857',
-  'La Gaceta': '#991B1B',
-  'Libertad Digital': '#7E22CE',
-  'El Debate': '#D97706',
-  'Artículo 14': '#4A5568',
-  'Agenda Pública': '#0F766E',
-  'almendron': '#FB923C',
-  'El Blog Salmón': '#16A34A',
-  // España noticias adicionales
-  'El Mundo': '#C8102E',
-  'OK Diario Baleares': '#F59E0B',
-  'OK Diario': '#F59E0B',
-  'elDiario.es Baleares': '#DC2626',
-  'Economía de Mallorca': '#0F766E',
-  'La Vanguardia': '#1A365D',
-  'Crónica Global': '#475569',
-  // Internacional
-  'NYT': '#000000', 'New York Times': '#000000',
-  'WSJ': '#1A1A1A', 'Wall Street Journal': '#1A1A1A',
-  'FT': '#990F3D', 'Financial Times': '#990F3D',
-  'Guardian': '#052962', 'The Guardian': '#052962',
-  'BBC': '#BB1919',
-  'Reuters': '#FF8000',
-  'AP': '#000000', 'Associated Press': '#000000',
-  'Bloomberg': '#FA0000',
-  'Economist': '#E3120B', 'The Economist': '#E3120B',
-  'Le Monde': '#003366',
-  'Hindu': '#1F3864', 'The Hindu': '#1F3864',
-  'Times of Israel': '#0F4C81',
-  'Haaretz': '#103D6E',
-  'Politico': '#E11D48',
-  'Atlantic': '#0F2D52', 'The Atlantic': '#0F2D52',
-  'Washington Post': '#0E1828', 'WaPo': '#0E1828',
-};
-
-function getSourceColor(source) {
-  if (!source) return '#1A365D';
-  // Buscar match parcial (case insensitive)
-  const sourceL = source.toLowerCase();
-  for (const key in SOURCE_BADGE_COLORS) {
-    if (sourceL.includes(key.toLowerCase())) {
-      return SOURCE_BADGE_COLORS[key];
+function parseFeedItems(xml, source) {
+  const items = [];
+  // RSS 2.0: <item>, Atom: <entry>
+  const itemMatches = xml.match(/<item[^>]*>[\s\S]*?<\/item>/gi)
+    || xml.match(/<entry[^>]*>[\s\S]*?<\/entry>/gi)
+    || [];
+  for (const itemXml of itemMatches) {
+    const title = extractTagContent(itemXml, 'title');
+    let link = extractTagContent(itemXml, 'link');
+    if (!link) {
+      const linkAttrMatch = itemXml.match(/<link[^>]+href="([^"]+)"/i);
+      if (linkAttrMatch) link = linkAttrMatch[1];
+    }
+    const pubDate = extractTagContent(itemXml, 'pubDate')
+      || extractTagContent(itemXml, 'published')
+      || extractTagContent(itemXml, 'updated')
+      || extractTagContent(itemXml, 'dc:date');
+    const description = extractTagContent(itemXml, 'description')
+      || extractTagContent(itemXml, 'summary')
+      || extractTagContent(itemXml, 'content:encoded')
+      || '';
+    let author = extractTagContent(itemXml, 'dc:creator')
+      || extractTagContent(itemXml, 'author');
+    if (author && /<name>/i.test(author)) {
+      author = extractTagContent(author, 'name');
+    }
+    if (title && link) {
+      items.push({
+        source,
+        title: cleanText(title),
+        url: cleanText(link),
+        author: cleanText(author || ''),
+        pubDate: cleanText(pubDate || ''),
+        publishedDate: rfcToISODate(pubDate),
+        description: cleanText(description).slice(0, 300),
+      });
     }
   }
-  return '#1A365D'; // fallback navy
+  return items;
 }
 
-// Calcula tiempo de lectura en minutos basado en title + summary
-// Aproximación: 1000 caracteres ≈ 1 minuto de lectura cómoda
-function calculateReadTime(item) {
-  const text = `${item.title || ''} ${item.summary || ''}`;
-  const chars = text.length;
-  const minutes = Math.max(1, Math.ceil(chars / 1000));
-  return minutes;
+function extractTagContent(xml, tag) {
+  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`<${escaped}[^>]*>([\\s\\S]*?)<\\/${escaped}>`, 'i');
+  const m = xml.match(re);
+  return m ? m[1] : '';
 }
 
-// Formatea fecha como "LUN 18 MAY"
-function formatDateBadge(isoDate) {
-  if (!isoDate) return '';
+function cleanText(s) {
+  return String(s || '')
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function rfcToISODate(dateStr) {
+  if (!dateStr) return '';
   try {
-    const d = new Date(isoDate + 'T12:00:00');
-    const dayNames = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
-    const monthNames = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-    return `${dayNames[d.getDay()]} ${d.getDate()} ${monthNames[d.getMonth()]}`;
-  } catch (_) {
-    return '';
-  }
+    const d = new Date(cleanText(dateStr));
+    if (isNaN(d.getTime())) return '';
+    return d.toISOString().slice(0, 10);
+  } catch (_) { return ''; }
 }
 
-function NewsCard({ item, index, sectionColor, type }) {
-  const isOpinion = type === 'opinion';
-  const sourceColor = getSourceColor(item.source);
-  const dateBadge = formatDateBadge(item.publishedDate);
-  const readTime = calculateReadTime(item);
+// ============ FEEDS RSS PARA OPINIÓN INTERNACIONAL ============
+const INTERNATIONAL_OPINION_FEEDS = [
+  // 🇺🇸 EEUU
+  { source: 'NYT', url: 'https://rss.nytimes.com/services/xml/rss/nyt/Opinion.xml', tier: 'main' },
+  { source: 'Washington Post', url: 'https://feeds.washingtonpost.com/rss/opinions', tier: 'main' },
+  { source: 'The Atlantic', url: 'https://www.theatlantic.com/feed/all/', tier: 'main' },
+  { source: 'National Review', url: 'https://www.nationalreview.com/feed/', tier: 'main' },
+  { source: 'Politico', url: 'https://rss.politico.com/politics-news.xml', tier: 'main' },
+  { source: 'The Hill', url: 'https://thehill.com/rss/syndicator/19110', tier: 'opinion' },
 
-  return (
-    <div style={{
-      background: BRAND.card,
-      borderLeft: `4px solid ${sectionColor}`,
-      borderRadius: '0 8px 8px 0',
-      padding: '12px 14px',
-      marginBottom: '6px',
-      boxShadow: BRAND.shadow,
-      animation: `fadeSlide 0.35s ease ${Math.min(index * 0.03, 0.5)}s both`,
-    }}>
-      {/* TOP ROW · Badges de medio + fecha + tiempo lectura + lean */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
-        marginBottom: '8px',
-      }}>
-        {/* Badge medio (color del medio) */}
-        {item.source && (
-          <span style={{
-            background: sourceColor,
-            color: 'white',
-            fontSize: '9px',
-            fontWeight: '800',
-            letterSpacing: '0.08em',
-            padding: '3px 8px',
-            borderRadius: '4px',
-            fontFamily: "'Verdana', 'Geneva', sans-serif",
-            textTransform: 'uppercase',
-          }}>
-            {item.source}
-          </span>
-        )}
+  // 🇬🇧 UK
+  { source: 'The Guardian', url: 'https://www.theguardian.com/commentisfree/rss', tier: 'opinion' },
+  { source: 'The Spectator', url: 'https://www.spectator.co.uk/feed', tier: 'main' },
+  { source: 'UnHerd', url: 'https://unherd.com/feed/', tier: 'main' },
 
-        {/* Badge fecha */}
-        {dateBadge && (
-          <span style={{
-            background: 'rgba(26,54,93,0.08)',
-            color: 'rgba(26,54,93,0.75)',
-            fontSize: '9px',
-            fontWeight: '700',
-            letterSpacing: '0.08em',
-            padding: '3px 8px',
-            borderRadius: '4px',
-            fontFamily: "'Verdana', 'Geneva', sans-serif",
-          }}>
-            {dateBadge}
-          </span>
-        )}
+  // 💰 ECONÓMICO GLOBAL
+  { source: 'Bloomberg', url: 'https://feeds.bloomberg.com/opinion/news.rss', tier: 'opinion' },
+  { source: 'Reuters', url: 'https://www.reutersagency.com/feed/?best-topics=business-finance', tier: 'business' },
+  { source: 'MarketWatch', url: 'https://feeds.marketwatch.com/marketwatch/topstories/', tier: 'main' },
+  { source: 'Quartz', url: 'https://qz.com/feed', tier: 'main' },
+  { source: 'Forbes', url: 'https://www.forbes.com/business/feed/', tier: 'business' },
 
-        {/* Badge tiempo de lectura */}
-        <span style={{
-          background: 'rgba(250,105,0,0.10)',
-          color: '#C2410C',
-          fontSize: '9px',
-          fontWeight: '700',
-          letterSpacing: '0.04em',
-          padding: '3px 8px',
-          borderRadius: '4px',
-          fontFamily: "'Verdana', 'Geneva', sans-serif",
-        }}>
-          {readTime} min
-        </span>
+  // 🇪🇺 EUROPA OCC.
+  { source: 'Le Figaro', url: 'https://www.lefigaro.fr/rss/figaro_actualites.xml', tier: 'main' },
+  { source: 'Le Monde', url: 'https://www.lemonde.fr/rss/une.xml', tier: 'main' },
 
-        {/* Lean badge (solo si existe) - empujado a la derecha */}
-        {item.lean && (
-          <span style={{ marginLeft: 'auto' }}>
-            <LeanBadge lean={item.lean} />
-          </span>
-        )}
-      </div>
+  // 🌐 MULTILATERAL OPINIÓN
+  { source: 'Project Syndicate', url: 'https://www.project-syndicate.org/rss', tier: 'main' },
+  { source: 'Foreign Policy', url: 'https://foreignpolicy.com/feed/', tier: 'main' },
+  { source: 'Foreign Affairs', url: 'https://www.foreignaffairs.com/rss.xml', tier: 'main' },
 
-      {/* Título (clickable si hay URL) */}
-      {item.url ? (
-        <a href={item.url} target="_blank" rel="noopener noreferrer"
-          style={{ textDecoration: 'none', color: 'inherit' }}>
-          <h3 style={{
-            margin: '0 0 5px',
-            fontSize: isOpinion ? '14px' : '13px',
-            fontFamily: "'Verdana', 'Geneva', sans-serif",
-            fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
-            cursor: 'pointer',
-          }}>
-            {item.title}
-          </h3>
-        </a>
-      ) : (
-        <h3 style={{
-          margin: '0 0 5px',
-          fontSize: isOpinion ? '14px' : '13px',
-          fontFamily: "'Verdana', 'Geneva', sans-serif",
-          fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
-        }}>
-          {item.title}
-        </h3>
-      )}
+  // 🌍 EUROPA ESTE
+  { source: 'Kyiv Independent', url: 'https://kyivindependent.com/feed', tier: 'main' },
 
-      {/* Resumen */}
-      {item.summary && (
-        <p style={{
-          margin: '0 0 6px', fontSize: '11.5px',
-          color: BRAND.inkSoft, lineHeight: 1.5,
-          fontFamily: "'Verdana', 'Geneva', sans-serif",
-          fontStyle: isOpinion ? 'italic' : 'normal',
-          display: '-webkit-box',
-          WebkitLineClamp: isOpinion ? 2 : 3,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }}>
-          {item.summary}
-        </p>
-      )}
+  // 🇷🇺 RUSIA (independiente)
+  { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/opinion', tier: 'opinion' },
 
-      {/* Footer · autor (si opinion) + link "leer" */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        gap: '8px', fontSize: '10.5px', color: BRAND.navyDeep,
-        fontFamily: "'Verdana', 'Geneva', sans-serif",
-      }}>
-        <span style={{
-          fontWeight: '700',
-          fontStyle: 'italic',
-          opacity: 0.8,
-        }}>
-          {isOpinion && item.author && `— ${item.author}`}
-          {!isOpinion && item.region && item.region}
-        </span>
-        {item.url && (
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: sectionColor,
-              textDecoration: 'none',
-              borderBottom: `1px dotted ${sectionColor}`,
-              fontWeight: '700',
-              fontSize: '10.5px',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            leer →
-          </a>
-        )}
-      </div>
-    </div>
+  // 🕌 ORIENTE MEDIO
+  { source: 'Haaretz', url: 'https://www.haaretz.com/srv/htz---rss-opinion', tier: 'opinion' },
+  { source: 'Times of Israel', url: 'https://www.timesofisrael.com/feed/', tier: 'main' },
+
+  // 🇮🇳 INDIA
+  { source: 'The Hindu', url: 'https://www.thehindu.com/opinion/feeder/default.rss', tier: 'opinion' },
+  { source: 'Indian Express', url: 'https://indianexpress.com/section/opinion/feed/', tier: 'opinion' },
+
+  // 🌏 ASIA ESTE
+  { source: 'Japan Times', url: 'https://www.japantimes.co.jp/feed/', tier: 'main' },
+
+  // 🌏 SUDESTE ASIÁTICO
+  { source: 'Jakarta Post', url: 'https://www.thejakartapost.com/feed', tier: 'main' },
+  { source: 'Bangkok Post', url: 'https://www.bangkokpost.com/rss/data/most-recent.xml', tier: 'main' },
+
+  // 🌍 ÁFRICA
+  { source: 'Daily Maverick', url: 'https://www.dailymaverick.co.za/feed/', tier: 'main' },
+  { source: 'Mail & Guardian', url: 'https://mg.co.za/feed/', tier: 'main' },
+  { source: 'Premium Times', url: 'https://www.premiumtimesng.com/feed', tier: 'main' },
+  { source: 'Africa Report', url: 'https://www.theafricareport.com/feed/', tier: 'main' },
+
+  // 🌎 LATAM
+  { source: 'Infobae', url: 'https://www.infobae.com/feeds/rss/', tier: 'main' },
+  { source: 'Clarín', url: 'https://www.clarin.com/rss/lo-ultimo/', tier: 'main' },
+  { source: 'El Espectador', url: 'https://www.elespectador.com/arc/outboundfeeds/rss/category/opinion/', tier: 'opinion' },
+  { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss/rss_actualidad.asp', tier: 'main' },
+  { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss.asp', tier: 'general' },
+];
+
+async function fetchSpainOpinionRss(allowedISODates) {
+  const result = await fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48);
+  return { candidates: result.items.slice(0, 80), diagnostic: result.diagnostic };
+}
+
+async function fetchSpainNewsRss(allowedISODates) {
+  const result = await fetchFeedsAndFilter(SPAIN_NEWS_FEEDS, allowedISODates, 36);
+  return { candidates: result.items.slice(0, 80), diagnostic: result.diagnostic };
+}
+
+async function fetchInternationalOpinionRss(allowedISODates) {
+  const result = await fetchFeedsAndFilter(INTERNATIONAL_OPINION_FEEDS, allowedISODates, 48);
+  return { candidates: result.items.slice(0, 60), diagnostic: result.diagnostic };
+}
+
+async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
+  // Para cada feed, fetchear y registrar resultado completo
+  const feedResults = await Promise.all(feedList.map(feed => fetchOneFeed(feed)));
+
+  // Aplanar items, manteniendo trazabilidad de la URL origen
+  const flat = feedResults.flatMap(r =>
+    r.items.map(item => ({ ...item, _fromUrl: r.url, _fromTier: r.tier }))
   );
-}
 
-function Section({ title, icon, items, color, gradient, count, descriptor, type, note, meta, groupByContinent }) {
-  const realCount = items?.length || 0;
-  const itemLabel = type === 'opinion' ? (realCount === 1 ? 'COLUMNA' : 'COLUMNAS') : (realCount === 1 ? 'PIEZA' : 'PIEZAS');
+  // Deduplicar por URL final del artículo
+  const seen = new Set();
+  const dedup = flat.filter(item => {
+    if (seen.has(item.url)) return false;
+    seen.add(item.url);
+    return true;
+  });
 
-  // Mapeo región → continente (para sección Mundo)
-  const REGION_TO_CONTINENT = {
-    'EEUU': 'América',
-    'LATAM': 'América',
-    'UK': 'Europa',
-    'Europa Occ.': 'Europa',
-    'Europa Este': 'Europa',
-    'Rusia': 'Europa',
-    'Oriente Medio': 'Oriente Medio',
-    'India': 'Asia',
-    'Asia': 'Asia',
-    'Turquía': 'Asia',
-    'África': 'África',
-    'Australia': 'Oceanía',
+  // Filtrar por fechas aceptadas
+  let inDate = dedup.filter(it => {
+    if (!allowedISODates || allowedISODates.length === 0) return true;
+    return allowedISODates.includes(it.publishedDate);
+  });
+
+  // Filtro adicional por timestamp si se especifica maxHoursAgo
+  if (maxHoursAgo && Number.isFinite(maxHoursAgo)) {
+    const cutoffMs = Date.now() - (maxHoursAgo * 60 * 60 * 1000);
+    inDate = inDate.filter(it => {
+      if (!it.pubDate) return true;
+      try {
+        const ts = new Date(it.pubDate).getTime();
+        if (isNaN(ts)) return true;
+        return ts >= cutoffMs;
+      } catch (_) { return true; }
+    });
+  }
+
+  // CAP POR FUENTE PERSONALIZADO
+  const PER_SOURCE_CAPS = {
+    'Vozpópuli': 8,
+    'Artículo 14': 8,
+    'The Objective': 6,
+    'InfoLibre': 6,
+    'La Gaceta': 6,
+    'Libertad Digital': 6,
+    'Agenda Pública': 6,
+    'elDiario.es': 6,
+    'El Mundo': 6,
+    'ABC': 6,
+    'OK Diario': 6,
+    'El Blog Salmón': 4,
+    'La Vanguardia': 6,
+    'Crónica Global': 5,
+    'OK Diario Baleares': 4,
+    'elDiario.es Baleares': 4,
+    'Economía de Mallorca': 4,
+    'El País': 4,
+    'El Español': 8,
+    'El Debate': 6,
   };
-  const CONTINENT_ORDER = ['América', 'Europa', 'Oriente Medio', 'Asia', 'África', 'Oceanía', 'Otros'];
-  const CONTINENT_ICONS = {
-    'América': '🌎',
-    'Europa': '🌍',
-    'Oriente Medio': '🕌',
-    'Asia': '🌏',
-    'África': '🌍',
-    'Oceanía': '🌏',
-    'Otros': '🌐',
-  };
+  const DEFAULT_CAP = 4;
+  const perSourceCounts = {};
+  const balanced = inDate.filter(item => {
+    const cap = PER_SOURCE_CAPS[item.source] ?? DEFAULT_CAP;
+    perSourceCounts[item.source] = perSourceCounts[item.source] || 0;
+    if (perSourceCounts[item.source] >= cap) return false;
+    perSourceCounts[item.source]++;
+    return true;
+  });
 
-  // Agrupar items por continente si procede
-  const groupedItems = groupByContinent && realCount > 0
-    ? CONTINENT_ORDER.reduce((acc, cont) => {
-        const matching = items.filter(it => (REGION_TO_CONTINENT[it.region] || 'Otros') === cont);
-        if (matching.length > 0) acc.push({ continent: cont, items: matching });
-        return acc;
-      }, [])
+  // ============ DIAGNÓSTICO AVANZADO (E) ============
+  // Agrupar resultados por source y mostrar URLs individuales
+  const cutoffMs = maxHoursAgo && Number.isFinite(maxHoursAgo)
+    ? Date.now() - (maxHoursAgo * 60 * 60 * 1000)
     : null;
 
-  return (
-    <div style={{ marginBottom: '20px' }}>
-      {/* Bloque de cabecera de sección */}
-      <div style={{
-        background: gradient || color,
-        color: 'white',
-        padding: '14px 18px',
-        borderRadius: '12px 12px 0 0',
-        boxShadow: BRAND.shadow,
-      }}>
-        <div style={{
-          display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap',
-          fontFamily: "'Verdana', 'Geneva', sans-serif",
-          fontSize: '15px', fontWeight: '800',
-          letterSpacing: '0.05em', textTransform: 'uppercase',
-        }}>
-          <span style={{ fontSize: '17px' }}>{icon}</span>
-          <span>{title}</span>
-          <span style={{ opacity: 0.85 }}>· {realCount} {itemLabel}</span>
-        </div>
-        {descriptor && (
-          <p style={{
-            margin: '6px 0 0', fontSize: '11px', opacity: 0.92,
-            fontFamily: "'Verdana', 'Geneva', sans-serif",
-            lineHeight: 1.45, letterSpacing: '0.01em',
-          }}>
-            {descriptor}
-          </p>
-        )}
+  // Agrupar feedResults por source
+  const grouped = {};
+  feedResults.forEach(r => {
+    if (!grouped[r.source]) grouped[r.source] = [];
+    grouped[r.source].push(r);
+  });
 
-        {/* Panel de diagnóstico de feeds DENTRO de la cabecera — visible inmediatamente al cargar */}
-        {meta?.feedDiagnostic && meta.feedDiagnostic.length > 0 && (
-          <details style={{
-            marginTop: '12px',
-            padding: '10px 14px',
-            background: 'rgba(255,255,255,0.18)',
-            border: '1px solid rgba(255,255,255,0.35)',
-            borderRadius: '8px',
-            fontSize: '11px',
-            fontFamily: "'Verdana', sans-serif",
-            color: 'white',
-            backdropFilter: 'blur(8px)',
-          }}>
-            <summary style={{
-              cursor: 'pointer',
-              fontWeight: '800',
-              color: 'white',
-              letterSpacing: '0.06em',
-              fontSize: '11.5px',
-              listStyle: 'none',
-            }}>
-              📊 Diagnóstico de feeds ({meta.feedDiagnostic.length} fuentes · {meta.feedDiagnostic.filter(d => d.includedAfterCap === 0).length} sin piezas) ▼
-            </summary>
-            <div style={{ marginTop: '10px' }}>
-              {meta.feedDiagnostic
-                .slice()
-                .sort((a, b) => (b.includedAfterCap || 0) - (a.includedAfterCap || 0))
-                .map((d, i) => {
-                  const included = d.includedAfterCap || 0;
-                  const statusIcon = included === 0 ? '⚪' : included >= 2 ? '✅' : '⚠️';
-                  return (
-                    <details key={i} style={{
-                      padding: '6px 8px',
-                      marginBottom: '4px',
-                      background: included === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.14)',
-                      borderRadius: '5px',
-                      fontSize: '10.5px',
-                    }}>
-                      <summary style={{
-                        cursor: 'pointer',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'baseline',
-                        gap: '8px',
-                        flexWrap: 'wrap',
-                        listStyle: 'none',
-                      }}>
-                        <strong style={{ color: 'white', fontSize: '11px', minWidth: '105px', fontWeight: '700' }}>
-                          {statusIcon} {d.source} {d.urlsCount > 1 && <em style={{ opacity: 0.6, fontSize: '9.5px', fontWeight: '600' }}>· {d.urlsCount} URLs</em>}
-                        </strong>
-                        <span style={{ color: 'rgba(255,255,255,0.92)', fontSize: '10px', flex: 1, textAlign: 'right' }}>
-                          {d.rawCount === 0
-                            ? <em style={{ color: 'rgba(255,255,255,0.65)' }}>⚠️ todas las URLs vacías ▼</em>
-                            : <>
-                                <span style={{ fontWeight: '800' }}>{included} incluidas</span>
-                                {' · '}
-                                <span>{d.rawCount} en RSS</span>
-                                {' · '}
-                                <span>{d.passedDateFilter} en 48h</span>
-                                {d.hoursAgo !== null && d.hoursAgo !== undefined && (
-                                  <em style={{ opacity: 0.7, marginLeft: '4px' }}>· hace {d.hoursAgo}h</em>
-                                )}
-                              </>
-                          }
-                        </span>
-                      </summary>
+  const diagnostic = Object.keys(grouped).map(source => {
+    const urls = grouped[source];
 
-                      {/* SUGERENCIA AUTOMÁTICA */}
-                      {d.suggestion && (
-                        <div style={{
-                          marginTop: '6px',
-                          padding: '4px 8px',
-                          background: 'rgba(252,204,21,0.15)',
-                          border: '1px solid rgba(252,204,21,0.4)',
-                          borderRadius: '4px',
-                          color: '#FACC15',
-                          fontSize: '9.5px',
-                          fontWeight: '700',
-                        }}>
-                          {d.suggestion}
-                        </div>
-                      )}
+    // Item-level stats agregados (suma de todas las URLs del source)
+    const allItems = urls.flatMap(u => u.items);
+    const uniqueItems = [];
+    const seenUrls = new Set();
+    for (const item of allItems) {
+      if (!seenUrls.has(item.url)) {
+        seenUrls.add(item.url);
+        uniqueItems.push(item);
+      }
+    }
 
-                      {/* DETALLE POR URL */}
-                      {d.urlDetails && d.urlDetails.length > 0 && (
-                        <div style={{ marginTop: '6px' }}>
-                          {d.urlDetails.map((u, j) => {
-                            const statusColor =
-                              u.status === 'ok' && u.itemCount > 0 ? '#4ADE80' :
-                              u.status === 'empty' || u.itemCount === 0 ? '#FACC15' :
-                              '#FCA5A5';
-                            const statusEmoji =
-                              u.status === 'ok' && u.itemCount > 0 ? '🟢' :
-                              u.status === 'empty' || u.itemCount === 0 ? '🟡' :
-                              '🔴';
-                            return (
-                              <div key={j} style={{
-                                marginBottom: '3px',
-                                padding: '4px 6px',
-                                background: 'rgba(0,0,0,0.15)',
-                                borderRadius: '3px',
-                                fontSize: '9.5px',
-                                lineHeight: 1.4,
-                              }}>
-                                <div style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'baseline',
-                                  gap: '6px',
-                                }}>
-                                  <span style={{ color: statusColor, fontWeight: '700' }}>
-                                    {statusEmoji} {u.tier}
-                                  </span>
-                                  <span style={{ opacity: 0.85 }}>
-                                    {u.itemCount} items · {u.status}{u.httpCode && ` ${u.httpCode}`}
-                                  </span>
-                                </div>
-                                <div style={{ opacity: 0.55, fontSize: '9px', marginTop: '2px', wordBreak: 'break-all' }}>
-                                  {u.url}
-                                </div>
-                                {u.errorMsg && (
-                                  <div style={{ opacity: 0.65, fontSize: '9px', color: '#FCA5A5', fontStyle: 'italic' }}>
-                                    {u.errorMsg}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </details>
-                  );
-                })}
-              <div style={{
-                marginTop: '8px', padding: '6px 8px',
-                fontSize: '9.5px', fontStyle: 'italic',
-                color: 'rgba(255,255,255,0.75)',
-                borderTop: '1px dashed rgba(255,255,255,0.25)',
-                paddingTop: '7px',
-              }}>
-                ✅ ≥2 piezas · ⚠️ 1 pieza · ⚪ 0 piezas · Pulsa cada medio para ver detalle por URL · 🟢 URL ok · 🟡 vacía · 🔴 error
-              </div>
-            </div>
-          </details>
-        )}
-      </div>
+    const passedDate = uniqueItems.filter(it => allowedISODates.includes(it.publishedDate));
+    let passedTimestamp = passedDate.length;
+    if (cutoffMs !== null) {
+      passedTimestamp = passedDate.filter(it => {
+        if (!it.pubDate) return true;
+        try {
+          const ts = new Date(it.pubDate).getTime();
+          if (isNaN(ts)) return true;
+          return ts >= cutoffMs;
+        } catch (_) { return true; }
+      }).length;
+    }
 
-      {/* Items */}
-      <div style={{
-        background: 'rgba(255,255,255,0.4)',
-        padding: '8px 8px 4px',
-        borderRadius: '0 0 8px 8px',
-        border: `1px solid ${color}30`,
-        borderTop: 'none',
-      }}>
-        {realCount === 0 ? (
-          <div style={{ margin: '12px', color: BRAND.inkSoft, fontSize: '11px', fontStyle: 'italic', textAlign: 'center' }}>
-            <p style={{ margin: '0 0 8px' }}>Sin piezas disponibles para esta sección</p>
-            {note && (
-              <p style={{ margin: '6px 12px', fontSize: '10px', color: BRAND.orange, fontStyle: 'normal', textAlign: 'left', padding: '8px', background: 'rgba(250,105,0,0.08)', borderRadius: '6px' }}>
-                {note}
-              </p>
-            )}
-            {meta && (
-              <p style={{ margin: '4px 12px', fontSize: '9px', color: BRAND.inkSoft, fontStyle: 'normal', textAlign: 'left' }}>
-                Diagnóstico: {meta.totalCandidates ?? '?'} candidatos · {meta.mediumsAvailable ?? '?'} medios · {meta.selectedCount ?? '?'} seleccionados
-              </p>
-            )}
-          </div>
-        ) : groupedItems ? (
-          // Render agrupado por continentes
-          groupedItems.map((group, gi) => (
-            <div key={group.continent} style={{ marginBottom: gi < groupedItems.length - 1 ? '12px' : '0' }}>
-              <div style={{
-                margin: '8px 4px 6px',
-                padding: '6px 12px',
-                background: `linear-gradient(90deg, ${color}15, transparent)`,
-                borderLeft: `3px solid ${color}`,
-                borderRadius: '4px',
-                fontFamily: "'Verdana', 'Geneva', sans-serif",
-                fontSize: '12px',
-                fontWeight: '700',
-                color: color,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}>
-                <span style={{ fontSize: '15px' }}>{CONTINENT_ICONS[group.continent]}</span>
-                <span>{group.continent}</span>
-                <span style={{ opacity: 0.6, fontWeight: '500' }}>· {group.items.length}</span>
-              </div>
-              {group.items.map((item, i) => <NewsCard key={`${group.continent}-${i}`} item={item} index={i} sectionColor={color} type={type} />)}
-            </div>
-          ))
-        ) : (
-          items.map((item, i) => <NewsCard key={i} item={item} index={i} sectionColor={color} type={type} />)
-        )}
+    const latestTs = uniqueItems.reduce((max, it) => {
+      if (!it.pubDate) return max;
+      try {
+        const t = new Date(it.pubDate).getTime();
+        return (!isNaN(t) && t > max) ? t : max;
+      } catch (_) { return max; }
+    }, 0);
+    const hoursAgo = latestTs > 0
+      ? Math.round((Date.now() - latestTs) / (60 * 60 * 1000) * 10) / 10
+      : null;
 
-      </div>
-    </div>
-  );
+    // Sugerencia automática según status de las URLs
+    let suggestion = null;
+    const allFailed = urls.every(u => u.status !== 'ok' || u.items.length === 0);
+    const hasAuthor = urls.some(u => u.tier && u.tier.startsWith('vip:'));
+    if (allFailed && !hasAuthor) {
+      suggestion = '⚠️ Añadir URLs alternativas o feeds de autor específico';
+    } else if (allFailed && hasAuthor) {
+      suggestion = '⚠️ Feeds de autor también fallan · revisar URL del medio';
+    } else if (uniqueItems.length > 0 && passedDate.length === 0) {
+      suggestion = `📅 Tiene contenido pero ninguno de las fechas aceptadas (último hace ${hoursAgo}h)`;
+    } else if (passedDate.length > 0 && passedTimestamp === 0) {
+      suggestion = '⏰ Items dentro de fecha pero anteriores al timestamp cutoff';
+    }
+
+    // Detalle por URL (parte E)
+    const urlDetails = urls.map(u => ({
+      url: u.url.length > 60 ? u.url.slice(0, 57) + '...' : u.url,
+      tier: u.tier,
+      status: u.status,
+      httpCode: u.httpCode,
+      itemCount: u.items.length,
+      errorMsg: u.errorMsg,
+    }));
+
+    return {
+      source,
+      rawCount: uniqueItems.length,
+      passedDateFilter: passedDate.length,
+      passedTimestampFilter: passedTimestamp,
+      includedAfterCap: perSourceCounts[source] || 0,
+      latestDateSeen: uniqueItems.length > 0
+        ? [...new Set(uniqueItems.map(it => it.publishedDate).filter(Boolean))].sort().reverse()[0]
+        : 'sin fecha',
+      hoursAgo: hoursAgo,
+      urlsCount: urls.length,
+      urlDetails: urlDetails,
+      suggestion: suggestion,
+    };
+  });
+
+  return { items: balanced, diagnostic, perSourceCounts };
 }
 
-export default function App() {
-  // Estado por sección - cada botón gestiona su propia carga independiente
-  const [intlData, setIntlData] = useState(null);
-  const [intlStatus, setIntlStatus] = useState('idle'); // idle | loading | done | error
-  const [intlError, setIntlError] = useState('');
+// ============ FIN MÓDULO RSS ============
 
-  const [spainNewsData, setSpainNewsData] = useState(null);
-  const [spainNewsStatus, setSpainNewsStatus] = useState('idle');
-  const [spainNewsError, setSpainNewsError] = useState('');
+const COLUMNISTS_GUIDE = `COLUMNISTAS A SEGUIR (priorízalos si han publicado HOY o ayer):
 
-  const [spainOpinionData, setSpainOpinionData] = useState(null);
-  const [spainOpinionStatus, setSpainOpinionStatus] = useState('idle');
-  const [spainOpinionError, setSpainOpinionError] = useState('');
+VOZPÓPULI (búsqueda web vozpopuli.com "[columnista]" [fecha], accesible desde primera hora):
+- Ignacia de Pano — martes
+- Gorka Maneiro — habitual (2-3 veces por semana, especialmente L-V)
+- Carlos Martínez Gorriarán — semanal (variable, ex-UPyD)
+- Jesús Banegas — quincenal/mensual (economía)
+- José Alejandro Vara — variable (sin día fijo)
+- Manuel Marín — lunes (director, columna semanal)
+- Irene González — variable
+- Rubén Manso — semanal/quincenal (economía), inspector Banco España → vozpopuli.com/redaccion/ruben-manso
+- Jesús Cacho — domingo (columna semanal habitual, ocasionalmente otros días)
+- Agustín Valladolid — jueves (columna semanal)
+- Pablo Sebastián — variable (veterano, habitual sin día fijo)
 
-  const [emailStatus, setEmailStatus] = useState('idle');
+THE OBJECTIVE (búsqueda web theobjective.com "[columnista]" [fecha]):
+- Guadalupe Sánchez
+- Antonio Caño
+- Manuel Arias Maldonado
+- Álvaro Nieto
+- Javier Benegas — viernes
+- Ketty Garat (análisis)
+- Jorge San Miguel (variable, 1-2/semana)
+- Pablo de Lora — sábados → theobjective.com/autor/pablo-de-lora/
+- Manuel Fernández Ordóñez (Doctor Física Nuclear, energía/tecnología)
+- Victoria Carvajal — sábados, economía, ex-El País
+- Maite Rico — varios días, "Sujétame el vermú" martes, directora adjunta
+- Pablo Cambronero → theobjective.com/autor/pablo-cambronero/
+- Juan Luis Cebrián
 
-  // Cooldown global compartido entre los TRES botones - evita el rate_limit_error 429 de Anthropic Tier 2
-  const [nextAllowedAt, setNextAllowedAt] = useState(0);
-  const [cooldownLeft, setCooldownLeft] = useState(0);
+EL ESPAÑOL (búsqueda web):
+- Cristian Campos
+- Pedro J. Ramírez — domingos
+- Bernard-Henri Lévy (en pausa desde 15/02/2026)
+- Lorena G. Maldonado — domingos/lunes + miércoles ocasional
+- Lorenzo Bernaldo de Quirós — domingos, economía liberal
+- José Ramón Pin Arboledas — variable, IESE, RRHH/management/economía → elespanol.com/autor/jose-ramon-pin-arboledas/
 
-  // Fecha seleccionada (formato ISO YYYY-MM-DD para el input). Por defecto: hoy.
-  const todayIso = new Date().toISOString().split('T')[0];
-  const [selectedDate, setSelectedDate] = useState(todayIso);
+LIBERTAD DIGITAL:
+- Federico Jiménez Losantos — domingos (su columna escrita)
 
-  // Timestamp de la última hidratación / guardado (para mostrar "hace Xh")
-  const [cacheTimestamp, setCacheTimestamp] = useState(null);
+EL DIARIO:
+- Ignacio Escolar — habitual
 
-  // Hidratar desde localStorage al montar (solo una vez)
-  useEffect(() => {
-    const cache = loadBriefingCache();
-    if (!cache) return;
-    if (cache.intlData) setIntlData(cache.intlData);
-    if (cache.spainOpinionData) setSpainOpinionData(cache.spainOpinionData);
-    if (cache.spainNewsData) setSpainNewsData(cache.spainNewsData);
-    if (cache.selectedDate) setSelectedDate(cache.selectedDate);
-    if (cache.timestamp) setCacheTimestamp(cache.timestamp);
-  }, []);
+EL PAÍS (de pago, usar almendron.com como agregador):
+- Estefanía Molina — jueves (columna "Café Pendiente") → almendron.com/tribuna/autor/estefania-molina/
+- Diego S. Garrocho Salcedo — variable (filósofo, columnas temáticas) → elpais.com/autor/diego-sebastian-garrocho-salcedo/
+- Lluís Bassets — habitual (2-3 veces semana, internacional) → elpais.com/autor/lluis-bassets/
+- Ana Iris Simón — esporádica (escritora, columnas largas) → elpais.com/autor/ana-iris-simon/
+- Ángeles Caballero — lunes (columna semanal) → elpais.com/autor/angeles-caballero/
+- Daniel Gascón — viernes (columnista habitual semanal) → elpais.com/autor/daniel-gascon/
 
-  // Guardar en localStorage cada vez que cambie alguna data o la fecha
-  useEffect(() => {
-    if (!intlData && !spainOpinionData && !spainNewsData) return; // nada que guardar
-    saveBriefingCache({ intlData, spainOpinionData, spainNewsData, selectedDate });
-    setCacheTimestamp(new Date().toISOString());
-  }, [intlData, spainOpinionData, spainNewsData, selectedDate]);
+LA GACETA DE LA IBEROSFERA:
+- (sin columnistas prioritarios específicos) → gaceta.es/opinion/
 
-  useEffect(() => {
-    const tick = () => {
-      const remaining = Math.max(0, Math.ceil((nextAllowedAt - Date.now()) / 1000));
-      setCooldownLeft(remaining);
-    };
-    tick();
-    const interval = setInterval(tick, 500);
-    return () => clearInterval(interval);
-  }, [nextAllowedAt]);
+EL DEBATE (búsqueda web eldebate.com/opinion/):
+- Juan Carlos Girauta
+- Antonio R. Naranjo
 
-  const isInCooldown = cooldownLeft > 0;
+ESTRATEGIA DE BÚSQUEDA POR COLUMNISTA:
+1. Para cada columnista que toque ese día de la semana, hacer una búsqueda específica con su nombre + fecha.
+2. Si la URL del autor está disponible (listada arriba), usarla como verificación directa antes de hacer búsqueda general.
+3. Para El País: usar almendron.com como puerta de entrada (su contenido tiene paywall).`;
 
-  // Derivar formatos de fecha desde selectedDate
-  const dateObj = new Date(selectedDate + 'T12:00:00');
-  const today = dateObj.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const todayShort = dateObj.toLocaleDateString('es-ES');
-  const isPastDate = selectedDate !== todayIso;
+const RULES_BASE = `REGLAS ABSOLUTAS DE FRESCURA Y CALIDAD:
 
-  async function fetchSection(section) {
-    if (Date.now() < nextAllowedAt) return;
+A. FRESCURA (anti-genérico):
+A1. Cada pieza DEBE haberse publicado en las ÚLTIMAS 48 HORAS desde la fecha indicada por el usuario. Si en web search no encuentras la fecha del artículo claramente, NO LO INCLUYAS.
+A2. Cada pieza DEBE estar anclada a un evento concreto de las últimas 48h: un nombre propio (político, empresa, país), una cifra concreta (porcentaje, importe, fecha), una decisión específica (sentencia, votación, declaración), o un suceso identificable.
+A3. PROHIBIDO incluir piezas tipo "análisis evergreen" — títulos vagos sobre tendencias atemporales ("El cambio del orden mundial", "Los retos de Europa", "El futuro de la IA") que podrían haberse publicado hace meses. Si el título no menciona algo concreto del día, NO lo incluyas.
+A4. PREFIERE devolver MENOS piezas reales que rellenar el conteo con genéricas. Si solo encuentras 8 piezas frescas y verificables de mundo, devuelve 8 — NO inventes ni rellenes hasta 14.
+A5. Cada pieza JSON DEBE incluir el campo "publishedDate" (formato ISO YYYY-MM-DD) con la fecha real de publicación tomada del artículo o sus metadatos. Si no la encuentras, descártala.
 
-    const setters = {
-      international:  { setData: setIntlData,         setStatus: setIntlStatus,         setError: setIntlError },
-      spainNews:      { setData: setSpainNewsData,    setStatus: setSpainNewsStatus,    setError: setSpainNewsError },
-      spainOpinion:   { setData: setSpainOpinionData, setStatus: setSpainOpinionStatus, setError: setSpainOpinionError },
-    };
-    const { setData, setStatus, setError } = setters[section] || {};
-    if (!setData) return;
+B. URLs Y FUENTES:
+B1. Cada URL debe ser un permalink al artículo concreto (slug específico, normalmente con fecha en el path tipo /2026/05/...). NUNCA portadas, secciones, etiquetas o páginas de búsqueda.
+B2. Prohibido Wikipedia, agregadores (Google News, Yahoo), redes sociales, foros.
+B3. Verifica visualmente que el dominio coincide con la fuente declarada (no marques "BBC" en una URL del Daily Mail).
+B4. Prioriza fuentes con indexación rápida: Reuters, AP, BBC, Guardian, FT, NYT, El País, ABC, RTVE.
+B5. Si una URL no se verifica en web search, descártala — NO inventes URLs plausibles.
 
-    setNextAllowedAt(Date.now() + COOLDOWN_MS);
+C. CLASIFICACIÓN:
+C1. En MUNDO y OPINIÓN MUNDO marca cada pieza como lean: "left" o "right".
+C2. ESPAÑA OPINIÓN: solo columnas firmadas, NO incluyas editoriales sin autor. Máx 3 columnistas del mismo medio, mín 5 medios distintos.
+C3. MUNDO OPINIÓN: solo medios internacionales no españoles.
+C4. ENERGÍA: si Brent ha tenido movimiento relevante en últimas 24h, inclúyelo obligatoriamente.
 
-    setStatus('loading');
-    setError('');
-    // NO limpiamos setData aquí: mantenemos las noticias antiguas visibles durante la nueva carga.
-    // Se reemplazarán solo cuando lleguen las nuevas (en setData(data.briefing)).
+D. FORMATO:
+D1. Devuelve ÚNICAMENTE JSON válido sin markdown, sin bloques de código, sin texto explicativo antes o después. NO escribas frases tipo "Aquí está el briefing:" antes ni "Espero que sea útil" después. Tu respuesta debe empezar con { y terminar con }, NADA MÁS.
+D2. Si tu respuesta supera 12000 tokens, recórtala devolviendo menos piezas (preferible menos piezas completas que más cortadas). NUNCA dejes JSON sin cerrar.`;
 
-    // Construye contexto de hora actual real (independiente de la fecha seleccionada)
-    const now = new Date();
-    const requestTime = now.toLocaleString('es-ES', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: false,
-    });
-    // dateFull = fecha de referencia con día de la semana
-    const dateFull = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const SECTIONS = {
+  international: {
+    label: 'Internacional + Energía',
+    system: `Eres mi editor de noticias personal de élite. Tu tarea es buscar en web noticias de las ÚLTIMAS 48H y devolver un briefing parcial MAL NEWS de hasta 28 piezas en 2 secciones internacionales. Las COLUMNAS DE OPINIÓN son la parte más valiosa del briefing — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con análisis genérico.
 
+${RULES_BASE}
+
+ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas spainNews ni spainOpinion):
+{
+  "date": "DD/MM/YYYY",
+  "worldOpinion": [
+    /* HASTA 8 piezas — PRIORITARIAS. Columnas firmadas publicadas en últimas 48h con un evento concreto detrás (no análisis evergreen). Solo medios internacionales no españoles. Distribuye entre IZQ y DER. */
+    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "NYT|FT|Le Monde|Economist|...", "lean": "left|right", "url": "https://...", "publishedDate": "2026-05-07"}
+  ],
+  "worldNews": [
+    /* HASTA 20 piezas, pero menos si no hay tantas frescas. Equilibrio left/right.
+       Cobertura: EEUU, UK, Europa Occ., Europa Este, Oriente Medio, India, Asia, África, LATAM, Australia, Rusia, Turquía.
+       INCLUYE PIEZAS JURÍDICAS RELEVANTES cuando haya: sentencias internacionales del día (Tribunal Penal Internacional, CIJ, TJUE, Supreme Court USA, etc.), decisiones regulatorias (CE, FTC, antitrust), o cambios jurisprudenciales significativos. Marca region como la del tribunal o país de la sentencia. */
+    {"rank": 1, "title": "...", "summary": "2-3 frases con dato/nombre/cifra concreta", "source": "BBC|Reuters|...", "region": "EEUU|UK|Europa Occ.|Europa Este|Oriente Medio|India|Asia|África|LATAM|Australia|Rusia|Turquía", "lean": "left", "url": "https://...", "publishedDate": "2026-05-07"}
+  ]
+}
+
+${COLUMNISTS_GUIDE}`,
+    user: (today, todayFull, requestTime, allowedDates) => {
+      const dateList = (allowedDates && allowedDates.length === 2)
+        ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (fecha de referencia / HOY)\n- ${allowedDates[1]} (día anterior)\n\nCualquier pieza con publishedDate distinto a estas dos fechas se RECHAZA. Sin "casi", sin "del fin de semana", sin "anteayer". Ventana máxima: 48h.\n\nPRIORIDAD DE FRESCURA EN OPINIÓN: dentro de las 48h, prefiere columnas de las últimas 24-36h. Las piezas de ayer son aceptables pero las de HOY siempre superiores.`
+        : '';
+      return `FECHA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
+
+INTERNACIONAL. Hasta 28 piezas en 2 secciones, distribuidas por regiones para cobertura global plural.
+
+REGLAS ESTRICTAS DE FECHA:
+- publishedDate DEBE estar en una de las 2 fechas aceptadas (HOY o ayer). NUNCA más antiguas.
+- VENTANA: últimas 48h. Acepta piezas de HOY y ayer indistintamente.
+- Si una pieza es de hace 2+ días: rechazar.
+- Prioriza relevancia y calidad sobre minutos extra de frescura.
+
+WORLDOPINION (PRIORITARIA, hasta 8 columnas firmadas):
+- HARD CAPS: Máx 3 columnas USA · Máx 2 columnas UK · Máx 2 columnas mismo medio
+- MÍNIMO 2 columnas de fuera del eje anglo (USA/UK): de Europa, LATAM, India, Asia, OM, África o Rusia
+- Mín 5 medios distintos · ≥3 regiones distintas
+- Solo firmadas (autor real, no editoriales)
+- Solo medios internacionales no españoles
+- Distribuye entre izquierda, centro y derecha
+- Si una región no tiene columna fresca firmada, DÉJALA SIN cubrir (NO sustituyas con anglo extra)
+
+WORLDNEWS (hasta 20 noticias):
+- HARD CAPS: Máx 6 piezas USA · Máx 4 piezas UK · Máx 3 piezas mismo medio
+- MÍNIMOS GARANTIZADOS por región (si hay material fresco del día):
+  · 🇪🇺 Europa Occidental (FR/DE/IT): MÍNIMO 2
+  · 🌍 Europa Este (Ucrania/Polonia): MÍNIMO 1
+  · 🕌 Oriente Medio (Israel/Mundo árabe): MÍNIMO 2
+  · 🇮🇳 India: MÍNIMO 1
+  · 🌏 Asia Este (Japón/China/Corea): MÍNIMO 1
+  · 🌏 Sudeste Asiático (Singapur/Indonesia/Tailandia/Filipinas): MÍNIMO 1
+  · 🌎 LATAM (Argentina/México/Brasil/Colombia/Chile): MÍNIMO 2
+  · 🌍 África (Sudáfrica/Nigeria/Kenia): MÍNIMO 1
+  · 💰 Económico global (Bloomberg/Reuters/FT/Forbes): MÍNIMO 2
+  · 🇷🇺 Rusia: MÍNIMO 1
+  · 🇦🇺 Australia / 🇹🇷 Turquía: opcionales, priorizar si hay material relevante
+- Total mínimos: ~14 piezas garantizadas globalmente, 6 piezas flexibles
+- Si una región NO tiene material fresco real, deja el slot vacío (PROHIBIDO rellenar con USA/UK extras o inventar piezas)
+- Equilibrio IZQ/DER
+- Eventos concretos del día (no análisis evergreen)
+- Mejor 16 piezas reales y distribuidas que 20 todas anglo
+- LEGAL EMBEBIDO: si hay sentencias internacionales relevantes del día (TJUE, CIJ, TPI, Supreme Court USA, antitrust CE/FTC, etc.), inclúyelas como pieza más en worldNews con la región del tribunal. Busca en: site:law360.com, site:mlex.com, site:reuters.com/legal, site:bloomberg.com/law
+
+⭐ MEDIOS PRIORIZADOS POR REGIÓN (50+ medios con cobertura global plural):
+
+🇺🇸 EEUU (6):
+- nytimes.com (centro-izq) · washingtonpost.com (centro-izq) · theatlantic.com (centro-izq intelectual)
+- wsj.com (centro-der financiero) · nationalreview.com (derecha intelectual) · politico.com (centro)
+
+🇬🇧 UK (5):
+- ft.com (centro financiero) · economist.com (centro liberal) · theguardian.com (izquierda)
+- spectator.co.uk (derecha tradicional) · unherd.com (heterodoxo)
+
+💰 ECONÓMICO GLOBAL (5):
+- bloomberg.com / bloomberg.com/opinion (centro financiero, EEUU)
+- reuters.com (centro factual)
+- forbes.com (centro-der business)
+- marketwatch.com (mercados EEUU)
+- qz.com / quartz.com (centro tech/business)
+
+🇪🇺 EUROPA OCCIDENTAL (3):
+- lefigaro.fr (centro-der) · lemonde.fr (centro-izq) · faz.net (centro-der alemán)
+
+🌍 EUROPA ESTE (2):
+- kyivindependent.com (pro-occidental, guerra Ucrania) · wyborcza.pl (centro-izq polaco)
+
+🕌 ORIENTE MEDIO (3):
+- haaretz.com (Israel izquierda) · timesofisrael.com (Israel centro) · thenationalnews.com (Emiratos establishment Golfo)
+
+🇮🇳 INDIA (3):
+- thehindu.com (centro-izq intelectual) · indianexpress.com (centro) · timesofindia.com (popular)
+
+🌏 ASIA ESTE (4):
+- asia.nikkei.com (Japón financiero) · scmp.com (Hong Kong) · japantimes.co.jp (Japón centrista) · koreaherald.com (Corea Sur centro)
+
+🌏 SUDESTE ASIÁTICO (4):
+- straitstimes.com (Singapur centrista) · thejakartapost.com (Indonesia centro) · bangkokpost.com (Tailandia centro) · manilatimes.net (Filipinas)
+
+🌎 LATAM POLÍTICO (7):
+- clarin.com (Argentina centro-der) · lanacion.com.ar (Argentina centro-der)
+- jornada.com.mx (México izquierda) · folha.uol.com.br (Brasil centro)
+- oglobo.globo.com (Brasil centro-der) · elespectador.com (Colombia centro-izq)
+- emol.com / elmercurio.com (Chile centro-der, decano de la prensa chilena)
+
+🌎 LATAM ECONÓMICO (2):
+- infobae.com (panregional) · valor.globo.com (Brasil financiero)
+
+🇷🇺 RUSIA (1):
+- themoscowtimes.com (independiente en exilio)
+
+🌐 MULTILATERAL OPINIÓN (3):
+- project-syndicate.org (Stiglitz, Krugman, Rajan, Acemoglu)
+- foreignpolicy.com · foreignaffairs.com
+
+🌍 ÁFRICA (5):
+- dailymaverick.co.za (Sudáfrica investigativo)
+- mg.co.za / Mail & Guardian (Sudáfrica centro-izq)
+- premiumtimesng.com (Nigeria centro)
+- theafricareport.com (panafricano francés/inglés)
+- theeastafrican.co.ke (Kenia/Tanzania)
+
+🇦🇺 AUSTRALIA (1):
+- theaustralian.com.au (centro-der, Murdoch)
+
+🇹🇷 TURQUÍA (1):
+- hurriyetdailynews.com (centrista, semi-establishment)
+
+Búsqueda recomendada: site:[dominio]/opinion ${today} para columnas firmadas, site:[dominio] ${today} para noticia general.
+
+OUTPUT: solo JSON, sin texto antes ni después:
+{"date":"DD/MM/YYYY","worldOpinion":[...],"worldNews":[...]}`;
+    },
+    maxUses: 12,
+  },
+  // spainNews y spainOpinion usan flujo Plan B (RSS pre-fetch + prompts inline)
+  // No necesitan system/user aquí, solo label para validación de section válida
+  spainNews: { label: 'Noticias España' },
+  spainOpinion: { label: 'Opinión España' },
+};
+
+function extractJson(raw) {
+  if (!raw) throw new Error('Respuesta vacía del modelo');
+  let s = raw.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+  const start = s.indexOf('{');
+  if (start === -1) throw new Error('No se encontró JSON en la respuesta');
+  s = s.slice(start);
+
+  // Intento 1: parsear todo (a veces funciona)
+  try { return JSON.parse(s); } catch (_) {}
+
+  // Intento 2: buscar PRIMER cierre balanceado y parsear hasta ahí
+  // (esto evita coger texto explicativo que viene tras el JSON)
+  let depth = 0, inStr = false, esc = false, firstBalanced = -1;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (esc) { esc = false; continue; }
+    if (ch === '\\' && inStr) { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) { firstBalanced = i; break; }
+    }
+  }
+  if (firstBalanced > 0) {
+    try { return JSON.parse(s.slice(0, firstBalanced + 1)); } catch (_) {}
+  }
+
+  // Intento 3: JSON truncado (cortado a la mitad) - intentar reparar cerrando estructuras abiertas
+  let repaired = s;
+  // Si hay un texto trailing tras un } válido, recortar ahí
+  if (firstBalanced > 0) {
+    repaired = s.slice(0, firstBalanced + 1);
+  }
+  let d = 0, b = 0, inS = false, e = false;
+  for (let i = 0; i < repaired.length; i++) {
+    const c = repaired[i];
+    if (e) { e = false; continue; }
+    if (c === '\\' && inS) { e = true; continue; }
+    if (c === '"') { inS = !inS; continue; }
+    if (inS) continue;
+    if (c === '{') d++;
+    else if (c === '}') d--;
+    else if (c === '[') b++;
+    else if (c === ']') b--;
+  }
+  if (inS) repaired += '"';
+  while (b-- > 0) repaired += ']';
+  while (d-- > 0) repaired += '}';
+  try { return JSON.parse(repaired); } catch (err) {
+    throw new Error(`JSON truncado y no reparable: ${err.message}`);
+  }
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).json({ error: 'Método no permitido' });
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Falta ANTHROPIC_API_KEY en variables de entorno de Vercel' });
+  }
+
+  const { date, dateFull, requestTime, section } = req.body || {};
+  const todayShort = date || new Date().toLocaleDateString('es-ES');
+  const todayFull = dateFull || todayShort;
+  const nowTime = requestTime || 'no especificada';
+
+  // Calcular las DOS fechas ISO aceptadas (hoy, ayer) respecto a la fecha de referencia.
+  // 48h en lugar de 72h: prioridad por frescura. Para weekends/festivos, ajustar manualmente.
+  const allowedISODates = (() => {
     try {
-      const res = await fetch('/api/briefing', {
+      const parts = todayShort.split('/').map(p => parseInt(p, 10));
+      const [d, m, y] = parts;
+      const ref = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+      const yest = new Date(ref.getTime() - 24 * 60 * 60 * 1000);
+      const iso = (dt) => dt.toISOString().slice(0, 10);
+      return [iso(ref), iso(yest)];
+    } catch (_) {
+      return [];
+    }
+  })();
+
+  if (!section || !SECTIONS[section]) {
+    return res.status(400).json({
+      error: `Parámetro 'section' requerido. Valores válidos: ${Object.keys(SECTIONS).join(', ')}`,
+    });
+  }
+
+  const cfg = SECTIONS[section];
+
+  // ============ FLUJO ESPECIAL RSS PARA spainOpinion ============
+  // No usa web_search. Pre-fetcha los 9 RSS, filtra por fecha, pasa la lista al modelo.
+  if (section === 'spainOpinion') {
+    let currentStep = 'init';
+    try {
+      currentStep = 'fetch-rss';
+      const { candidates, diagnostic } = await fetchSpainOpinionRss(allowedISODates);
+
+      if (!candidates || candidates.length === 0) {
+        // Diagnóstico detallado: qué devolvió cada feed
+        const detail = diagnostic.map(d =>
+          `${d.source}: ${d.rawCount} items, ${d.passedDateFilter} en fecha (última: ${d.latestDateSeen})`
+        ).join(' | ');
+        return res.status(200).json({
+          briefing: {
+            date: todayShort,
+            spainOpinion: [],
+            _note: `Sin candidatos. Fechas permitidas: ${allowedISODates.join(', ')}. Detalle por feed: ${detail}`,
+            _meta: { allowedDates: allowedISODates, feedDiagnostic: diagnostic },
+          },
+          section,
+        });
+      }
+
+      currentStep = 'build-prompt';
+
+      // Pre-filtro de opinión: marcar candidatos como ✅ COLUMNA o ❌ NOTICIA/EDITORIAL
+      // para que el modelo los distinga visualmente.
+      const isOpinionPiece = (c) => {
+        const author = String(c.author || '').trim();
+        if (!author) return false;
+        const aLow = author.toLowerCase();
+        const sLow = String(c.source || '').toLowerCase();
+        if (aLow === sLow) return false;
+        if (aLow.includes('redacción') || aLow.includes('redaccion')) return false;
+        if (aLow === 'editorial' || aLow === 'opinión' || aLow === 'opinion') return false;
+        if (aLow.includes('sumario')) return false;
+        const title = String(c.title || '').toLowerCase();
+        if (title.startsWith('sumario') || title.startsWith('en sumario') || title.startsWith('boletín')) return false;
+        if (title.includes('claves del día')) return false;
+        return true;
+      };
+
+      const candidatesText = candidates.map((c, i) => {
+        const tag = isOpinionPiece(c) ? '✅ COLUMNA' : '❌ NOTICIA/EDITORIAL — NO USAR EN OPINIÓN';
+        return `[${i + 1}] ${tag} | ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.author || 'sin autor'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${c.description.slice(0, 200)}`;
+      }).join('\n\n');
+
+      const userPrompt = `FECHA: ${todayFull || todayShort}
+
+Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (mayoritariamente opinión, algunas noticias o análisis), ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
+
+⚠️ MARCADO AUTOMÁTICO DE PIEZAS:
+- ✅ COLUMNA = pieza con autor humano real → CANDIDATA VÁLIDA
+- ❌ NOTICIA/EDITORIAL = sin autor real, autor = nombre del medio, "Sumario", "Editorial", etc → NO INCLUIR EN OPINIÓN
+
+REGLA INELUDIBLE: Las piezas marcadas con ❌ son NOTICIAS o EDITORIALES institucionales. NUNCA las incluyas en spainOpinion. Solo las piezas marcadas con ✅ pueden formar parte del briefing de opinión. Si tras filtrar quedan menos de 20 columnas válidas, devuelve menos pero TODAS deben ser ✅.
+
+✅ PERMITIDO devolver MENOS columnas si no hay material fresco suficiente. Mejor 10-12 columnas de calidad fresca que 20 mediocres o de hace 36+ horas. Objetivo ideal: 20 columnas.
+
+⭐⭐⭐ COLUMNISTAS PRIORITARIOS A SEGUIR ⭐⭐⭐
+Si en CANDIDATAS aparece una columna firmada por uno de estos autores, DEBES INCLUIRLA (siempre respetando los hard caps por medio). Son los referentes que el usuario quiere ver en su briefing diario:
+
+VOZPÓPULI ⭐:
+- Ignacia de Pano (martes), Gorka Maneiro, Carlos Martínez Gorriarán, Jesús Banegas, José Alejandro Vara, Manuel Marín (lunes, director), Irene González, Rubén Manso, Jesús Cacho (domingo), Agustín Valladolid (jueves), Pablo Sebastián
+
+THE OBJECTIVE ⭐:
+- Guadalupe Sánchez, Antonio Caño, Manuel Arias Maldonado, Álvaro Nieto, Javier Benegas (viernes), Ketty Garat, Jorge San Miguel, Pablo de Lora (sábados), Manuel Fernández Ordóñez, Victoria Carvajal (sábados), Maite Rico (martes "Sujétame el vermú"), Pablo Cambronero, Juan Luis Cebrián
+
+EL ESPAÑOL:
+- Cristian Campos, Pedro J. Ramírez (domingos), Lorena G. Maldonado, Lorenzo Bernaldo de Quirós (domingos), José Ramón Pin Arboledas
+
+LIBERTAD DIGITAL:
+- Federico Jiménez Losantos (domingos, columna escrita)
+
+EL DIARIO:
+- Ignacio Escolar
+
+EL PAÍS:
+- Estefanía Molina (jueves), Diego S. Garrocho Salcedo, Lluís Bassets, Ana Iris Simón, Ángeles Caballero, Daniel Gascón
+
+EL DEBATE:
+- Juan Carlos Girauta, Antonio R. Naranjo
+
+OK DIARIO:
+- Graciano Palomo
+
+REGLA IMPORTANTE: si una pieza tiene como author/firma uno de estos nombres, esa columna VA dentro del briefing (respetando los caps por medio). Si la pieza tiene otro autor del mismo medio, la juzgas por su calidad y relevancia.
+
+⭐ MEDIOS PREFERIDOS DEL USUARIO (orden de prioridad, prioriza los primeros):
+1. Vozpópuli ⭐
+2. Artículo 14 ⭐
+3. The Objective
+4. InfoLibre
+5. La Gaceta
+6. Libertad Digital
+7. elDiario.es
+Si hay candidatas válidas de estos medios, INCLÚYELAS en este orden de preferencia hasta el cap de cada uno.
+
+REGLAS DE SELECCIÓN (en orden de prioridad):
+1. Selecciona piezas con autor real cuando sea posible. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" "/elsubjetivo/" o similar, también CUENTAN como columna válida. EXCEPCIÓN: items con source "Agenda Pública" o "Artículo 14" pueden incluirse aunque no aparezca autor (Google News no expone el autor, pero los artículos originales son análisis firmados de calidad).
+2. HARD CAPS INVIOLABLES por medio (NO se pueden superar):
+   - Vozpópuli: MÁX 4 columnas ⭐
+   - Artículo 14: MÁX 4 columnas ⭐
+   - The Objective: MÁX 3 columnas
+   - InfoLibre: MÁX 2 columnas
+   - La Gaceta: MÁX 3 columnas
+   - Libertad Digital: MÁX 3 columnas
+   - Agenda Pública: MÁX 2 columnas
+   - elDiario.es: MÁX 2 columnas
+   - El País: MÁX 3 columnas
+   - El Mundo: MÁX 2 columnas
+   - OK Diario: MÁX 2 columnas
+   - El Debate: MÁX 2 columnas
+   - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo)
+2.bis MÍNIMOS OBLIGATORIOS (condicionales — solo aplican si hay material en CANDIDATAS):
+- Si en CANDIDATAS aparece ≥2 items de "Vozpópuli", DEBES incluir mínimo 2 columnas suyas. ⭐
+- Si aparece ≥2 items de "Artículo 14", DEBES incluir mínimo 2 columnas suyas. ⭐
+- Si aparece ≥2 items de "The Objective", DEBES incluir mínimo 3 columnas suyas (cap MÁX 3). ⭐⭐⭐ INELUDIBLE
+- Si aparece ≥2 items de "elDiario.es", DEBES incluir mínimo 2 columnas suyas.
+- Si aparece ≥2 items de "InfoLibre", DEBES incluir mínimo 2 columnas suyas.
+- Si aparece ≥2 items de "Libertad Digital", DEBES incluir mínimo 2 columnas suyas.
+- Si aparece ≥1 item de "La Gaceta", DEBES incluir mínimo 1.
+- Si aparece ≥1 item de "Agenda Pública" o "El País", DEBES incluir mínimo 1 de cada uno.
+- Si aparece ≥1 item de "El Mundo", DEBES incluir mínimo 1.
+- Si aparece ≥1 item de "OK Diario", DEBES incluir mínimo 1.
+- Si aparece ≥1 item de "El Debate", DEBES incluir mínimo 1.
+
+CHEQUEO PRE-RESPUESTA OBLIGATORIO:
+Antes de devolver el JSON, RECUENTA cuántas columnas hay de cada medio prioritario.
+Si The Objective < 3 y había ≥3 candidatos de The Objective en la lista → REHAZ la selección.
+Si Vozpópuli < 2 y había ≥2 candidatos suyos → REHAZ la selección.
+Este chequeo NO ES OPCIONAL.
+
+REGLA CLAVE: estos mínimos SOLO aplican si hay candidatos suficientes en los RSS. Si Vozpópuli ese día solo tiene 1 columna (o ninguna) en CANDIDATAS, no fuerzas un mínimo de 2.
+
+ESTAS PREFERENCIAS DEL USUARIO TIENEN PRIORIDAD sobre tu criterio editorial de "qué es más relevante". Si una columna de Vozpópuli existe y es válida, va dentro, aunque encuentres otras 3 que te parezcan más interesantes. El usuario quiere SUS medios, no los que tú prefieras.
+3. Selecciona HASTA 20 columnas en total — pero menos si no hay material fresco suficiente.
+4. MÍNIMO 3 medios distintos en el resultado (si hay material para ello).
+5. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
+6. Prioriza diversidad ideológica/temática entre medios.
+
+EJEMPLO DE DISTRIBUCIÓN IDEAL si hay corpus suficiente:
+- Vozpópuli: 4 (preferido #1, tope)
+- Artículo 14: 3 (preferido #2)
+- The Objective: 2 (preferido #3)
+- InfoLibre: 2 (preferido #4, mínimo 1)
+- La Gaceta: 2 (preferido #5)
+- Libertad Digital: 2 (preferido #6)
+- elDiario.es: 1 (preferido #7, mínimo 1)
+- Agenda Pública: 1 (mínimo)
+- El País: 1 (mínimo)
+- Total: 20 → ajusta a 20 según calidad (objetivo)
+
+Si un medio preferido no tiene candidatas, completa con los siguientes en orden de preferencia (después la lista de 7 preferidos, viene El Mundo y El País).
+
+Para cada columna seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú).
+
+CANDIDATAS:
+${candidatesText}
+
+OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: NO ARRAY VACÍO, PREFERIDOS PRIMERO.
+{"date":"${todayShort}","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
+
+      currentStep = 'call-anthropic';
+      const upstream = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: todayShort, dateFull, requestTime, section }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 8500,
+          messages: [{ role: 'user', content: userPrompt }],
+          // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
+        }),
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-        throw new Error(err.error || `HTTP ${res.status}`);
+      if (!upstream.ok) {
+        const errText = await upstream.text();
+        return res.status(upstream.status).json({
+          error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
+          step: 'anthropic-response',
+          candidatesFound: candidates.length,
+        });
       }
 
-      const data = await res.json();
-      if (!data.briefing) throw new Error('Respuesta sin briefing');
-      setData(data.briefing);
-      setStatus('done');
+      currentStep = 'parse-response';
+      const data = await upstream.json();
+      if (data.error) {
+        return res.status(500).json({
+          error: data.error.message || 'Error de la API',
+          step: 'anthropic-data',
+          candidatesFound: candidates.length,
+        });
+      }
+
+      currentStep = 'extract-json';
+      const text = (data.content || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.text)
+        .join('');
+
+      const briefing = extractJson(text);
+      // Añadir info diagnóstica útil
+      if (briefing && typeof briefing === 'object') {
+        // ============ FILTRO OPINIÓN ESTRICTO ============
+        // Detecta si una pieza es realmente columna firmada (no noticia/editorial/sumario)
+        const isOpinionLike = (item) => {
+          if (!item.author) return false;
+          const author = String(item.author).trim();
+          if (!author) return false;
+          const authorLow = author.toLowerCase();
+          const sourceLow = String(item.source || '').toLowerCase();
+          if (authorLow === sourceLow) return false;                  // "THE OBJECTIVE" como autor
+          if (authorLow.includes('redacción') || authorLow.includes('redaccion')) return false;
+          if (authorLow === 'editorial' || authorLow === 'opinión' || authorLow === 'opinion') return false;
+          if (authorLow.includes('sumario')) return false;
+
+          const title = String(item.title || '').trim().toLowerCase();
+          if (title.startsWith('sumario')) return false;
+          if (title.startsWith('en sumario')) return false;
+          if (title.startsWith('boletín')) return false;
+          if (title.includes('claves del día')) return false;
+          return true;
+        };
+
+        // ============ LIMPIEZA SELECCIÓN MODELO ============
+        // Si el modelo metió noticias/editoriales en spainOpinion, las quitamos
+        // y las RECLASIFICAMOS como extraNews para añadirlas a Noticias España
+        const originalItems = briefing.spainOpinion || [];
+        const cleanedItems = originalItems.filter(isOpinionLike);
+        const removedItems = originalItems.filter(i => !isOpinionLike(i));
+        const cleanupLog = removedItems.map(i => `↪${i.source}: ${i.author || 'sin autor'} - ${String(i.title || '').slice(0, 60)}`);
+
+        // Convertir noticias coladas en formato newsItem
+        const extraNewsFromOpinion = removedItems.map(i => ({
+          title: i.title,
+          summary: i.summary,
+          source: i.source,
+          url: i.url,
+          publishedDate: i.publishedDate,
+          author: i.author,
+          region: 'España',
+          lean: i.lean || null,
+          _reclassified: true,  // flag para el frontend
+        }));
+
+        briefing.spainOpinion = cleanedItems;
+        briefing.extraNews = extraNewsFromOpinion;
+
+        // ============ ENFORCEMENT POST-MODELO ============
+        // Si el modelo no cumple los mínimos obligatorios, FORZAR añadiendo del pool de candidatos
+        // SOLO se fuerzan piezas que pasen isOpinionLike (autor real, no sumarios, no editoriales)
+        const REQUIRED_MIN = {
+          'Vozpópuli': 2,
+          'Artículo 14': 2,
+          'The Objective': 3,
+          'elDiario.es': 2,
+          'InfoLibre': 2,
+          'La Gaceta': 1,
+          'Libertad Digital': 2,
+          'Agenda Pública': 1,
+          'El País': 1,
+          'El Mundo': 1,
+          'OK Diario': 1,
+          'El Debate': 1,
+        };
+
+        let items = briefing.spainOpinion || [];
+        const enforcementLog = [];
+        const skippedNonOpinion = [];
+
+        const countPerSource = (arr) => arr.reduce((acc, x) => {
+          acc[x.source] = (acc[x.source] || 0) + 1;
+          return acc;
+        }, {});
+
+        for (const [source, minRequired] of Object.entries(REQUIRED_MIN)) {
+          // Solo candidatos de este source QUE SEAN OPINIÓN (con autor real)
+          const allFromSource = candidates.filter(c => c.source === source);
+          const opinionFromSource = allFromSource.filter(isOpinionLike);
+
+          const rejected = allFromSource.length - opinionFromSource.length;
+          if (rejected > 0) {
+            skippedNonOpinion.push(`${source}: ${rejected} no-opinión filtradas`);
+          }
+
+          if (opinionFromSource.length === 0) continue;
+
+          const currentCounts = countPerSource(items);
+          const current = currentCounts[source] || 0;
+          const effectiveMin = Math.min(minRequired, opinionFromSource.length);
+
+          if (current < effectiveMin) {
+            const usedUrls = new Set(items.map(i => i.url));
+            const usedTitles = new Set(items.map(i => i.title));
+            let available = opinionFromSource.filter(c =>
+              !usedUrls.has(c.url) && !usedTitles.has(c.title)
+            );
+
+            // Preferir feeds VIP de autor sobre feed general
+            available = available.sort((a, b) => {
+              const aVip = String(a._fromTier || '').startsWith('vip:') ? 0 : 1;
+              const bVip = String(b._fromTier || '').startsWith('vip:') ? 0 : 1;
+              if (aVip !== bVip) return aVip - bVip;
+              // Después, secciones de opinión sobre feed general
+              const aOpinion = (a._fromTier === 'section' || a._fromTier === 'category' || a._fromTier === 'opinion') ? 0 : 1;
+              const bOpinion = (b._fromTier === 'section' || b._fromTier === 'category' || b._fromTier === 'opinion') ? 0 : 1;
+              return aOpinion - bOpinion;
+            });
+
+            const needed = effectiveMin - current;
+            const toAdd = available.slice(0, needed);
+
+            toAdd.forEach(c => {
+              items.push({
+                title: c.title,
+                summary: c.description ? c.description.slice(0, 220) : '(Resumen pendiente — pieza incluida por regla de mínimo obligatorio)',
+                author: c.author,
+                source: c.source,
+                url: c.url,
+                publishedDate: c.publishedDate,
+                lean: null,
+                _forced: true,
+              });
+              enforcementLog.push(`+${c.source} [${c._fromTier || 'main'}]: ${c.author} - ${c.title.slice(0, 50)}`);
+            });
+          }
+        }
+
+        briefing.spainOpinion = items;
+        // ============ FIN ENFORCEMENT ============
+
+        const selectedCount = items.length;
+        const sourceCounts = candidates.reduce((acc, c) => {
+          acc[c.source] = (acc[c.source] || 0) + 1;
+          return acc;
+        }, {});
+        briefing._meta = {
+          totalCandidates: candidates.length,
+          selectedCount,
+          mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
+          candidatesPerSource: sourceCounts,
+          allowedDates: allowedISODates,
+          feedDiagnostic: diagnostic,
+          enforcementLog: enforcementLog,
+          enforcedCount: enforcementLog.length,
+          skippedNonOpinion: skippedNonOpinion,
+          cleanupLog: cleanupLog,
+          cleanupCount: cleanupLog.length,
+        };
+        // Si el modelo IGNORÓ la regla "NUNCA vacío", añadir diagnóstico crítico
+        const notes = [];
+        if (selectedCount === 0 && candidates.length > 0) {
+          notes.push(`⚠️ El modelo recibió ${candidates.length} candidatos de ${briefing._meta.mediumsAvailable} medios pero seleccionó 0. Posible filtro excesivo.`);
+        }
+        if (cleanupLog.length > 0) {
+          notes.push(`↪️ Reclasificadas: ${cleanupLog.length} pieza(s) movidas de Opinión a Noticias por no ser columnas firmadas: ${cleanupLog.slice(0, 5).join(' | ')}${cleanupLog.length > 5 ? '...' : ''}`);
+        }
+        if (enforcementLog.length > 0) {
+          notes.push(`🔧 Se forzaron ${enforcementLog.length} columna(s) por cuotas mínimas: ${enforcementLog.slice(0, 5).join(' | ')}${enforcementLog.length > 5 ? '...' : ''}`);
+        }
+        if (notes.length > 0) briefing._note = notes.join(' || ');
+      } else {
+        // El modelo no devolvió JSON válido — devolvemos diagnóstico
+        return res.status(500).json({
+          error: 'El modelo no devolvió JSON parseable',
+          step: 'extract-json',
+          candidatesFound: candidates.length,
+          rawTextSample: text.slice(0, 300),
+        });
+      }
+      return res.status(200).json({ briefing, section });
     } catch (err) {
-      setStatus('error');
-      setError(err.message || 'Error desconocido');
+      return res.status(500).json({
+        error: `Error en paso "${currentStep}": ${err.message || 'desconocido'}`,
+        step: currentStep,
+      });
     }
   }
+  // ============ FIN FLUJO RSS spainOpinion ============
 
-  function sendEmail() {
-    if (!intlData && !spainNewsData && !spainOpinionData) return;
-    const merged = mergeBriefings();
-    const subject = `🦊 MAL NEWS - Briefing ${todayShort}`;
-    const body = buildEmailPlainText(merged);
-    const mailtoUrl = `mailto:${RECIPIENT}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-
+  // ============ FLUJO ESPECIAL RSS PARA spainNews ============
+  // Igual que spainOpinion: pre-fetch RSS de portadas + Google News, sin web_search.
+  if (section === 'spainNews') {
     try {
-      const a = document.createElement('a');
-      a.href = mailtoUrl;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setEmailStatus('sent');
-    } catch (err) {
-      setEmailStatus('error');
-    }
-  }
+      const { candidates, diagnostic } = await fetchSpainNewsRss(allowedISODates);
 
-  // Abre el briefing en una pestaña nueva como HTML estilizado
-  // Abre DOS ventanas HTML separadas (España + Internacional) — solo abre las que tienen contenido
-  function openHtmlView() {
-    if (!intlData && !spainNewsData && !spainOpinionData) return;
-    const merged = mergeBriefings();
-
-    const openTab = (htmlContent) => {
-      const newWindow = window.open('', '_blank');
-      if (newWindow) {
-        newWindow.document.open();
-        newWindow.document.write(htmlContent);
-        newWindow.document.close();
+      if (!candidates || candidates.length === 0) {
+        const detail = diagnostic.map(d =>
+          `${d.source}: ${d.rawCount} items, ${d.passedDateFilter} en fecha (última: ${d.latestDateSeen})`
+        ).join(' | ');
+        return res.status(200).json({
+          briefing: {
+            date: todayShort,
+            spainNews: [],
+            _note: `Sin candidatos. Fechas permitidas: ${allowedISODates.join(', ')}. Detalle por feed: ${detail}`,
+            _meta: { allowedDates: allowedISODates, feedDiagnostic: diagnostic },
+          },
+          section,
+        });
       }
-    };
 
-    const hasSpain = (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0) > 0;
-    const hasIntl = (merged.worldNews?.length || 0) + (merged.worldOpinion?.length || 0) > 0;
+      const candidatesText = candidates.map((c, i) =>
+        `[${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${c.description.slice(0, 200)}`
+      ).join('\n\n');
 
-    if (hasSpain) openTab(buildHtml(merged, 'spain'));
-    if (hasIntl) {
-      // pequeño delay para evitar que el navegador bloquee el segundo popup
-      setTimeout(() => openTab(buildHtml(merged, 'international')), hasSpain ? 250 : 0);
+      const userPrompt = `FECHA: ${todayFull || todayShort}
+
+Tienes a continuación una lista de ${candidates.length} noticias de medios españoles, ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
+
+REGLAS DE SELECCIÓN (en orden de prioridad):
+1. Devuelve las noticias que haya. Si solo hay 8 noticias frescas y relevantes, devuelve 8. No fuerces el cupo.
+2. Selecciona HASTA 25 noticias (puedes devolver menos si la lista es corta).
+3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos, decisiones gubernamentales, anuncios oficiales, hechos relevantes.
+4. DESCARTA: análisis genéricos, columnas de opinión, contenido evergreen sin actualidad.
+5. IDEAL si hay corpus suficiente: MÁX 4 noticias mismo medio, MÍN 7 medios distintos.
+6. ACEPTABLE si corpus limitado: hasta 4 noticias mismo medio, mín 4 medios distintos.
+7. PLURALIDAD: prioriza incluir al menos 1 noticia de El País o elDiario.es o InfoLibre (voces izquierda), y al menos 1 de La Vanguardia (perspectiva catalana) si hay material relevante.
+7.bis BALEARES PRIORITARIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares", "elDiario.es Baleares" o "Economía de Mallorca", PRIORIZA incluir 1-2 noticias de Baleares. Si no hay material apropiado, no fuerces.
+7.ter DEMÓCRATA OBLIGATORIO: si en CANDIDATAS aparece al menos 1 item con source "Demócrata", DEBES incluir mínimo 1 noticia suya. ⭐ INELUDIBLE.
+8. Equilibrio temático: política, economía, sociedad, sucesos, internacional con foco España.
+9. Mejor pocas noticias relevantes y frescas que muchas mediocres o forzadas.
+
+Para cada noticia seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO).
+
+CANDIDATAS:
+${candidatesText}
+
+OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
+{"date":"${todayShort}","spainNews":[{"rank":1,"title":"...","summary":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
+
+      const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 10000,
+          messages: [{ role: 'user', content: userPrompt }],
+          // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
+        }),
+      });
+
+      if (!upstream.ok) {
+        const errText = await upstream.text();
+        return res.status(upstream.status).json({
+          error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
+        });
+      }
+
+      const data = await upstream.json();
+      if (data.error) {
+        return res.status(500).json({ error: data.error.message || 'Error de la API' });
+      }
+
+      const text = (data.content || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.text)
+        .join('');
+
+      const briefing = extractJson(text);
+      if (briefing && typeof briefing === 'object') {
+        briefing._meta = {
+          totalCandidates: candidates.length,
+          selectedCount: (briefing.spainNews || []).length,
+          mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
+          allowedDates: allowedISODates,
+          feedDiagnostic: diagnostic,
+        };
+      }
+      return res.status(200).json({ briefing, section });
+    } catch (err) {
+      return res.status(500).json({
+        error: `Error en flujo RSS spainNews: ${err.message || 'desconocido'}`,
+      });
     }
   }
+  // ============ FIN FLUJO RSS spainNews ============
 
-  // Descarga el briefing como DOS archivos .html en el dispositivo del usuario
-  // 1) mal-news-espana-YYYY-MM-DD.html  → Noticias España + Opinión España
-  // 2) mal-news-internacional-YYYY-MM-DD.html → Mundo + Opinión Internacional
-  // Solo descarga los archivos cuyas secciones tengan al menos 1 pieza
-  function downloadHtml() {
-    if (!intlData && !spainNewsData && !spainOpinionData) return;
-    const merged = mergeBriefings();
-    const safeName = (todayShort || 'briefing').replace(/\//g, '-');
-
-    const triggerDownload = (htmlContent, fileName) => {
-      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    };
-
-    // 1) Archivo España (si hay material)
-    const hasSpain = (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0) > 0;
-    if (hasSpain) {
-      const htmlSpain = buildHtml(merged, 'spain');
-      triggerDownload(htmlSpain, `mal-news-espana-${safeName}.html`);
-    }
-
-    // 2) Archivo Internacional (si hay material) - retardo para evitar bloqueo del navegador
-    const hasIntl = (merged.worldNews?.length || 0) + (merged.worldOpinion?.length || 0) > 0;
-    if (hasIntl) {
-      setTimeout(() => {
-        const htmlIntl = buildHtml(merged, 'international');
-        triggerDownload(htmlIntl, `mal-news-internacional-${safeName}.html`);
-      }, hasSpain ? 350 : 0);
-    }
-  }
-
-  function mergeBriefings() {
-    return {
-      date: (intlData?.date || spainOpinionData?.date || spainNewsData?.date || todayShort),
-      worldNews: intlData?.worldNews || [],
-      worldOpinion: intlData?.worldOpinion || [],
-      spainNews: spainNewsData?.spainNews || [],
-      spainOpinion: spainOpinionData?.spainOpinion || [],
-    };
-  }
-
-  // Calcula el próximo horario recomendado de briefing según día de la semana y sección
-  // section: 'spain' o 'international'
-  // Devuelve { day: 'Martes 20 mayo', time: '19:00', reason: '...' }
-  function getNextRecommended(section = 'spain') {
-    const now = new Date();
-    const today = now.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTime = currentHour * 60 + currentMinute;
-
-    // Horarios óptimos por día de la semana y sección
-    const schedules = {
-      spain: {
-        0: { hour: 19, minute: 0, label: 'Domingo · todos los columnistas dominicales publicados' },
-        1: { hour: 19, minute: 0, label: 'Lunes · post-laboral · pico Vozpópuli' },
-        2: { hour: 19, minute: 0, label: 'Martes · día completo · Maite Rico' },
-        3: { hour: 19, minute: 0, label: 'Miércoles · máxima diversidad editorial' },
-        4: { hour: 19, minute: 0, label: 'Jueves · día de Estefanía Molina y Agustín Valladolid' },
-        5: { hour: 19, minute: 0, label: 'Viernes · cierre de semana laboral' },
-        6: { hour: 12, minute: 0, label: 'Sábado · mañana relajada · Maite Rico, Victoria Carvajal' },
-      },
-      international: {
-        0: { hour: 18, minute: 30, label: 'Domingo · NYT Sunday Review · WSJ Weekend · análisis dominical US' },
-        1: { hour: 21, minute: 30, label: 'Lunes · pico US business · LATAM activo · Europa cerrada' },
-        2: { hour: 21, minute: 30, label: 'Martes · pico US business · LATAM activo' },
-        3: { hour: 21, minute: 30, label: 'Miércoles · pico US business · LATAM activo' },
-        4: { hour: 21, minute: 30, label: 'Jueves · pico US business · LATAM activo' },
-        5: { hour: 21, minute: 30, label: 'Viernes · cierre semana US · análisis del finde' },
-        6: { hour: 18, minute: 0, label: 'Sábado · US Saturday news · LATAM despertando' },
-      },
-    };
-
-    const schedule = schedules[section] || schedules.spain;
-    const todaySchedule = schedule[today];
-    const todayTargetTime = todaySchedule.hour * 60 + todaySchedule.minute;
-
-    // Si todavía no ha pasado la hora recomendada de HOY, el próximo es HOY
-    // Si ya ha pasado, el próximo es MAÑANA
-    let targetDate = new Date(now);
-    if (currentTime < todayTargetTime) {
-      // Es hoy
-    } else {
-      // Mañana
-      targetDate.setDate(targetDate.getDate() + 1);
-    }
-
-    const targetDay = targetDate.getDay();
-    const targetSchedule = schedule[targetDay];
-
-    // Formatear día y mes
-    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-    const isToday = targetDate.toDateString() === now.toDateString();
-
-    return {
-      day: isToday
-        ? `Hoy · ${dayNames[targetDay].toLowerCase()} ${targetDate.getDate()} ${monthNames[targetDate.getMonth()]}`
-        : `${dayNames[targetDay]} ${targetDate.getDate()} ${monthNames[targetDate.getMonth()]}`,
-      time: `${String(targetSchedule.hour).padStart(2, '0')}:${String(targetSchedule.minute).padStart(2, '0')}`,
-      reason: targetSchedule.label,
-    };
-  }
-
-  // Construye HTML formateado y autocontenido (CSS inline para compatibilidad email)
-  // mode: 'spain' → solo secciones España (Noticias + Opinión)
-  //       'international' → solo Internacional (Mundo + Opinión Intl)
-  //       'all' → briefing completo (legacy, para vista HTML combinada)
-  // ===================================================
-  // FORMATO DINÁMICO · 2 HORARIOS INDEPENDIENTES
-  // España: optimizado para columnas firmadas españolas
-  // Internacional: optimizado para pico US + LATAM
-  // ===================================================
-  const SCHEDULE_SPAIN = {
-    1: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
-    2: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
-    3: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
-    4: { hour: 19, minute: 0,  label: 'Día de Estefanía Molina y Agustín Valladolid' },
-    5: { hour: 19, minute: 0,  label: 'Cierra la semana laboral' },
-    6: { hour: 12, minute: 0,  label: 'Mañana relajada de sábado' },
-    0: { hour: 19, minute: 0,  label: 'Domingo completo · FJL, Pedro J., Cebrián' },
-  };
-
-  const SCHEDULE_INTL = {
-    1: { hour: 21, minute: 30, label: 'Pico US business · LATAM activo' },
-    2: { hour: 21, minute: 30, label: 'Pico US business · LATAM activo' },
-    3: { hour: 21, minute: 30, label: 'Pico US business · LATAM activo' },
-    4: { hour: 21, minute: 30, label: 'US tarde · Europa cerrada · LATAM peak' },
-    5: { hour: 21, minute: 30, label: 'Cierre semanal · setup de fin de semana US' },
-    6: { hour: 18, minute: 0,  label: 'US Saturday cycle · LATAM despertando' },
-    0: { hour: 18, minute: 30, label: 'NYT Sunday Review · WSJ Weekend · análisis dominical' },
-  };
-
-  function calculateNextBriefingForSchedule(schedule) {
-    const now = new Date();
-    const currentDay = now.getDay();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-
-    const todaySchedule = schedule[currentDay];
-    const todayMinutes = todaySchedule.hour * 60 + todaySchedule.minute;
-    const nowMinutes = currentHour * 60 + currentMinute;
-
-    let targetDay = currentDay;
-    let targetDate = new Date(now);
-
-    if (nowMinutes >= todayMinutes) {
-      targetDay = (currentDay + 1) % 7;
-      targetDate.setDate(targetDate.getDate() + 1);
-    }
-
-    const targetSchedule = schedule[targetDay];
-    const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-    const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-
-    return {
-      dayName: dayNames[targetDay],
-      dayNumber: targetDate.getDate(),
-      monthName: monthNames[targetDate.getMonth()],
-      hour: String(targetSchedule.hour).padStart(2, '0'),
-      minute: String(targetSchedule.minute).padStart(2, '0'),
-      label: targetSchedule.label,
-    };
-  }
-
-  function calculateNextBriefing() {
-    return {
-      spain: calculateNextBriefingForSchedule(SCHEDULE_SPAIN),
-      international: calculateNextBriefingForSchedule(SCHEDULE_INTL),
-    };
-  }
-
-  function buildHtml(b, mode = 'all') {
-    const escape = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const nextBriefing = calculateNextBriefing();
-
-    // Mapeo de colores y gradientes por sección (debe coincidir con SECTION_COLORS/SECTION_GRADIENTS de la PWA)
-    const SECTION_STYLES = {
-      worldOpinion: { color: '#0F766E', gradient: 'linear-gradient(90deg, #0F766E, #5EEAD4)' },
-      worldNews:    { color: '#0F766E', gradient: 'linear-gradient(90deg, #0F766E, #5EEAD4)' },
-      spainOpinion: { color: '#65A30D', gradient: 'linear-gradient(90deg, #65A30D, #FACC15)' },
-      spainNews:    { color: '#C2410C', gradient: 'linear-gradient(90deg, #C2410C, #FA6900)' },
-    };
-
-    const getDay = (iso) => {
-      if (!iso) return '';
+  try {
+    // ============ PRE-FETCH RSS OPINIÓN INTERNACIONAL ============
+    let intlOpinionCandidates = [];
+    let intlOpinionDiagnostic = [];
+    if (section === 'international') {
       try {
-        return new Date(iso + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long' });
-      } catch (_) { return ''; }
-    };
-
-    const card = (item, color, isOpinion) => {
-      const sourceColor = getSourceColor(item.source);
-      const dateBadge = formatDateBadge(item.publishedDate);
-      const readTime = calculateReadTime(item);
-      const summaryStyle = isOpinion ? 'font-style:italic;' : '';
-      const link = item.url
-        ? `<a href="${escape(item.url)}" style="color:${color};text-decoration:none;border-bottom:1px dotted ${color};font-weight:700;font-size:10.5px;white-space:nowrap;">leer &rarr;</a>`
-        : '';
-      const sourceBadge = item.source
-        ? `<span style="background:${sourceColor};color:white;font-size:9px;font-weight:800;letter-spacing:0.08em;padding:3px 8px;border-radius:4px;text-transform:uppercase;">${escape(item.source)}</span>`
-        : '';
-      const dateBadgeHtml = dateBadge
-        ? `<span style="background:rgba(26,54,93,0.08);color:rgba(26,54,93,0.75);font-size:9px;font-weight:700;letter-spacing:0.08em;padding:3px 8px;border-radius:4px;">${escape(dateBadge)}</span>`
-        : '';
-      const readBadge = `<span style="background:rgba(250,105,0,0.10);color:#C2410C;font-size:9px;font-weight:700;letter-spacing:0.04em;padding:3px 8px;border-radius:4px;">${readTime} min</span>`;
-      const footerText = isOpinion && item.author
-        ? `<span style="font-weight:700;font-style:italic;opacity:0.8;">&mdash; ${escape(item.author)}</span>`
-        : !isOpinion && item.region
-        ? `<span style="font-weight:700;font-style:italic;opacity:0.8;">${escape(item.region)}</span>`
-        : '<span></span>';
-      return `
-        <div style="background:#FFFFFF;border-left:4px solid ${color};border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:Verdana,Geneva,sans-serif;">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-            ${sourceBadge}
-            ${dateBadgeHtml}
-            ${readBadge}
-          </div>
-          <div style="font-size:${isOpinion ? '14px' : '13px'};font-weight:700;color:#1A365D;line-height:1.3;margin-bottom:5px;">${escape(item.title)}</div>
-          <div style="font-size:11.5px;color:rgba(26,54,93,0.72);line-height:1.5;${summaryStyle}margin-bottom:6px;">${escape(item.summary)}</div>
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;color:#1A365D;">
-            ${footerText}
-            ${link}
-          </div>
-        </div>`;
-    };
-
-    const section = (title, icon, items, colorKey, descriptor, isOpinion) => {
-      if (!items?.length) return '';
-      const { color, gradient } = SECTION_STYLES[colorKey];
-      const itemLabel = isOpinion ? (items.length === 1 ? 'COLUMNA' : 'COLUMNAS') : (items.length === 1 ? 'PIEZA' : 'PIEZAS');
-      const itemsHtml = items.map(i => card(i, color, isOpinion)).join('');
-      return `
-        <div style="margin-bottom:28px;">
-          <div style="background:${gradient};color:white;padding:16px 20px;border-radius:12px 12px 0 0;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:Verdana,Geneva,sans-serif;">
-            <div style="font-size:15px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;">
-              ${icon} ${escape(title)} &middot; ${items.length} ${itemLabel}
-            </div>
-            <div style="font-size:11px;opacity:0.92;margin-top:6px;">${escape(descriptor)}</div>
-          </div>
-          <div style="background:rgba(255,255,255,0.55);padding:10px 10px 4px;border-radius:0 0 12px 12px;">
-            ${itemsHtml}
-          </div>
-        </div>`;
-    };
-
-    // Calcular total según modo
-    let total = 0;
-    let sectionsHtml = '';
-    let headerTitle = 'MAL NEWS';
-    let pageSubtitle = '';
-
-    if (mode === 'spain') {
-      total = (b.spainNews?.length || 0) + (b.spainOpinion?.length || 0);
-      headerTitle = 'MAL NEWS · ESPAÑA';
-      pageSubtitle = 'Noticias y opinión nacional';
-      sectionsHtml =
-        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimas 48h', false) +
-        section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true);
-    } else if (mode === 'international') {
-      total = (b.worldNews?.length || 0) + (b.worldOpinion?.length || 0);
-      headerTitle = 'MAL NEWS · INTERNACIONAL';
-      pageSubtitle = 'Mundo y opinión global';
-      sectionsHtml =
-        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · publicadas en últimas 48h · incluye sentencias relevantes', false) +
-        section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true);
-    } else {
-      // mode = 'all' (briefing completo - solo para Vista HTML)
-      total = (b.worldOpinion?.length || 0) + (b.worldNews?.length || 0)
-            + (b.spainOpinion?.length || 0) + (b.spainNews?.length || 0);
-      headerTitle = 'MAL NEWS';
-      pageSubtitle = 'Briefing completo del día';
-      sectionsHtml =
-        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimas 48h', false) +
-        section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true) +
-        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · publicadas en últimas 48h · incluye sentencias relevantes', false) +
-        section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true);
+        const intlResult = await fetchInternationalOpinionRss(allowedISODates);
+        intlOpinionCandidates = intlResult.candidates || [];
+        intlOpinionDiagnostic = intlResult.diagnostic || [];
+      } catch (e) {
+        // Si falla el pre-fetch, seguimos solo con web_search
+        intlOpinionDiagnostic = [{ source: 'PRE-FETCH ERROR', errorMsg: e.message }];
+      }
     }
 
-    return `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>${escape(headerTitle)} - ${escape(b.date || todayShort)}</title>
-<style>
-  body { margin:0; padding:24px; background:#F0F4F8; font-family:Verdana,Geneva,sans-serif; color:#1A365D; }
-  .container { max-width:820px; margin:0 auto; }
-  .header { text-align:center; margin-bottom:28px; padding:24px; background:#FFFFFF; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,0.08); }
-  .logo { font-size:28px; font-weight:800; color:#1A365D; letter-spacing:2px; margin:0; }
-  .subtitle { font-size:13px; font-style:italic; color:rgba(26,54,93,0.7); margin:6px 0 0; }
-  .date { font-size:12px; letter-spacing:0.3em; color:#1A365D; opacity:0.7; text-transform:uppercase; font-weight:800; margin:10px 0 0; }
-  .total { font-size:11px; color:#0EA5E9; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
-  .footer { text-align:center; margin-top:32px; padding:18px; font-size:10px; color:rgba(26,54,93,0.55); letter-spacing:0.15em; font-style:italic; border-top:1px solid rgba(26,54,93,0.12); }
-  .next-briefing { background:#FAFBFC; border-radius:14px; padding:20px 22px; margin:32px 0 0; box-shadow:0 4px 16px rgba(0,0,0,0.05); border:1px solid rgba(26,54,93,0.08); }
-  .next-briefing-label { text-align:center; font-size:10px; font-weight:800; letter-spacing:0.18em; color:#1A365D; margin-bottom:14px; opacity:0.75; }
-  .schedule-card { display:flex; gap:14px; align-items:center; padding:14px 16px; border-radius:10px; margin-bottom:10px; }
-  .spain-card { background:linear-gradient(135deg, rgba(101,163,13,0.10), rgba(250,204,21,0.15)); border-left:4px solid #C2410C; }
-  .intl-card { background:linear-gradient(135deg, rgba(15,118,110,0.10), rgba(94,234,212,0.15)); border-left:4px solid #0F766E; }
-  .card-icon { font-size:32px; flex-shrink:0; }
-  .card-body { flex:1; }
-  .card-title { font-size:10px; font-weight:800; letter-spacing:0.16em; color:#1A365D; margin-bottom:3px; opacity:0.7; }
-  .spain-card .card-title { color:#C2410C; opacity:1; }
-  .intl-card .card-title { color:#0F766E; opacity:1; }
-  .card-time { font-family:Georgia,serif; font-style:italic; font-size:17px; font-weight:700; color:#1A365D; margin-bottom:3px; line-height:1.2; }
-  .card-reason { font-size:10.5px; font-style:italic; color:rgba(26,54,93,0.65); line-height:1.3; }
-  .next-briefing-schedule { border-top:1px dashed rgba(26,54,93,0.12); padding-top:14px; margin-top:8px; }
-  .schedule-title { font-size:10px; font-weight:800; letter-spacing:0.12em; color:#1A365D; margin-bottom:10px; opacity:0.7; text-align:center; }
-  .schedule-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  .schedule-col-title { font-size:9px; font-weight:800; letter-spacing:0.14em; padding:4px 0; margin-bottom:4px; text-align:center; border-radius:4px; }
-  .spain-title { background:linear-gradient(90deg, rgba(101,163,13,0.12), rgba(250,204,21,0.15)); color:#C2410C; }
-  .intl-title { background:linear-gradient(90deg, rgba(15,118,110,0.12), rgba(94,234,212,0.15)); color:#0F766E; }
-  .schedule-row { display:flex; justify-content:space-between; font-size:11px; color:#1A365D; padding:3px 6px; border-bottom:1px dashed rgba(26,54,93,0.06); }
-  .schedule-row:last-child { border-bottom:none; }
-  .copy-hint { background:#FFFFFF; border:1px solid rgba(26,54,93,0.15); border-radius:10px; padding:14px 18px; margin-bottom:20px; font-size:12px; color:#1A365D; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.05); }
-  .next-brief { margin-top:36px; padding:22px 26px; background:linear-gradient(135deg, #FFFFFF, #FAFBFC); border:1px solid rgba(250,105,0,0.25); border-left:4px solid #FA6900; border-radius:14px; box-shadow:0 8px 24px rgba(250,105,0,0.10); }
-  .next-brief-label { font-size:9px; font-weight:800; letter-spacing:0.22em; color:#FA6900; text-transform:uppercase; margin-bottom:8px; }
-  .next-brief-day { font-family:Georgia,serif; font-size:20px; font-style:italic; color:#1A365D; font-weight:700; margin-bottom:4px; }
-  .next-brief-time { font-size:32px; font-weight:900; color:#FA6900; letter-spacing:0.02em; margin-bottom:8px; line-height:1; }
-  .next-brief-reason { font-size:11px; color:rgba(26,54,93,0.7); font-style:italic; line-height:1.5; }
-  .next-brief-table { margin-top:16px; padding-top:14px; border-top:1px dashed rgba(250,105,0,0.25); font-size:10px; color:rgba(26,54,93,0.65); line-height:1.7; }
-  .next-brief-table strong { color:#1A365D; font-weight:700; letter-spacing:0.05em; }
-  @media print { .copy-hint { display:none; } body { background:white; } }
-</style>
-</head>
-<body>
-  <div class="container">
-    <div class="copy-hint">
-      💡 <strong>Copia para email:</strong> Ctrl+A &rarr; Ctrl+C &rarr; pega en Gmail (conserva formato). O imprime con Ctrl+P para PDF.
-    </div>
-    <div class="header">
-      <h1 class="logo">${escape(headerTitle)}</h1>
-      <p class="subtitle">${escape(pageSubtitle)}</p>
-      <p class="date">${escape(b.date || todayShort)}</p>
-      <p class="total">${total} PIEZAS</p>
-    </div>
-    ${sectionsHtml}
-    ${(() => {
-      // Solo mostrar bloque de próximo briefing si el modo es spain o international
-      if (mode === 'all') return '';
-      const next = getNextRecommended(mode);
-      const sectionLabel = mode === 'spain' ? 'ESPAÑA' : 'INTERNACIONAL';
-      return `
-    <div class="next-brief">
-      <div class="next-brief-label">🔔 PRÓXIMO BRIEFING ${sectionLabel}</div>
-      <div class="next-brief-day">${escape(next.day)}</div>
-      <div class="next-brief-time">${escape(next.time)}</div>
-      <div class="next-brief-reason">${escape(next.reason)}</div>
-      <div class="next-brief-table">
-        ${mode === 'spain'
-          ? '<strong>Horario semanal España:</strong> Lun-Vie 19:00 &middot; Sábado 12:00 &middot; Domingo 19:00'
-          : '<strong>Horario semanal Internacional:</strong> Lun-Vie 21:30 &middot; Sábado 18:00 &middot; Domingo 18:30'}
-      </div>
-    </div>`;
-    })()}
-    <div class="next-briefing">
-      <div class="next-briefing-label">🔔 PRÓXIMOS BRIEFINGS RECOMENDADOS</div>
+    const candidatesText = (section === 'international' && intlOpinionCandidates.length > 0)
+      ? `\n\n📰 CANDIDATAS DE OPINIÓN INTERNACIONAL PRE-RECOLECTADAS (RSS directos, últimas 48h):\n${
+          intlOpinionCandidates.map((c, i) =>
+            `[${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.author || 'sin autor'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${(c.description || '').slice(0, 200)}`
+          ).join('\n\n')
+        }\n\n⭐ IMPORTANTE: Estas ${intlOpinionCandidates.length} candidatas son material PRE-VERIFICADO de medios internacionales. ÚSALAS PRIORITARIAMENTE para llenar worldOpinion (mínimo 5-6 deben venir de esta lista). Si una candidata es buena, INCLÚYELA con su URL exacta. Combina con web_search SOLO para cobertura adicional (LATAM, Asia, África, OM, otras zonas no representadas arriba).`
+      : '';
 
-      <div class="schedule-card spain-card">
-        <div class="card-icon">🇪🇸</div>
-        <div class="card-body">
-          <div class="card-title">ESPAÑA</div>
-          <div class="card-time">${escape(nextBriefing.spain.dayName)} ${nextBriefing.spain.dayNumber} ${escape(nextBriefing.spain.monthName)} · ${nextBriefing.spain.hour}:${nextBriefing.spain.minute}</div>
-          <div class="card-reason">"${escape(nextBriefing.spain.label)}"</div>
-        </div>
-      </div>
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 12000,
+        system: cfg.system,
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: cfg.maxUses }],
+        messages: [{
+          role: 'user',
+          content: cfg.user(todayShort, todayFull, nowTime, allowedISODates) + candidatesText,
+        }],
+      }),
+    });
 
-      <div class="schedule-card intl-card">
-        <div class="card-icon">🌍</div>
-        <div class="card-body">
-          <div class="card-title">INTERNACIONAL</div>
-          <div class="card-time">${escape(nextBriefing.international.dayName)} ${nextBriefing.international.dayNumber} ${escape(nextBriefing.international.monthName)} · ${nextBriefing.international.hour}:${nextBriefing.international.minute}</div>
-          <div class="card-reason">"${escape(nextBriefing.international.label)}"</div>
-        </div>
-      </div>
+    if (!upstream.ok) {
+      const errText = await upstream.text();
+      return res.status(upstream.status).json({
+        error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
+      });
+    }
 
-      <div class="next-briefing-schedule">
-        <div class="schedule-title">📅 Horario semanal</div>
-        <div class="schedule-grid">
-          <div class="schedule-col">
-            <div class="schedule-col-title spain-title">🇪🇸 ESPAÑA</div>
-            <div class="schedule-row"><span>Lun-Vie</span><span>19:00</span></div>
-            <div class="schedule-row"><span>Sábado</span><span>12:00</span></div>
-            <div class="schedule-row"><span>Domingo</span><span>19:00</span></div>
-          </div>
-          <div class="schedule-col">
-            <div class="schedule-col-title intl-title">🌍 INTERNACIONAL</div>
-            <div class="schedule-row"><span>Lun-Vie</span><span>21:30</span></div>
-            <div class="schedule-row"><span>Sábado</span><span>18:00</span></div>
-            <div class="schedule-row"><span>Domingo</span><span>18:30</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="footer">
-      MAL NEWS &middot; ${escape(RECIPIENT)} &middot; v3 PWA
-    </div>
-  </div>
-</body>
-</html>`;
+    const data = await upstream.json();
+    if (data.error) {
+      return res.status(500).json({ error: data.error.message || 'Error de la API' });
+    }
+
+    const text = (data.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('');
+
+    const briefing = extractJson(text);
+    if (briefing && typeof briefing === 'object' && section === 'international') {
+      briefing._meta = {
+        ...briefing._meta,
+        intlOpinionCandidatesCount: intlOpinionCandidates.length,
+        feedDiagnostic: intlOpinionDiagnostic,
+        allowedDates: allowedISODates,
+      };
+    }
+    return res.status(200).json({ briefing, section });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Error desconocido' });
   }
-
-  function buildEmailPlainText(b) {
-    const leanLabel = (lean) => lean === 'left' ? '[IZQ ◀]' : lean === 'right' ? '[DER ▶]' : '';
-    const sep = '-'.repeat(50);
-    const dsep = '='.repeat(50);
-
-    const section = (title, items) => {
-      if (!items?.length) return '';
-      const rows = items.map(i => {
-        const tags = [leanLabel(i.lean), i.region ? `[${i.region}]` : ''].filter(Boolean).join(' ');
-        const byline = i.author ? `${i.author} · ${i.source || ''}` : (i.source || '');
-        const lines = [
-          `${i.rank}. ${tags ? tags + ' ' : ''}${i.title}`,
-          `   ${i.summary || ''}`,
-          `   ${byline}`,
-        ];
-        if (i.url) lines.push(`   ${i.url}`);
-        return lines.join('\n');
-      }).join('\n\n');
-      return `\n${title.toUpperCase()} (${items.length})\n${sep}\n\n${rows}\n`;
-    };
-
-    return [
-      `MAL NEWS - Briefing ${b.date || todayShort}`,
-      `Tu briefing diario · ${totalPieces} piezas`,
-      dsep,
-      section('🇪🇸 España', b.spainNews),
-      section('✒️ Opinión España', b.spainOpinion),
-      section('🌍 Mundo', b.worldNews),
-      section('✍️ Opinión Internacional', b.worldOpinion),
-      dsep,
-      'MAL NEWS · Briefing automático',
-      '',
-    ].join('\n');
-  }
-
-  const merged = mergeBriefings();
-  const totalPieces =
-    (merged.worldNews?.length || 0) + (merged.worldOpinion?.length || 0) +
-    (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0);
-
-  // ============ COLORES POR SECCIÓN (paleta actual: teal + lima-dorado + naranja) ============
-  const SECTION_COLORS = {
-    worldOpinion: BRAND.intlColor,    // Teal
-    worldNews:    BRAND.intlColor,
-    spainOpinion: BRAND.opinionColor, // Lima
-    spainNews:    BRAND.newsColor,    // Naranja
-  };
-  const SECTION_GRADIENTS = {
-    worldOpinion: BRAND.intlGrad,     // teal oscuro → mint
-    worldNews:    BRAND.intlGrad,
-    spainOpinion: BRAND.opinionGrad,  // lima oscuro → dorado
-    spainNews:    BRAND.newsGrad,     // rojo → naranja
-  };
-
-  const intlSections = intlData ? [
-    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 20, type: 'news',
-      descriptor: 'Cobertura global plural · ≥6 regiones · equilibrio IZQ/DER · incluye sentencias relevantes', groupByContinent: true },
-    { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 8, type: 'opinion',
-      descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto',
-      note: intlData._note,
-      meta: intlData._meta },
-  ] : [];
-
-  const spainOpinionSections = spainOpinionData ? [
-    { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 16, type: 'opinion',
-      descriptor: 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer',
-      note: spainOpinionData._note,
-      meta: spainOpinionData._meta },
-  ] : [];
-
-  const spainNewsSections = spainNewsData ? [
-    { title: 'España', icon: '🇪🇸', items: spainNewsData.spainNews, color: SECTION_COLORS.spainNews, gradient: SECTION_GRADIENTS.spainNews, count: 25, type: 'news',
-      descriptor: 'Eventos concretos · prensa española · publicadas últimas 48h',
-      note: spainNewsData._note,
-      meta: spainNewsData._meta },
-  ] : [];
-
-  // Contadores reales devueltos por el API tras cada fetch
-  const realIntlCount = intlData ? ((intlData.worldNews?.length || 0) + (intlData.worldOpinion?.length || 0)) : 0;
-  const realSpainOpinionCount = spainOpinionData?.spainOpinion?.length || 0;
-  const realSpainNewsCount = spainNewsData?.spainNews?.length || 0;
-
-  const intlBtnLabel = (() => {
-    if (intlStatus === 'loading') return 'Buscando internacional...';
-    if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
-    if (intlStatus === 'done') return `🔄 Recargar internacional (${realIntlCount})`;
-    return '🌍 Internacional (hasta 28)';
-  })();
-
-  const spainOpinionBtnLabel = (() => {
-    if (spainOpinionStatus === 'loading') return 'Buscando opinión España...';
-    if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
-    if (spainOpinionStatus === 'done') return `🔄 Recargar opinión España (${realSpainOpinionCount})`;
-    return '✍️ Opinión España (hasta 16)';
-  })();
-
-  const spainNewsBtnLabel = (() => {
-    if (spainNewsStatus === 'loading') return 'Buscando noticias España...';
-    if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
-    if (spainNewsStatus === 'done') return `🔄 Recargar noticias España (${realSpainNewsCount})`;
-    return '🇪🇸 Noticias España (hasta 25)';
-  })();
-
-  const hasAnyData = intlData || spainNewsData || spainOpinionData;
-  const anyLoading = intlStatus === 'loading' || spainNewsStatus === 'loading' || spainOpinionStatus === 'loading';
-
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: `linear-gradient(135deg, ${BRAND.limeLight} 0%, ${BRAND.limeDark} 100%)`,
-      backgroundAttachment: 'fixed',
-      color: BRAND.ink,
-      fontFamily: "'Verdana', 'Geneva', sans-serif",
-      padding: '20px 16px',
-      paddingTop: 'max(20px, env(safe-area-inset-top))',
-      paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-      position: 'relative',
-    }}>
-      <style>{`
-        @keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        .mal-cta:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(194,105,60,0.45) !important; }
-        .mal-cta-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.14) !important; border-color: ${BRAND.orange} !important; color: ${BRAND.orange} !important; }
-      `}</style>
-
-      <div style={{
-        position: 'fixed', top: 0, right: 0, width: '60%', height: '40%',
-        background: 'radial-gradient(ellipse at top right, rgba(194,105,60,0.12) 0%, transparent 70%)',
-        pointerEvents: 'none', zIndex: 0,
-      }} />
-
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '780px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '24px', animation: 'fadeSlide 0.6s ease both' }}>
-          <DiagonalHeader dateObj={dateObj} />
-        </div>
-
-        {/* Selector de fecha del briefing - R3 Diseño · círculo calendario + card */}
-        {(() => {
-          const d = new Date(selectedDate + 'T12:00:00');
-          const dayNum = d.getDate();
-          const monthShort = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'][d.getMonth()];
-          const fullDateStr = d.toLocaleDateString('es-ES', {
-            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-          });
-          const disabled = isInCooldown || anyLoading;
-
-          return (
-            <div style={{
-              display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '14px',
-              marginBottom: '14px', flexWrap: 'wrap',
-            }}>
-              {/* Círculo con día y mes - clickable (abre date picker nativo) */}
-              <label style={{
-                position: 'relative',
-                cursor: disabled ? 'not-allowed' : 'pointer',
-                opacity: disabled ? 0.6 : 1,
-              }}>
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #1A365D, #0A4D3A)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  boxShadow: '0 6px 20px rgba(26,54,93,0.3)',
-                  position: 'relative',
-                  transition: 'transform 0.15s ease',
-                }}>
-                  {/* Tira amarilla decorativa estilo "page binding" */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '9px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    width: '26px',
-                    height: '3px',
-                    background: '#FACC15',
-                    borderRadius: '2px',
-                  }} />
-                  <div style={{
-                    fontFamily: 'Georgia, serif',
-                    fontStyle: 'italic',
-                    fontSize: '24px',
-                    fontWeight: '800',
-                    lineHeight: 1,
-                    marginTop: '7px',
-                  }}>
-                    {dayNum}
-                  </div>
-                  <div style={{
-                    fontSize: '8.5px',
-                    fontWeight: '800',
-                    letterSpacing: '0.14em',
-                    opacity: 0.9,
-                    marginTop: '3px',
-                  }}>
-                    {monthShort}
-                  </div>
-                </div>
-                {/* Input invisible que cubre el círculo - abre el date picker nativo al pulsar */}
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  max={todayIso}
-                  disabled={disabled}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: 0,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                    border: 'none',
-                    background: 'transparent',
-                  }}
-                />
-              </label>
-
-              {/* Card a la derecha con la fecha completa - también clickable */}
-              <label style={{
-                cursor: disabled ? 'not-allowed' : 'pointer',
-                position: 'relative',
-              }}>
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  background: 'white',
-                  padding: '12px 20px',
-                  borderRadius: '14px',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-                  borderLeft: '4px solid #0A4D3A',
-                  opacity: disabled ? 0.6 : 1,
-                }}>
-                  <div style={{
-                    fontSize: '9px',
-                    fontWeight: '800',
-                    letterSpacing: '0.16em',
-                    color: '#0A4D3A',
-                    marginBottom: '3px',
-                  }}>
-                    📅 BRIEFING DEL
-                  </div>
-                  <div style={{
-                    fontFamily: 'Georgia, serif',
-                    fontStyle: 'italic',
-                    fontSize: '16px',
-                    fontWeight: '700',
-                    color: '#1A365D',
-                    lineHeight: 1.2,
-                  }}>
-                    {fullDateStr}
-                  </div>
-                </div>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  max={todayIso}
-                  disabled={disabled}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: 0,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                    border: 'none',
-                    background: 'transparent',
-                  }}
-                />
-              </label>
-
-              {/* Botón volver a hoy - solo si fecha pasada */}
-              {isPastDate && (
-                <button
-                  onClick={() => setSelectedDate(todayIso)}
-                  disabled={disabled}
-                  style={{
-                    fontFamily: "'Verdana', 'Geneva', sans-serif",
-                    fontSize: '11px',
-                    fontWeight: '700',
-                    padding: '8px 14px',
-                    borderRadius: '10px',
-                    border: `2px solid ${BRAND.orange}`,
-                    background: 'white',
-                    color: BRAND.orange,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                    letterSpacing: '0.08em',
-                    boxShadow: '0 2px 8px rgba(250,105,0,0.15)',
-                  }}
-                >
-                  ↻ HOY
-                </button>
-              )}
-            </div>
-          );
-        })()}
-
-        {isPastDate && (
-          <p style={{ textAlign: 'center', color: BRAND.inkSoft, fontSize: '10px', marginBottom: '10px', fontStyle: 'italic' }}>
-            Briefing histórico - fechas antiguas pueden tener menos piezas y URLs rotas
-          </p>
-        )}
-
-        {/* Indicador de cache: cuándo se generó la última versión */}
-        {cacheTimestamp && (intlData || spainOpinionData || spainNewsData) && (
-          <div style={{
-            textAlign: 'center', fontSize: '10px', color: BRAND.inkSoft,
-            marginBottom: '12px', fontStyle: 'italic',
-            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px',
-          }}>
-            <span>💾 Briefing guardado {formatCacheAge(cacheTimestamp)}</span>
-            <button
-              onClick={() => {
-                clearBriefingCache();
-                setIntlData(null);
-                setSpainOpinionData(null);
-                setSpainNewsData(null);
-                setCacheTimestamp(null);
-              }}
-              style={{
-                fontSize: '9px', padding: '2px 8px', borderRadius: '4px',
-                border: `1px solid ${BRAND.inkSoft}`, background: 'transparent',
-                color: BRAND.inkSoft, cursor: 'pointer', fontStyle: 'normal',
-              }}
-            >
-              limpiar
-            </button>
-          </div>
-        )}
-
-        {/* TRES BOTONES: cada uno con su gradiente identitario y texto blanco */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
-          <button
-            className="mal-cta"
-            onClick={() => fetchSection('spainNews')}
-            disabled={spainNewsStatus === 'loading' || isInCooldown}
-            style={{
-              border: 'none', borderRadius: '12px', padding: '14px 22px',
-              fontSize: '11px', fontWeight: '800', letterSpacing: '0.08em',
-              cursor: (spainNewsStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
-              transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-              background: spainNewsStatus === 'loading'
-                ? `linear-gradient(90deg, #C2410C, #FA6900, #C2410C)`
-                : BRAND.newsGrad,
-              backgroundSize: spainNewsStatus === 'loading' ? '200% 100%' : '100% 100%',
-              animation: spainNewsStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: 'white', opacity: (spainNewsStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 6px 20px rgba(250,105,0,0.40)', textTransform: 'uppercase',
-              textShadow: '0 1px 2px rgba(0,0,0,0.15)',
-            }}
-          >
-            {spainNewsBtnLabel}
-          </button>
-
-          <button
-            className="mal-cta"
-            onClick={() => fetchSection('spainOpinion')}
-            disabled={spainOpinionStatus === 'loading' || isInCooldown}
-            style={{
-              border: 'none', borderRadius: '12px', padding: '14px 22px',
-              fontSize: '11px', fontWeight: '800', letterSpacing: '0.08em',
-              cursor: (spainOpinionStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
-              transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-              background: spainOpinionStatus === 'loading'
-                ? `linear-gradient(90deg, #65A30D, #FACC15, #65A30D)`
-                : BRAND.opinionGrad,
-              backgroundSize: spainOpinionStatus === 'loading' ? '200% 100%' : '100% 100%',
-              animation: spainOpinionStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: 'white', opacity: (spainOpinionStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 6px 20px rgba(101,163,13,0.40)', textTransform: 'uppercase',
-              textShadow: '0 1px 2px rgba(0,0,0,0.15)',
-            }}
-          >
-            {spainOpinionBtnLabel}
-          </button>
-
-          <button
-            className="mal-cta"
-            onClick={() => fetchSection('international')}
-            disabled={intlStatus === 'loading' || isInCooldown}
-            style={{
-              border: 'none', borderRadius: '12px', padding: '14px 22px',
-              fontSize: '11px', fontWeight: '800', letterSpacing: '0.08em',
-              cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
-              transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-              background: intlStatus === 'loading'
-                ? `linear-gradient(90deg, #0F766E, #5EEAD4, #0F766E)`
-                : BRAND.intlGrad,
-              backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
-              animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: 'white', opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 6px 20px rgba(15,118,110,0.40)', textTransform: 'uppercase',
-              textShadow: '0 1px 2px rgba(0,0,0,0.15)',
-            }}
-          >
-            {intlBtnLabel}
-          </button>
-        </div>
-
-        {/* Botones de exportación: email texto plano + vista HTML formateada + descargar HTML */}
-        {hasAnyData && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <button
-              className="mal-cta-secondary"
-              onClick={sendEmail}
-              style={{
-                border: `1px solid ${BRAND.navy}50`, borderRadius: '8px',
-                padding: '10px 16px', fontSize: '11px', fontWeight: '700',
-                letterSpacing: '0.05em', cursor: 'pointer',
-                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-                background: 'rgba(255,255,255,0.85)', color: BRAND.ink,
-              }}
-            >
-              {emailStatus === 'sent' ? '✓ Email preparado' : `📧 Email plano`}
-            </button>
-            <button
-              onClick={openHtmlView}
-              style={{
-                border: `1px solid ${BRAND.orange}`, borderRadius: '8px',
-                padding: '10px 16px', fontSize: '11px', fontWeight: '700',
-                letterSpacing: '0.05em', cursor: 'pointer',
-                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-                background: 'rgba(255,255,255,0.85)', color: BRAND.orange,
-              }}
-            >
-              🎨 Vista HTML
-            </button>
-            <button
-              onClick={downloadHtml}
-              style={{
-                border: `1px solid ${BRAND.orange}`, borderRadius: '8px',
-                padding: '10px 16px', fontSize: '11px', fontWeight: '700',
-                letterSpacing: '0.05em', cursor: 'pointer',
-                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-                background: BRAND.orange, color: 'white',
-              }}
-            >
-              ⬇️ Descargar HTML
-            </button>
-          </div>
-        )}
-
-        {/* Mensajes de loading individuales */}
-        {intlStatus === 'loading' && (
-          <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            🌍 Buscando 28 piezas internacionales...
-          </p>
-        )}
-        {spainOpinionStatus === 'loading' && (
-          <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            ✍️ Buscando 16 columnas de opinión España...
-          </p>
-        )}
-        {spainNewsStatus === 'loading' && (
-          <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            🇪🇸 Buscando 25 noticias España...
-          </p>
-        )}
-
-        {/* Mensaje de cooldown activo cuando NO hay carga en marcha */}
-        {isInCooldown && !anyLoading && (
-          <p style={{ textAlign: 'center', color: 'rgba(30,58,138,0.65)', fontSize: '11px', marginBottom: '8px', fontStyle: 'italic' }}>
-            ⏳ Esperando {cooldownLeft}s antes de poder hacer otra llamada (rate limit Anthropic Tier 2)
-          </p>
-        )}
-
-        {/* Errores individuales */}
-        {intlStatus === 'error' && (
-          <div style={{ background: 'rgba(252,165,165,0.1)', border: '1px solid rgba(252,165,165,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', color: '#dc2626', fontSize: '11px' }}>
-            ⚠️ Internacional: {intlError}
-          </div>
-        )}
-        {spainOpinionStatus === 'error' && (
-          <div style={{ background: 'rgba(252,165,165,0.1)', border: '1px solid rgba(252,165,165,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', color: '#dc2626', fontSize: '11px' }}>
-            ⚠️ Opinión España: {spainOpinionError}
-          </div>
-        )}
-        {spainNewsStatus === 'error' && (
-          <div style={{ background: 'rgba(252,165,165,0.1)', border: '1px solid rgba(252,165,165,0.3)', borderRadius: '8px', padding: '10px 14px', marginBottom: '8px', color: '#dc2626', fontSize: '11px' }}>
-            ⚠️ Noticias España: {spainNewsError}
-          </div>
-        )}
-
-        {emailStatus === 'sent' && (
-          <div style={{ background: 'rgba(134,239,172,0.12)', border: '1px solid rgba(134,239,172,0.3)', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', color: '#15803D', fontSize: '12px', textAlign: 'center' }}>
-            ✅ Email preparado en tu cliente con destino {RECIPIENT}. Revísalo y pulsa Enviar.
-          </div>
-        )}
-
-        {hasAnyData && (
-          <div style={{ textAlign: 'center', margin: '0 0 24px', padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <span style={{ fontSize: '11px', color: BRAND.orange, letterSpacing: '0.15em', fontWeight: '700' }}>
-              {totalPieces} / 44 PIEZAS
-            </span>
-            <span style={{ fontSize: '10px', color: 'rgba(30,58,138,0.55)', marginLeft: '12px', fontStyle: 'italic' }}>
-              {merged.date}
-            </span>
-          </div>
-        )}
-
-        {/* Render de las secciones disponibles - orden: internacional, opinión España, noticias España */}
-        {hasAnyData && (
-          <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
-            {[...spainNewsSections, ...spainOpinionSections, ...intlSections].map((s, i) => (
-              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} groupByContinent={s.groupByContinent} />
-            ))}
-          </div>
-        )}
-
-        {!hasAnyData && intlStatus === 'idle' && spainOpinionStatus === 'idle' && spainNewsStatus === 'idle' && (
-          <div style={{ textAlign: 'center', padding: '32px 20px 12px', color: 'rgba(30,58,138,0.75)' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px', animation: 'float 4s ease-in-out infinite' }}>
-              <svg width="130" height="130" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
-                <g transform="translate(150,150)">
-                  {/* ZORRO ORIGAMI MINIMAL — 10 facetas plegadas */}
-
-                  {/* Mitad izquierda - tonos cálidos */}
-                  <polygon points="0,-90 -75,-30 -50,0" fill="#FB923C"/>
-                  <polygon points="-75,-30 -50,0 -65,40" fill="#DC2626"/>
-                  <polygon points="-50,0 -65,40 -25,55" fill="#EC4899"/>
-                  <polygon points="-25,55 0,80 -65,40" fill="#7E22CE"/>
-
-                  {/* Mitad derecha - tonos fríos */}
-                  <polygon points="0,-90 75,-30 50,0" fill="#FACC15"/>
-                  <polygon points="75,-30 50,0 65,40" fill="#06B6D4"/>
-                  <polygon points="50,0 65,40 25,55" fill="#3B82F6"/>
-                  <polygon points="25,55 0,80 65,40" fill="#0F766E"/>
-
-                  {/* Centro: plano blanco sutil */}
-                  <polygon points="0,-90 -50,0 0,80 50,0" fill="#FAFAFA" opacity="0.85"/>
-
-                  {/* Contorno completo del origami */}
-                  <polyline points="0,-90 -75,-30 -50,0 -65,40 -25,55 0,80 25,55 65,40 50,0 75,-30 0,-90"
-                            fill="none" stroke="#1A365D" strokeWidth="2.5" strokeLinejoin="round"/>
-
-                  {/* Líneas de pliegue interiores */}
-                  <line x1="0" y1="-90" x2="-50" y2="0" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
-                  <line x1="0" y1="-90" x2="50" y2="0" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
-                  <line x1="-50" y1="0" x2="0" y2="80" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
-                  <line x1="50" y1="0" x2="0" y2="80" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
-                  <line x1="-75" y1="-30" x2="-65" y2="40" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
-                  <line x1="75" y1="-30" x2="65" y2="40" stroke="#1A365D" strokeWidth="1" opacity="0.6"/>
-
-                  {/* Orejas como pliegues triangulares pequeños */}
-                  <polygon points="-40,-60 -65,-105 -20,-75" fill="#7E22CE" stroke="#1A365D" strokeWidth="1.5"/>
-                  <polygon points="40,-60 65,-105 20,-75" fill="#0F766E" stroke="#1A365D" strokeWidth="1.5"/>
-
-                  {/* Ojos diminutos: solo 2 puntos */}
-                  <circle cx="-15" cy="-15" r="3.5" fill="#1A365D"/>
-                  <circle cx="15" cy="-15" r="3.5" fill="#1A365D"/>
-
-                  {/* Nariz: triangulito */}
-                  <polygon points="-5,15 5,15 0,25" fill="#1A365D"/>
-                </g>
-              </svg>
-            </div>
-            <p style={{ fontSize: '13px', margin: 0, fontFamily: "'Verdana', 'Geneva', sans-serif", fontStyle: 'italic' }}>
-              Pulsa los botones para generar cada sección
-            </p>
-            <p style={{ fontSize: '14px', margin: '12px 0 0', color: '#65A30D', fontWeight: '700', letterSpacing: '0.02em', fontFamily: "'Verdana', 'Geneva', sans-serif" }}>
-              Internacional: 8 opinión + 20 mundo · Opinión España: 16 · Noticias España: 25
-            </p>
-          </div>
-        )}
-
-        {/* Bloque "próximos briefings recomendados" — 2 horarios separados con colores de sección */}
-        {(() => {
-          const next = calculateNextBriefing();
-          return (
-            <div style={{
-              marginTop: '32px',
-              padding: '20px 22px',
-              background: '#FAFBFC',
-              border: '1px solid rgba(26,54,93,0.08)',
-              borderRadius: '14px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.05)',
-              fontFamily: "'Verdana', 'Geneva', sans-serif",
-            }}>
-              <div style={{
-                textAlign: 'center',
-                fontSize: '10px',
-                fontWeight: '800',
-                letterSpacing: '0.18em',
-                color: '#1A365D',
-                opacity: 0.75,
-                marginBottom: '14px',
-              }}>
-                🔔 PRÓXIMOS BRIEFINGS RECOMENDADOS
-              </div>
-
-              {/* Card ESPAÑA · gradiente lima-dorado + naranja */}
-              <div style={{
-                display: 'flex',
-                gap: '14px',
-                alignItems: 'center',
-                padding: '14px 16px',
-                borderRadius: '10px',
-                marginBottom: '10px',
-                background: 'linear-gradient(135deg, rgba(101,163,13,0.10), rgba(250,204,21,0.15))',
-                borderLeft: `4px solid ${BRAND.newsColor}`,
-              }}>
-                <div style={{ fontSize: '32px', flexShrink: 0 }}>🇪🇸</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontSize: '10px',
-                    fontWeight: '800',
-                    letterSpacing: '0.16em',
-                    color: BRAND.newsColor,
-                    marginBottom: '3px',
-                  }}>
-                    ESPAÑA
-                  </div>
-                  <div style={{
-                    fontFamily: 'Georgia, serif',
-                    fontStyle: 'italic',
-                    fontSize: '17px',
-                    fontWeight: '700',
-                    color: '#1A365D',
-                    marginBottom: '3px',
-                    lineHeight: 1.2,
-                  }}>
-                    {next.spain.dayName} {next.spain.dayNumber} {next.spain.monthName} · {next.spain.hour}:{next.spain.minute}
-                  </div>
-                  <div style={{
-                    fontSize: '10.5px',
-                    fontStyle: 'italic',
-                    color: 'rgba(26,54,93,0.65)',
-                    lineHeight: 1.3,
-                  }}>
-                    "{next.spain.label}"
-                  </div>
-                </div>
-              </div>
-
-              {/* Card INTERNACIONAL · gradiente teal */}
-              <div style={{
-                display: 'flex',
-                gap: '14px',
-                alignItems: 'center',
-                padding: '14px 16px',
-                borderRadius: '10px',
-                marginBottom: '14px',
-                background: 'linear-gradient(135deg, rgba(15,118,110,0.10), rgba(94,234,212,0.15))',
-                borderLeft: `4px solid ${BRAND.intlColor}`,
-              }}>
-                <div style={{ fontSize: '32px', flexShrink: 0 }}>🌍</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontSize: '10px',
-                    fontWeight: '800',
-                    letterSpacing: '0.16em',
-                    color: BRAND.intlColor,
-                    marginBottom: '3px',
-                  }}>
-                    INTERNACIONAL
-                  </div>
-                  <div style={{
-                    fontFamily: 'Georgia, serif',
-                    fontStyle: 'italic',
-                    fontSize: '17px',
-                    fontWeight: '700',
-                    color: '#1A365D',
-                    marginBottom: '3px',
-                    lineHeight: 1.2,
-                  }}>
-                    {next.international.dayName} {next.international.dayNumber} {next.international.monthName} · {next.international.hour}:{next.international.minute}
-                  </div>
-                  <div style={{
-                    fontSize: '10.5px',
-                    fontStyle: 'italic',
-                    color: 'rgba(26,54,93,0.65)',
-                    lineHeight: 1.3,
-                  }}>
-                    "{next.international.label}"
-                  </div>
-                </div>
-              </div>
-
-              {/* Horario semanal · 2 columnas */}
-              <div style={{
-                borderTop: '1px dashed rgba(26,54,93,0.12)',
-                paddingTop: '14px',
-                marginTop: '4px',
-              }}>
-                <div style={{
-                  textAlign: 'center',
-                  fontSize: '10px',
-                  fontWeight: '800',
-                  letterSpacing: '0.12em',
-                  color: '#1A365D',
-                  opacity: 0.7,
-                  marginBottom: '10px',
-                }}>
-                  📅 HORARIO SEMANAL
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                  <div>
-                    <div style={{
-                      fontSize: '9px',
-                      fontWeight: '800',
-                      letterSpacing: '0.14em',
-                      padding: '4px 0',
-                      marginBottom: '4px',
-                      textAlign: 'center',
-                      borderRadius: '4px',
-                      background: 'linear-gradient(90deg, rgba(101,163,13,0.12), rgba(250,204,21,0.15))',
-                      color: BRAND.newsColor,
-                    }}>
-                      🇪🇸 ESPAÑA
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
-                      <span>Lun-Vie</span><span>19:00</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
-                      <span>Sábado</span><span>12:00</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px' }}>
-                      <span>Domingo</span><span>19:00</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{
-                      fontSize: '9px',
-                      fontWeight: '800',
-                      letterSpacing: '0.14em',
-                      padding: '4px 0',
-                      marginBottom: '4px',
-                      textAlign: 'center',
-                      borderRadius: '4px',
-                      background: 'linear-gradient(90deg, rgba(15,118,110,0.12), rgba(94,234,212,0.15))',
-                      color: BRAND.intlColor,
-                    }}>
-                      🌍 INTERNACIONAL
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
-                      <span>Lun-Vie</span><span>21:30</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
-                      <span>Sábado</span><span>18:00</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px' }}>
-                      <span>Domingo</span><span>18:30</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        <div style={{ textAlign: 'center', marginTop: '32px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <p style={{ fontSize: '10px', color: 'rgba(30,58,138,0.5)', margin: 0, letterSpacing: '0.15em', fontStyle: 'italic' }}>
-            MAL NEWS · {RECIPIENT}
-          </p>
-          <p style={{ fontSize: '9px', color: 'rgba(30,58,138,0.45)', margin: '4px 0 0', letterSpacing: '0.1em' }}>
-            v3 · PWA · 44 piezas · split intl / opinión España / noticias España
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 }
