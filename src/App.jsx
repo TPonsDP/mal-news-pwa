@@ -868,11 +868,16 @@ export default function App() {
   }
 
   function mergeBriefings() {
+    const baseSpainNews = (spainNewsData && Array.isArray(spainNewsData.spainNews)) ? spainNewsData.spainNews : [];
+    const extras = (spainOpinionData && Array.isArray(spainOpinionData.extraNews)) ? spainOpinionData.extraNews : [];
+    const seenUrls = new Set(baseSpainNews.filter(i => i && i.url).map(i => i.url));
+    const dedupedExtras = extras.filter(i => i && i.url && !seenUrls.has(i.url));
+    const mergedNews = [...baseSpainNews, ...dedupedExtras];
     return {
       date: (intlData?.date || spainOpinionData?.date || spainNewsData?.date || todayShort),
       worldNews: intlData?.worldNews || [],
       worldOpinion: intlData?.worldOpinion || [],
-      spainNews: spainNewsData?.spainNews || [],
+      spainNews: mergedNews,
       spainOpinion: spainOpinionData?.spainOpinion || [],
     };
   }
@@ -1313,12 +1318,34 @@ export default function App() {
       meta: spainOpinionData._meta },
   ] : [];
 
-  const spainNewsSections = spainNewsData ? [
-    { title: 'España', icon: '🇪🇸', items: spainNewsData.spainNews, color: SECTION_COLORS.spainNews, gradient: SECTION_GRADIENTS.spainNews, count: 25, type: 'news',
-      descriptor: 'Eventos concretos · prensa española · publicadas últimas 48h',
-      note: spainNewsData._note,
-      meta: spainNewsData._meta },
-  ] : [];
+  // Items extras reclasificados desde Opinión a Noticias (defensivo)
+  const opinionExtraItems = (spainOpinionData && Array.isArray(spainOpinionData.extraNews))
+    ? spainOpinionData.extraNews
+    : [];
+
+  const spainNewsSections = (() => {
+    const hasNewsData = spainNewsData && Array.isArray(spainNewsData.spainNews);
+    const hasExtras = opinionExtraItems.length > 0;
+    if (!hasNewsData && !hasExtras) return [];
+    const base = hasNewsData ? spainNewsData.spainNews : [];
+    const seenUrls = new Set(base.filter(i => i && i.url).map(i => i.url));
+    const extras = opinionExtraItems.filter(i => i && i.url && !seenUrls.has(i.url));
+    const allItems = [...base, ...extras];
+    return [{
+      title: 'España',
+      icon: '🇪🇸',
+      items: allItems,
+      color: SECTION_COLORS.spainNews,
+      gradient: SECTION_GRADIENTS.spainNews,
+      count: 25,
+      type: 'news',
+      descriptor: extras.length > 0
+        ? `Eventos concretos · prensa española · 48h · +${extras.length} reclasificadas de opinión`
+        : 'Eventos concretos · prensa española · publicadas últimas 48h',
+      note: hasNewsData ? spainNewsData._note : null,
+      meta: hasNewsData ? spainNewsData._meta : null,
+    }];
+  })();
 
   // Contadores reales devueltos por el API tras cada fetch
   const realIntlCount = intlData ? ((intlData.worldNews?.length || 0) + (intlData.worldOpinion?.length || 0)) : 0;
