@@ -18,7 +18,7 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'The Objective', url: 'https://theobjective.com/autor/juan-luis-cebrian/feed/', tier: 'vip:Cebrián' },
   { source: 'The Objective', url: 'https://theobjective.com/autor/pablo-de-lora/feed/', tier: 'vip:de Lora' },
   { source: 'The Objective', url: 'https://theobjective.com/autor/javier-benegas/feed/', tier: 'vip:Benegas' },
-  { source: 'The Objective', url: 'https://theobjective.com/autor/guadalupe-sanchez-baena/feed/', tier: 'vip:G.Sánchez' },
+  { source: 'The Objective', url: 'https://theobjective.com/autor/guadalupe-sanchez/feed/', tier: 'vip:G.Sánchez' },
   { source: 'The Objective', url: 'https://theobjective.com/autor/maite-rico/feed/', tier: 'vip:M.Rico' },
   { source: 'The Objective', url: 'https://theobjective.com/autor/pablo-cambronero/feed/', tier: 'vip:Cambronero' },
 
@@ -50,9 +50,7 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'El Debate', url: 'https://www.eldebate.com/rss/', tier: 'rss-root' },
   { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'google-news' },
 
-  // El Español - nuevo (A)
-  { source: 'El Español', url: 'https://www.elespanol.com/rss/opinion.xml', tier: 'main' },
-  { source: 'El Español', url: 'https://www.elespanol.com/rss/', tier: 'general' },
+  // El Español: eliminado de opinion (queda solo en spainNews)
 
   // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo) ============
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
@@ -76,6 +74,10 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/' },
   { source: 'La Vanguardia', url: 'https://www.lavanguardia.com/mvc/feed/rss/home' },
   { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/rss' },
+
+  // Demócrata - WordPress feed estándar + alternativos
+  { source: 'Demócrata', url: 'https://democrata.es/feed/' },
+  { source: 'Demócrata', url: 'https://democrata.es/rss/' },
 
   // BALEARES regional
   { source: 'OK Diario Baleares', url: 'https://okdiario.com/baleares/feed/' },
@@ -589,7 +591,7 @@ WORLDNEWS (hasta 20 noticias):
   · 🇮🇳 India: MÍNIMO 1
   · 🌏 Asia Este (Japón/China/Corea): MÍNIMO 1
   · 🌏 Sudeste Asiático (Singapur/Indonesia/Tailandia/Filipinas): MÍNIMO 1
-  · 🌎 LATAM (Argentina/México/Brasil/Colombia): MÍNIMO 2
+  · 🌎 LATAM (Argentina/México/Brasil/Colombia/Chile): MÍNIMO 2
   · 🌍 África (Sudáfrica/Nigeria/Kenia): MÍNIMO 1
   · 💰 Económico global (Bloomberg/Reuters/FT/Forbes): MÍNIMO 2
   · 🇷🇺 Rusia: MÍNIMO 1
@@ -797,15 +799,40 @@ export default async function handler(req, res) {
       }
 
       currentStep = 'build-prompt';
-      const candidatesText = candidates.map((c, i) =>
-        `[${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.author || 'sin autor'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${c.description.slice(0, 200)}`
-      ).join('\n\n');
+
+      // Pre-filtro de opinión: marcar candidatos como ✅ COLUMNA o ❌ NOTICIA/EDITORIAL
+      // para que el modelo los distinga visualmente.
+      const isOpinionPiece = (c) => {
+        const author = String(c.author || '').trim();
+        if (!author) return false;
+        const aLow = author.toLowerCase();
+        const sLow = String(c.source || '').toLowerCase();
+        if (aLow === sLow) return false;
+        if (aLow.includes('redacción') || aLow.includes('redaccion')) return false;
+        if (aLow === 'editorial' || aLow === 'opinión' || aLow === 'opinion') return false;
+        if (aLow.includes('sumario')) return false;
+        const title = String(c.title || '').toLowerCase();
+        if (title.startsWith('sumario') || title.startsWith('en sumario') || title.startsWith('boletín')) return false;
+        if (title.includes('claves del día')) return false;
+        return true;
+      };
+
+      const candidatesText = candidates.map((c, i) => {
+        const tag = isOpinionPiece(c) ? '✅ COLUMNA' : '❌ NOTICIA/EDITORIAL — NO USAR EN OPINIÓN';
+        return `[${i + 1}] ${tag} | ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.author || 'sin autor'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${c.description.slice(0, 200)}`;
+      }).join('\n\n');
 
       const userPrompt = `FECHA: ${todayFull || todayShort}
 
 Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (mayoritariamente opinión, algunas noticias o análisis), ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
 
-✅ PERMITIDO devolver MENOS columnas si no hay material fresco suficiente. Mejor 8-10 columnas de calidad fresca que 16 mediocres o de hace 36+ horas.
+⚠️ MARCADO AUTOMÁTICO DE PIEZAS:
+- ✅ COLUMNA = pieza con autor humano real → CANDIDATA VÁLIDA
+- ❌ NOTICIA/EDITORIAL = sin autor real, autor = nombre del medio, "Sumario", "Editorial", etc → NO INCLUIR EN OPINIÓN
+
+REGLA INELUDIBLE: Las piezas marcadas con ❌ son NOTICIAS o EDITORIALES institucionales. NUNCA las incluyas en spainOpinion. Solo las piezas marcadas con ✅ pueden formar parte del briefing de opinión. Si tras filtrar quedan menos de 20 columnas válidas, devuelve menos pero TODAS deben ser ✅.
+
+✅ PERMITIDO devolver MENOS columnas si no hay material fresco suficiente. Mejor 10-12 columnas de calidad fresca que 20 mediocres o de hace 36+ horas. Objetivo ideal: 20 columnas.
 
 ⭐⭐⭐ COLUMNISTAS PRIORITARIOS A SEGUIR ⭐⭐⭐
 Si en CANDIDATAS aparece una columna firmada por uno de estos autores, DEBES INCLUIRLA (siempre respetando los hard caps por medio). Son los referentes que el usuario quiere ver en su briefing diario:
@@ -852,14 +879,15 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - Vozpópuli: MÁX 4 columnas ⭐
    - Artículo 14: MÁX 4 columnas ⭐
    - The Objective: MÁX 3 columnas
-   - InfoLibre: MÁX 3 columnas
+   - InfoLibre: MÁX 2 columnas
    - La Gaceta: MÁX 3 columnas
    - Libertad Digital: MÁX 3 columnas
    - Agenda Pública: MÁX 2 columnas
-   - elDiario.es: MÁX 3 columnas
+   - elDiario.es: MÁX 2 columnas
    - El País: MÁX 3 columnas
    - El Mundo: MÁX 2 columnas
    - OK Diario: MÁX 2 columnas
+   - El Debate: MÁX 2 columnas
    - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo)
 2.bis MÍNIMOS OBLIGATORIOS (condicionales — solo aplican si hay material en CANDIDATAS):
 - Si en CANDIDATAS aparece ≥2 items de "Vozpópuli", DEBES incluir mínimo 2 columnas suyas. ⭐
@@ -867,9 +895,12 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
 - Si aparece ≥2 items de "The Objective", DEBES incluir mínimo 3 columnas suyas (cap MÁX 3). ⭐⭐⭐ INELUDIBLE
 - Si aparece ≥2 items de "elDiario.es", DEBES incluir mínimo 2 columnas suyas.
 - Si aparece ≥2 items de "InfoLibre", DEBES incluir mínimo 2 columnas suyas.
+- Si aparece ≥2 items de "Libertad Digital", DEBES incluir mínimo 2 columnas suyas.
 - Si aparece ≥1 item de "La Gaceta", DEBES incluir mínimo 1.
-- Si aparece ≥1 item de "Libertad Digital", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "Agenda Pública" o "El País", DEBES incluir mínimo 1 de cada uno.
+- Si aparece ≥1 item de "El Mundo", DEBES incluir mínimo 1.
+- Si aparece ≥1 item de "OK Diario", DEBES incluir mínimo 1.
+- Si aparece ≥1 item de "El Debate", DEBES incluir mínimo 1.
 
 CHEQUEO PRE-RESPUESTA OBLIGATORIO:
 Antes de devolver el JSON, RECUENTA cuántas columnas hay de cada medio prioritario.
@@ -880,7 +911,7 @@ Este chequeo NO ES OPCIONAL.
 REGLA CLAVE: estos mínimos SOLO aplican si hay candidatos suficientes en los RSS. Si Vozpópuli ese día solo tiene 1 columna (o ninguna) en CANDIDATAS, no fuerzas un mínimo de 2.
 
 ESTAS PREFERENCIAS DEL USUARIO TIENEN PRIORIDAD sobre tu criterio editorial de "qué es más relevante". Si una columna de Vozpópuli existe y es válida, va dentro, aunque encuentres otras 3 que te parezcan más interesantes. El usuario quiere SUS medios, no los que tú prefieras.
-3. Selecciona HASTA 16 columnas en total — pero menos si no hay material fresco suficiente.
+3. Selecciona HASTA 20 columnas en total — pero menos si no hay material fresco suficiente.
 4. MÍNIMO 3 medios distintos en el resultado (si hay material para ello).
 5. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
 6. Prioriza diversidad ideológica/temática entre medios.
@@ -895,7 +926,7 @@ EJEMPLO DE DISTRIBUCIÓN IDEAL si hay corpus suficiente:
 - elDiario.es: 1 (preferido #7, mínimo 1)
 - Agenda Pública: 1 (mínimo)
 - El País: 1 (mínimo)
-- Total: 18 → ajusta a 16 según calidad
+- Total: 20 → ajusta a 20 según calidad (objetivo)
 
 Si un medio preferido no tiene candidatas, completa con los siguientes en orden de preferencia (después la lista de 7 preferidos, viene El Mundo y El País).
 
@@ -972,6 +1003,30 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           return true;
         };
 
+        // ============ LIMPIEZA SELECCIÓN MODELO ============
+        // Si el modelo metió noticias/editoriales en spainOpinion, las quitamos
+        // y las RECLASIFICAMOS como extraNews para añadirlas a Noticias España
+        const originalItems = briefing.spainOpinion || [];
+        const cleanedItems = originalItems.filter(isOpinionLike);
+        const removedItems = originalItems.filter(i => !isOpinionLike(i));
+        const cleanupLog = removedItems.map(i => `↪${i.source}: ${i.author || 'sin autor'} - ${String(i.title || '').slice(0, 60)}`);
+
+        // Convertir noticias coladas en formato newsItem
+        const extraNewsFromOpinion = removedItems.map(i => ({
+          title: i.title,
+          summary: i.summary,
+          source: i.source,
+          url: i.url,
+          publishedDate: i.publishedDate,
+          author: i.author,
+          region: 'España',
+          lean: i.lean || null,
+          _reclassified: true,  // flag para el frontend
+        }));
+
+        briefing.spainOpinion = cleanedItems;
+        briefing.extraNews = extraNewsFromOpinion;
+
         // ============ ENFORCEMENT POST-MODELO ============
         // Si el modelo no cumple los mínimos obligatorios, FORZAR añadiendo del pool de candidatos
         // SOLO se fuerzan piezas que pasen isOpinionLike (autor real, no sumarios, no editoriales)
@@ -982,9 +1037,12 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           'elDiario.es': 2,
           'InfoLibre': 2,
           'La Gaceta': 1,
-          'Libertad Digital': 1,
+          'Libertad Digital': 2,
           'Agenda Pública': 1,
           'El País': 1,
+          'El Mundo': 1,
+          'OK Diario': 1,
+          'El Debate': 1,
         };
 
         let items = briefing.spainOpinion || [];
@@ -1067,13 +1125,21 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           enforcementLog: enforcementLog,
           enforcedCount: enforcementLog.length,
           skippedNonOpinion: skippedNonOpinion,
+          cleanupLog: cleanupLog,
+          cleanupCount: cleanupLog.length,
         };
         // Si el modelo IGNORÓ la regla "NUNCA vacío", añadir diagnóstico crítico
+        const notes = [];
         if (selectedCount === 0 && candidates.length > 0) {
-          briefing._note = `⚠️ El modelo recibió ${candidates.length} candidatos de ${briefing._meta.mediumsAvailable} medios pero seleccionó 0. Posible filtro excesivo. Detalle: ${JSON.stringify(sourceCounts)}`;
-        } else if (enforcementLog.length > 0) {
-          briefing._note = `🔧 Se forzó la inclusión de ${enforcementLog.length} columna(s) de opinión por cuotas mínimas: ${enforcementLog.join(' | ')}`;
+          notes.push(`⚠️ El modelo recibió ${candidates.length} candidatos de ${briefing._meta.mediumsAvailable} medios pero seleccionó 0. Posible filtro excesivo.`);
         }
+        if (cleanupLog.length > 0) {
+          notes.push(`↪️ Reclasificadas: ${cleanupLog.length} pieza(s) movidas de Opinión a Noticias por no ser columnas firmadas: ${cleanupLog.slice(0, 5).join(' | ')}${cleanupLog.length > 5 ? '...' : ''}`);
+        }
+        if (enforcementLog.length > 0) {
+          notes.push(`🔧 Se forzaron ${enforcementLog.length} columna(s) por cuotas mínimas: ${enforcementLog.slice(0, 5).join(' | ')}${enforcementLog.length > 5 ? '...' : ''}`);
+        }
+        if (notes.length > 0) briefing._note = notes.join(' || ');
       } else {
         // El modelo no devolvió JSON válido — devolvemos diagnóstico
         return res.status(500).json({
@@ -1131,6 +1197,7 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
 6. ACEPTABLE si corpus limitado: hasta 4 noticias mismo medio, mín 4 medios distintos.
 7. PLURALIDAD: prioriza incluir al menos 1 noticia de El País o elDiario.es o InfoLibre (voces izquierda), y al menos 1 de La Vanguardia (perspectiva catalana) si hay material relevante.
 7.bis BALEARES PRIORITARIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares", "elDiario.es Baleares" o "Economía de Mallorca", PRIORIZA incluir 1-2 noticias de Baleares. Si no hay material apropiado, no fuerces.
+7.ter DEMÓCRATA OBLIGATORIO: si en CANDIDATAS aparece al menos 1 item con source "Demócrata", DEBES incluir mínimo 1 noticia suya. ⭐ INELUDIBLE.
 8. Equilibrio temático: política, economía, sociedad, sucesos, internacional con foco España.
 9. Mejor pocas noticias relevantes y frescas que muchas mediocres o forzadas.
 
