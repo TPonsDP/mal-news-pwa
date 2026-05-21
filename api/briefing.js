@@ -267,8 +267,8 @@ const INTERNATIONAL_OPINION_FEEDS = [
 ];
 
 async function fetchSpainOpinionRss(allowedISODates) {
-  const result = await fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48);
-  return { candidates: result.items.slice(0, 80), diagnostic: result.diagnostic };
+  const result = await fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48, isOpinionRSSItem);
+  return { candidates: result.items.slice(0, 120), diagnostic: result.diagnostic };
 }
 
 async function fetchSpainNewsRss(allowedISODates) {
@@ -281,7 +281,83 @@ async function fetchInternationalOpinionRss(allowedISODates) {
   return { candidates: result.items.slice(0, 60), diagnostic: result.diagnostic };
 }
 
-async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
+// ============ HELPER GLOBAL: Filtro de opinión (firmas reales) ============
+// Lista de periodistas conocidos (de noticias, NO columnistas) por medio
+const KNOWN_NEWS_REPORTERS_GLOBAL = {
+  'The Objective': [
+    'roberto alcolea', 'juan carlos téllez', 'juan carlos tellez',
+    'fran serrato', 'luis manuel rafael',
+    'antonio rodríguez', 'antonio rodriguez',
+    'álvaro nieto', 'alvaro nieto', // director, también firma noticias
+  ],
+  'Libertad Digital': [
+    'paco cobos', 'pablo pardo',
+    'miguel ángel pérez', 'miguel angel perez',
+    'miguel puga', 'álvaro nieto', 'alvaro nieto',
+    'carlos cuesta', 'daniel basteiro',
+  ],
+  'elDiario.es': [
+    'javier lillo', 'elena herrera', 'pedro águeda', 'pedro agueda',
+    'jose precedo', 'josé precedo', 'pedro simón', 'pedro simon',
+  ],
+  'InfoLibre': [
+    'manuel altozano', 'antonio ruiz valdivia',
+    'marta monforte jaén', 'marta monforte jaen',
+    'álvaro sánchez castrillo', 'alvaro sanchez castrillo',
+    'manuel rico',
+  ],
+  'Vozpópuli': [
+    'alberto sanz', 'efe', 'europa press',
+  ],
+  'Artículo 14': [],
+  'El País': [
+    'efe', 'europa press', 'reuters',
+  ],
+  'El Mundo': [
+    'efe', 'europa press', 'reuters',
+  ],
+};
+
+// Patrones de título que casi siempre indican NOTICIA (alta confianza)
+const NEWS_TITLE_PATTERNS = [
+  /^el juez \w+ (imputa|investiga|cita|bloquea|absuelve|procesa|condena|acusa)/i,
+  /^la (audiencia|fiscalía|policía|guardia civil) /i,
+  /\binvierte \d/i,                       // "X invierte N millones"
+  /\b\d+ millones (de )?euros?\b/i,       // "N millones de euros"
+  /^el (gobierno|tribunal|congreso|senado|consejo) (aprueba|rechaza|debate|vota)/i,
+  /\b(dimite|destituye|reemplaza|releva)\b/i,
+  /^sumario/i,
+  /^en sumario/i,
+  /^boletín/i,
+  /^claves del día/i,
+];
+
+function isOpinionRSSItem(item) {
+  if (!item.author) return false;
+  const author = String(item.author).trim();
+  if (!author) return false;
+  const authorLow = author.toLowerCase();
+  const sourceLow = String(item.source || '').toLowerCase();
+  if (authorLow === sourceLow) return false;
+  if (authorLow.includes('redacción') || authorLow.includes('redaccion')) return false;
+  if (authorLow === 'editorial' || authorLow === 'opinión' || authorLow === 'opinion') return false;
+  if (authorLow.includes('sumario')) return false;
+  // Agencias de noticias = noticia
+  if (['efe', 'europa press', 'reuters', 'ap', 'afp', 'ansa', 'dpa'].includes(authorLow)) return false;
+  // Multi-autores = noticia
+  if (author.includes(' y ') || author.includes(', ')) return false;
+  // Periodista conocido de noticias
+  const reporters = KNOWN_NEWS_REPORTERS_GLOBAL[item.source] || [];
+  if (reporters.some(r => authorLow === r)) return false;
+  // Patrones de título característicos de noticias
+  const title = String(item.title || '').trim();
+  for (const pattern of NEWS_TITLE_PATTERNS) {
+    if (pattern.test(title)) return false;
+  }
+  return true;
+}
+
+async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opinionFilter = null) {
   // Para cada feed, fetchear y registrar resultado completo
   const feedResults = await Promise.all(feedList.map(feed => fetchOneFeed(feed)));
 
@@ -317,17 +393,24 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
     });
   }
 
-  // CAP POR FUENTE PERSONALIZADO
+  // FILTRO OPINIÓN PRE-CAP: si se pasa opinionFilter, lo aplicamos ANTES del cap por fuente.
+  // Así el cap cuenta solo opinión y obtenemos más candidatos válidos.
+  let preCapPool = inDate;
+  if (typeof opinionFilter === 'function') {
+    preCapPool = inDate.filter(opinionFilter);
+  }
+
+  // CAP POR FUENTE PERSONALIZADO (ampliado para opinión)
   const PER_SOURCE_CAPS = {
-    'Vozpópuli': 8,
-    'Artículo 14': 8,
-    'The Objective': 6,
-    'InfoLibre': 6,
-    'La Gaceta': 6,
-    'Libertad Digital': 6,
+    'Vozpópuli': 12,
+    'Artículo 14': 12,
+    'The Objective': 10,
+    'InfoLibre': 10,
+    'La Gaceta': 8,
+    'Libertad Digital': 10,
     'Agenda Pública': 6,
-    'elDiario.es': 6,
-    'El Mundo': 6,
+    'elDiario.es': 8,
+    'El Mundo': 8,
     'ABC': 6,
     'OK Diario': 6,
     'El Blog Salmón': 4,
@@ -336,13 +419,14 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo) {
     'OK Diario Baleares': 4,
     'elDiario.es Baleares': 4,
     'Economía de Mallorca': 4,
-    'El País': 4,
+    'El País': 8,
     'El Español': 8,
     'El Debate': 6,
+    'Demócrata': 6,
   };
   const DEFAULT_CAP = 4;
   const perSourceCounts = {};
-  const balanced = inDate.filter(item => {
+  const balanced = preCapPool.filter(item => {
     const cap = PER_SOURCE_CAPS[item.source] ?? DEFAULT_CAP;
     perSourceCounts[item.source] = perSourceCounts[item.source] || 0;
     if (perSourceCounts[item.source] >= cap) return false;
@@ -800,6 +884,15 @@ export default async function handler(req, res) {
 
       currentStep = 'build-prompt';
 
+      // Lista de periodistas conocidos (de noticias, NO columnistas) por medio.
+      // Si una pieza está firmada por uno de ellos, NO es columna de opinión.
+      const KNOWN_NEWS_REPORTERS = {
+        'The Objective': ['roberto alcolea', 'juan carlos téllez', 'juan carlos tellez', 'fran serrato', 'luis manuel rafael', 'antonio rodríguez', 'antonio rodriguez'],
+        'Libertad Digital': ['paco cobos', 'pablo pardo', 'miguel ángel pérez', 'miguel angel perez', 'miguel puga'],
+        'elDiario.es': ['javier lillo', 'elena herrera', 'pedro águeda', 'pedro agueda'],
+        'InfoLibre': ['manuel altozano', 'antonio ruiz valdivia', 'marta monforte jaén', 'marta monforte jaen', 'álvaro sánchez castrillo', 'alvaro sanchez castrillo'],
+      };
+
       // Pre-filtro de opinión: marcar candidatos como ✅ COLUMNA o ❌ NOTICIA/EDITORIAL
       // para que el modelo los distinga visualmente.
       const isOpinionPiece = (c) => {
@@ -811,6 +904,11 @@ export default async function handler(req, res) {
         if (aLow.includes('redacción') || aLow.includes('redaccion')) return false;
         if (aLow === 'editorial' || aLow === 'opinión' || aLow === 'opinion') return false;
         if (aLow.includes('sumario')) return false;
+        // Multi-autores = noticia (Y, comas)
+        if (author.includes(' y ') || author.includes(', ')) return false;
+        // Periodista conocido de noticias del medio
+        const reporters = KNOWN_NEWS_REPORTERS[c.source] || [];
+        if (reporters.some(r => aLow === r)) return false;
         const title = String(c.title || '').toLowerCase();
         if (title.startsWith('sumario') || title.startsWith('en sumario') || title.startsWith('boletín')) return false;
         if (title.includes('claves del día')) return false;
@@ -982,6 +1080,14 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
       const briefing = extractJson(text);
       // Añadir info diagnóstica útil
       if (briefing && typeof briefing === 'object') {
+        // Lista de periodistas conocidos (noticias, NO columnistas) por medio
+        const KNOWN_NEWS_REPORTERS_POST = {
+          'The Objective': ['roberto alcolea', 'juan carlos téllez', 'juan carlos tellez', 'fran serrato', 'luis manuel rafael', 'antonio rodríguez', 'antonio rodriguez'],
+          'Libertad Digital': ['paco cobos', 'pablo pardo', 'miguel ángel pérez', 'miguel angel perez', 'miguel puga'],
+          'elDiario.es': ['javier lillo', 'elena herrera', 'pedro águeda', 'pedro agueda'],
+          'InfoLibre': ['manuel altozano', 'antonio ruiz valdivia', 'marta monforte jaén', 'marta monforte jaen', 'álvaro sánchez castrillo', 'alvaro sanchez castrillo'],
+        };
+
         // ============ FILTRO OPINIÓN ESTRICTO ============
         // Detecta si una pieza es realmente columna firmada (no noticia/editorial/sumario)
         const isOpinionLike = (item) => {
@@ -994,6 +1100,11 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           if (authorLow.includes('redacción') || authorLow.includes('redaccion')) return false;
           if (authorLow === 'editorial' || authorLow === 'opinión' || authorLow === 'opinion') return false;
           if (authorLow.includes('sumario')) return false;
+          // Multi-autores = noticia
+          if (author.includes(' y ') || author.includes(', ')) return false;
+          // Periodista conocido de noticias
+          const reporters = KNOWN_NEWS_REPORTERS_POST[item.source] || [];
+          if (reporters.some(r => authorLow === r)) return false;
 
           const title = String(item.title || '').trim().toLowerCase();
           if (title.startsWith('sumario')) return false;
