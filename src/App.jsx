@@ -295,6 +295,50 @@ function NewsCard({ item, index, sectionColor, type }) {
           </span>
         )}
 
+        {/* Badge paywall 🔒 */}
+        {item._isPaywall && (
+          <span
+            title="Requiere suscripción"
+            style={{
+              background: 'rgba(212, 49, 49, 0.12)',
+              color: '#D43131',
+              border: '1px solid rgba(212, 49, 49, 0.30)',
+              fontSize: '10px',
+              fontWeight: '700',
+              padding: '3px 6px',
+              borderRadius: '4px',
+              fontFamily: "'Verdana', 'Geneva', sans-serif",
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px',
+            }}
+          >
+            🔒 PAGO
+          </span>
+        )}
+
+        {/* Badge LARGA si el backend marcó */}
+        {(item._forcedLong || item._detectedLong) && (
+          <span
+            title="Pieza larga: reportaje / investigación / análisis"
+            style={{
+              background: 'rgba(101, 163, 13, 0.12)',
+              color: '#65A30D',
+              border: '1px solid rgba(101, 163, 13, 0.30)',
+              fontSize: '10px',
+              fontWeight: '700',
+              padding: '3px 6px',
+              borderRadius: '4px',
+              fontFamily: "'Verdana', 'Geneva', sans-serif",
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px',
+            }}
+          >
+            📊 LARGA
+          </span>
+        )}
+
         {/* Badge fecha */}
         {dateBadge && (
           <span style={{
