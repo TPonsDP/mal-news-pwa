@@ -729,8 +729,33 @@ WORLDOPINION (PRIORITARIA, hasta 8 columnas firmadas):
 
 WORLDNEWS (hasta 20 piezas: noticias + reportajes + análisis):
 - 🎯 OBJETIVO: equilibrio entre PIEZAS CORTAS (noticias breaking) y PIEZAS LARGAS (reportajes, investigaciones, análisis profundos, perfiles, dossiers).
-- ⭐ MÍNIMO 3 piezas LARGAS por briefing si hay material: reportajes investigativos (NYT/WaPo/Atlantic/FT/Economist suelen tener piezas largas excelentes), análisis en profundidad, perfiles, crónicas internacionales.
-- ⭐ PIEZAS LARGAS RECONOCIBLES POR: título largo y descriptivo (no titular telegráfico) | autor periodista (no agencia AP/Reuters) | descripción >300 chars | keywords: "investigation", "deep dive", "the inside story", "long read", "feature", "essay", "explained", "what happened", "behind the scenes", "profile of"
+
+⭐⭐⭐ REGLA INELUDIBLE — MÍNIMO 5 PIEZAS LARGAS POR BRIEFING ⭐⭐⭐
+Si después de seleccionar las 20 piezas tienes menos de 5 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": NYT, WaPo, Atlantic, FT, Bloomberg, The Economist, Foreign Affairs publican análisis profundo a diario.
+
+ESTRATEGIA DE BÚSQUEDA DE PIEZAS LARGAS (ejecuta estas búsquedas adicionales para garantizar mínimo 5):
+- site:nytimes.com investigation OR "long read" 2026
+- site:washingtonpost.com investigation OR feature 2026
+- site:theatlantic.com essay OR feature 2026
+- site:newyorker.com 2026
+- site:bloomberg.com "big take" OR features 2026
+- site:ft.com "the big read" OR investigation 2026
+- site:economist.com "essay" OR "briefing" 2026
+- site:foreignaffairs.com 2026
+- site:foreignpolicy.com 2026
+- site:theguardian.com "long read" 2026
+- site:project-syndicate.org 2026
+
+PIEZAS LARGAS RECONOCIBLES POR:
+- Título largo y descriptivo (no titular telegráfico de agencia)
+- Autor periodista firmado (no "AP" / "Reuters" / "AFP")
+- Keywords inglesas en título o sección: "investigation", "deep dive", "the inside story", "long read", "feature", "essay", "explained", "what happened", "behind the scenes", "profile of", "the big read", "the big take", "briefing", "anatomy of"
+
+CHECKLIST ANTES DE DEVOLVER JSON FINAL:
+□ Cuenta cuántas de mis 20 piezas son LARGAS (reportaje/análisis/investigación/perfil/crónica)
+□ Si <5, busco más con las queries de arriba y reemplazo breves repetitivas
+□ Las LARGAS aportan profundidad y tiempo de lectura >3 min
+
 - HARD CAPS: Máx 6 piezas USA · Máx 4 piezas UK · Máx 3 piezas mismo medio
 - MÍNIMOS GARANTIZADOS por región (si hay material fresco del día):
   · 🇪🇺 Europa Occidental (FR/DE/IT): MÍNIMO 2
@@ -748,8 +773,10 @@ WORLDNEWS (hasta 20 piezas: noticias + reportajes + análisis):
 - Si una región NO tiene material fresco real, deja el slot vacío (PROHIBIDO rellenar con USA/UK extras o inventar piezas)
 - Equilibrio IZQ/DER
 - Mezcla eventos concretos del día CON piezas largas de fondo
-- Mejor 16 piezas reales (incluyendo 3-4 reportajes profundos) que 20 todas anglo
+- Mejor 16 piezas reales (incluyendo 5+ reportajes profundos) que 20 todas breves o todas anglo
 - LEGAL EMBEBIDO: si hay sentencias internacionales relevantes del día (TJUE, CIJ, TPI, Supreme Court USA, antitrust CE/FTC, etc.), inclúyelas como pieza más en worldNews con la región del tribunal. Busca en: site:law360.com, site:mlex.com, site:reuters.com/legal, site:bloomberg.com/law
+
+CAMPO ADICIONAL EN CADA PIEZA: añade un campo opcional "pieceType" con valor "long" o "short" para que el sistema pueda contar las largas. Ejemplo: {"rank":7,"title":"...","pieceType":"long",...}
 
 ⭐ MEDIOS PRIORIZADOS POR REGIÓN (50+ medios con cobertura global plural):
 
@@ -1585,12 +1612,53 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
 
     const briefing = extractJson(text);
     if (briefing && typeof briefing === 'object' && section === 'international') {
+      // Detectar piezas largas en worldNews
+      const LONG_KEYWORDS_INTL = [
+        'investigation', 'deep dive', 'inside story', 'long read', 'feature',
+        'essay', 'explained', 'what happened', 'behind the scenes', 'profile of',
+        'the big read', 'the big take', 'briefing', 'anatomy of', 'how',
+        'why', 'analysis', 'reportage',
+      ];
+      const isLongFormIntl = (piece) => {
+        if (piece.pieceType === 'long') return true;
+        const titleLow = String(piece.title || '').toLowerCase();
+        const summaryLen = String(piece.summary || '').length;
+        if (LONG_KEYWORDS_INTL.some(k => titleLow.includes(k))) return true;
+        if (String(piece.title || '').length > 90) return true;
+        if (summaryLen > 250) return true;
+        return false;
+      };
+
+      const worldNewsArr = Array.isArray(briefing.worldNews) ? briefing.worldNews : [];
+      const longInWorldNews = worldNewsArr.filter(isLongFormIntl);
+      const longCount = longInWorldNews.length;
+      const targetLongIntl = 5;
+
+      // Marcar las piezas detectadas como largas
+      worldNewsArr.forEach(piece => {
+        if (isLongFormIntl(piece)) {
+          piece._detectedLong = true;
+        }
+      });
+
+      const longWarning = longCount < targetLongIntl
+        ? `⚠️ Solo ${longCount}/${targetLongIntl} piezas largas detectadas en worldNews. El modelo debería incluir más reportajes/análisis (NYT investigations, Atlantic features, FT big reads, etc.).`
+        : null;
+
       briefing._meta = {
         ...briefing._meta,
         intlOpinionCandidatesCount: intlOpinionCandidates.length,
         feedDiagnostic: intlOpinionDiagnostic,
         allowedDates: allowedISODates,
+        worldNewsLongCount: longCount,
+        worldNewsLongTarget: targetLongIntl,
+        worldNewsLongTitles: longInWorldNews.map(p => `${p.source}: ${p.title}`),
+        longWarning,
       };
+
+      if (longWarning) {
+        briefing._note = (briefing._note ? briefing._note + ' · ' : '') + longWarning;
+      }
     }
     return res.status(200).json({ briefing, section });
   } catch (err) {
