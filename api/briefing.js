@@ -1361,37 +1361,65 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         });
       }
 
-      const candidatesText = candidates.map((c, i) =>
-        `[${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${c.description.slice(0, 200)}`
-      ).join('\n\n');
+      // Detectar piezas largas (reportajes/investigaciones/análisis)
+      const LONG_KEYWORDS = [
+        'reportaje', 'investigación', 'investigacion', 'análisis', 'analisis',
+        'crónica', 'cronica', 'perfil', 'dossier', 'claves', 'qué hay detrás',
+        'que hay detras', 'por qué', 'por que', 'la historia', 'el caso',
+        'cómo', 'como',
+      ];
+      const isLongFormPiece = (c) => {
+        const descLen = String(c.description || '').length;
+        const titleLen = String(c.title || '').length;
+        const author = String(c.author || '').trim();
+        // Multi-autores casi siempre indica investigación
+        if (author.includes(' y ') || author.includes(', ')) return true;
+        // Descripción larga = pieza desarrollada
+        if (descLen > 400) return true;
+        // Título muy largo y descriptivo
+        if (titleLen > 90) return true;
+        // Keywords típicas de pieza larga en título
+        const titleLow = String(c.title || '').toLowerCase();
+        if (LONG_KEYWORDS.some(k => titleLow.includes(k))) return true;
+        return false;
+      };
+
+      const candidatesText = candidates.map((c, i) => {
+        const tag = isLongFormPiece(c) ? '📊 LARGA' : '📰 BREVE';
+        const desc = String(c.description || '').slice(0, 300);
+        const authorStr = c.author ? ` | autor: ${c.author}` : '';
+        return `[${i + 1}] ${tag} | ${c.source} | ${c.publishedDate || 'fecha?'}${authorStr} | ${c.title}\n   URL: ${c.url}\n   Resumen (${(c.description || '').length} chars): ${desc}`;
+      }).join('\n\n');
+
+      const longCount = candidates.filter(isLongFormPiece).length;
 
       const userPrompt = `FECHA: ${todayFull || todayShort}
 
-Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (NOTICIAS, REPORTAJES, INVESTIGACIONES y ANÁLISIS), ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
+Tienes a continuación una lista de ${candidates.length} piezas de medios españoles, de las cuales ${longCount} están marcadas como 📊 LARGA (reportajes/investigaciones/análisis) y el resto como 📰 BREVE (noticias del día).
 
-🎯 OBJETIVO: armar un briefing diario equilibrado entre PIEZAS CORTAS (noticias del día) y PIEZAS LARGAS (reportajes de investigación, análisis en profundidad, crónicas, perfiles, dossiers). Ambos formatos son valiosos.
+🎯 OBJETIVO: armar un briefing equilibrado de NOTICIAS BREVES + PIEZAS LARGAS. Ambos formatos son valiosos.
 
-TIPOS DE PIEZA QUE BUSCAS (todos válidos para esta sección):
-- 📰 NOTICIAS: titular + datos + qué pasó (políticas, sentencias, declaraciones, sucesos)
-- 🔍 REPORTAJES DE INVESTIGACIÓN: piezas con varios autores, profundizan en una historia
-- 📊 ANÁLISIS EN PROFUNDIDAD: por qué pasa lo que pasa, contexto, datos
-- 📜 CRÓNICAS y PERFILES: narrativa más larga, personajes
-- 📋 DOSSIERS: piezas extensas sobre un tema concreto
+⭐ REGLA INELUDIBLE DE PIEZAS LARGAS:
+${longCount >= 5
+  ? `- En la lista hay ${longCount} piezas marcadas con 📊 LARGA. DEBES incluir MÍNIMO 5 de ellas en tu selección.`
+  : longCount >= 3
+  ? `- En la lista hay ${longCount} piezas marcadas con 📊 LARGA. DEBES incluir MÍNIMO ${longCount} (todas ellas si la calidad lo permite).`
+  : `- En la lista solo hay ${longCount} piezas marcadas con 📊 LARGA. Inclúyelas TODAS si son relevantes y frescas.`
+}
+- Las piezas 📊 LARGA son: reportajes de investigación (varios firmantes), análisis en profundidad, crónicas, perfiles, dossiers. Tu briefing es más rico si las incluyes.
 
-REGLAS DE SELECCIÓN (en orden de prioridad):
+REGLAS DE SELECCIÓN:
 1. Devuelve las piezas que haya. Si solo hay 8 frescas y relevantes, devuelve 8. No fuerces el cupo.
 2. Selecciona HASTA 25 piezas (puedes devolver menos si la lista es corta).
-3. ⭐ MÍNIMO 3 piezas LARGAS por briefing si hay material: reportajes de investigación, análisis o crónicas. Estos suelen llevar autor periodista (Pardo, Pérez, Cobos en LD; Lillo, Águeda en eDS; Altozano en IL; Alcolea/Téllez en TO) o título descriptivo con varios elementos.
-4. ⭐ PIEZAS LARGAS RECONOCIBLES POR: título largo con varios elementos | autor que firma análisis (no agencia) | descripción >300 chars | varios firmantes (Cobos+Pardo+Pérez = reportaje investigativo) | keywords en título: "reportaje", "investigación", "análisis", "perfil", "crónica", "dossier", "claves", "qué hay detrás", "por qué"
-5. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos.
-6. DESCARTA: columnas firmadas de opinión, contenido evergreen sin actualidad, editoriales institucionales.
-7. IDEAL si hay corpus suficiente: MÁX 4 piezas mismo medio, MÍN 7 medios distintos.
-8. ACEPTABLE si corpus limitado: hasta 4 piezas mismo medio, mín 4 medios distintos.
-9. PLURALIDAD: prioriza incluir al menos 1 pieza de El País o elDiario.es o InfoLibre (voces izquierda), y al menos 1 de La Vanguardia (perspectiva catalana) si hay material relevante.
-9.bis BALEARES PRIORITARIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares", "elDiario.es Baleares" o "Economía de Mallorca", PRIORIZA incluir 1-2 noticias de Baleares. Si no hay material apropiado, no fuerces.
-9.ter DEMÓCRATA OBLIGATORIO: si en CANDIDATAS aparece al menos 1 item con source "Demócrata", DEBES incluir mínimo 1 pieza suya. ⭐ INELUDIBLE.
-10. Equilibrio temático: política, economía, sociedad, sucesos, internacional con foco España.
-11. Mejor pocas piezas relevantes y frescas que muchas mediocres o forzadas.
+3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos.
+4. DESCARTA: columnas firmadas de opinión solitaria, contenido evergreen sin actualidad, editoriales institucionales.
+5. IDEAL si hay corpus suficiente: MÁX 4 piezas mismo medio, MÍN 7 medios distintos.
+6. ACEPTABLE si corpus limitado: hasta 4 piezas mismo medio, mín 4 medios distintos.
+7. PLURALIDAD: prioriza incluir al menos 1 pieza de El País o elDiario.es o InfoLibre (voces izquierda), y al menos 1 de La Vanguardia (perspectiva catalana) si hay material relevante.
+7.bis BALEARES PRIORITARIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares", "elDiario.es Baleares" o "Economía de Mallorca", PRIORIZA incluir 1-2 noticias de Baleares. Si no hay material apropiado, no fuerces.
+7.ter DEMÓCRATA OBLIGATORIO: si en CANDIDATAS aparece al menos 1 item con source "Demócrata", DEBES incluir mínimo 1 pieza suya. ⭐ INELUDIBLE.
+8. Equilibrio temático: política, economía, sociedad, sucesos, internacional con foco España.
+9. Mejor pocas piezas relevantes y frescas que muchas mediocres o forzadas.
 
 Para cada pieza seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO).
 
@@ -1435,13 +1463,57 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
 
       const briefing = extractJson(text);
       if (briefing && typeof briefing === 'object') {
+        // ⭐ ENFORCEMENT POST-MODELO: forzar piezas largas si el modelo no las incluyó
+        const targetLong = Math.min(longCount, 5); // máximo 5 piezas largas obligatorias
+        const selectedNews = Array.isArray(briefing.spainNews) ? briefing.spainNews : [];
+        const selectedUrls = new Set(selectedNews.map(n => n.url).filter(Boolean));
+
+        // Cuántas piezas largas tiene la selección
+        const longCandidatesAll = candidates.filter(isLongFormPiece);
+        const longSelected = selectedNews.filter(n => {
+          const candidateMatch = candidates.find(c => c.url === n.url);
+          return candidateMatch && isLongFormPiece(candidateMatch);
+        }).length;
+
+        const enforcementLog = [];
+        if (longSelected < targetLong) {
+          const missing = targetLong - longSelected;
+          // Buscar piezas largas del pool que NO estén ya seleccionadas
+          const longToAdd = longCandidatesAll
+            .filter(c => !selectedUrls.has(c.url))
+            .slice(0, missing);
+
+          for (const longItem of longToAdd) {
+            briefing.spainNews.push({
+              rank: briefing.spainNews.length + 1,
+              title: longItem.title,
+              summary: (longItem.description || '').slice(0, 250) + (longItem.description && longItem.description.length > 250 ? '...' : ''),
+              source: longItem.source,
+              url: longItem.url,
+              publishedDate: longItem.publishedDate,
+              _forcedLong: true,
+            });
+            enforcementLog.push(`+ ${longItem.source}: ${longItem.title.slice(0, 60)}...`);
+          }
+        }
+
         briefing._meta = {
           totalCandidates: candidates.length,
           selectedCount: (briefing.spainNews || []).length,
+          longCandidatesCount: longCount,
+          longSelectedAfterEnforcement: (briefing.spainNews || []).filter(n => {
+            const candidateMatch = candidates.find(c => c.url === n.url);
+            return candidateMatch && isLongFormPiece(candidateMatch);
+          }).length,
           mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
           allowedDates: allowedISODates,
           feedDiagnostic: diagnostic,
+          enforcementLog,
         };
+
+        if (enforcementLog.length > 0) {
+          briefing._note = `Se añadieron ${enforcementLog.length} piezas largas que el modelo había omitido (enforcement automático).`;
+        }
       }
       return res.status(200).json({ briefing, section });
     } catch (err) {
