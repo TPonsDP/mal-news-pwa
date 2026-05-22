@@ -282,13 +282,60 @@ async function fetchInternationalOpinionRss(allowedISODates) {
 }
 
 // ============ HELPER GLOBAL: Filtro de opinión (firmas reales) ============
-// Lista de periodistas conocidos (de noticias, NO columnistas) por medio
+// Lista BLANCA: columnistas CONFIRMADOS por el usuario (sobrescribe cualquier filtro).
+// Si una pieza está firmada por uno de ellos, ES opinión sí o sí.
+const KNOWN_OPINION_COLUMNISTS_GLOBAL = [
+  // Vozpópuli
+  'ignacia de pano', 'gorka maneiro', 'carlos martínez gorriarán', 'carlos martinez gorriaran',
+  'jesús banegas', 'jesus banegas', 'josé alejandro vara', 'jose alejandro vara',
+  'manuel marín', 'manuel marin', 'irene gonzález', 'irene gonzalez',
+  'rubén manso', 'ruben manso', 'jesús cacho', 'jesus cacho',
+  'agustín valladolid', 'agustin valladolid', 'pablo sebastián', 'pablo sebastian',
+  'víctor lenore', 'victor lenore',
+  // The Objective
+  'juan luis cebrián', 'juan luis cebrian', 'pablo de lora', 'javier benegas',
+  'guadalupe sánchez', 'guadalupe sanchez', 'maite rico', 'victoria carvajal',
+  'pablo cambronero', 'manuel arias maldonado', 'antonio caño', 'antonio cano',
+  'manuel fernández ordóñez', 'manuel fernandez ordonez', 'jorge san miguel',
+  'ketty garat',
+  // El País
+  'estefanía molina', 'estefania molina', 'diego s. garrocho salcedo',
+  'diego sebastián garrocho salcedo', 'diego sebastian garrocho salcedo',
+  'lluís bassets', 'lluis bassets', 'ana iris simón', 'ana iris simon',
+  'ángeles caballero', 'angeles caballero', 'daniel gascón', 'daniel gascon',
+  'joan ridao',
+  // El Mundo
+  'arcadi espada', 'pedro g. cuartango', 'jorge bustos', 'francisco rosell',
+  // El Español
+  'cristian campos', 'pedro j. ramírez', 'pedro j. ramirez', 'pedro jota ramírez',
+  'lorena g. maldonado', 'lorenzo bernaldo de quirós', 'lorenzo bernaldo de quiros',
+  'josé ramón pin arboledas', 'jose ramon pin arboledas',
+  // Libertad Digital
+  'federico jiménez losantos', 'federico jimenez losantos',
+  // El Debate
+  'juan carlos girauta', 'antonio r. naranjo', 'antonio naranjo',
+  // OK Diario
+  'graciano palomo',
+  // elDiario.es
+  'ignacio escolar',
+  // La Gaceta
+  'josé javier esparza', 'jose javier esparza', 'hughes',
+  // Recién añadidos
+  'jose antonio montano', 'josé antonio montano',
+  'esperanza aguirre',
+  'alba vila',
+  'esperanza ruiz',
+  'iván vélez', 'ivan velez',
+  'mariona gumpert',
+];
+
+// Lista NEGRA: periodistas de noticias (NO columnistas) por medio
 const KNOWN_NEWS_REPORTERS_GLOBAL = {
   'The Objective': [
     'roberto alcolea', 'juan carlos téllez', 'juan carlos tellez',
     'fran serrato', 'luis manuel rafael',
     'antonio rodríguez', 'antonio rodriguez',
-    'álvaro nieto', 'alvaro nieto', // director, también firma noticias
+    'álvaro nieto', 'alvaro nieto',
   ],
   'Libertad Digital': [
     'paco cobos', 'pablo pardo',
@@ -310,20 +357,16 @@ const KNOWN_NEWS_REPORTERS_GLOBAL = {
     'alberto sanz', 'efe', 'europa press',
   ],
   'Artículo 14': [],
-  'El País': [
-    'efe', 'europa press', 'reuters',
-  ],
-  'El Mundo': [
-    'efe', 'europa press', 'reuters',
-  ],
+  'El País': ['efe', 'europa press', 'reuters'],
+  'El Mundo': ['efe', 'europa press', 'reuters'],
 };
 
 // Patrones de título que casi siempre indican NOTICIA (alta confianza)
 const NEWS_TITLE_PATTERNS = [
   /^el juez \w+ (imputa|investiga|cita|bloquea|absuelve|procesa|condena|acusa)/i,
   /^la (audiencia|fiscalía|policía|guardia civil) /i,
-  /\binvierte \d/i,                       // "X invierte N millones"
-  /\b\d+ millones (de )?euros?\b/i,       // "N millones de euros"
+  /\binvierte \d/i,
+  /\b\d+ millones (de )?euros?\b/i,
   /^el (gobierno|tribunal|congreso|senado|consejo) (aprueba|rechaza|debate|vota)/i,
   /\b(dimite|destituye|reemplaza|releva)\b/i,
   /^sumario/i,
@@ -337,6 +380,10 @@ function isOpinionRSSItem(item) {
   const author = String(item.author).trim();
   if (!author) return false;
   const authorLow = author.toLowerCase();
+
+  // ⭐ ALLOWLIST: si es columnista confirmado, ES opinión SIEMPRE (sobrescribe filtros)
+  if (KNOWN_OPINION_COLUMNISTS_GLOBAL.includes(authorLow)) return true;
+
   const sourceLow = String(item.source || '').toLowerCase();
   if (authorLow === sourceLow) return false;
   if (authorLow.includes('redacción') || authorLow.includes('redaccion')) return false;
@@ -544,6 +591,10 @@ VOZPÓPULI (búsqueda web vozpopuli.com "[columnista]" [fecha], accesible desde 
 - Jesús Cacho — domingo (columna semanal habitual, ocasionalmente otros días)
 - Agustín Valladolid — jueves (columna semanal)
 - Pablo Sebastián — variable (veterano, habitual sin día fijo)
+- Víctor Lenore — cultura, variable
+- José Antonio Montano — variable (literatura/cultura/política)
+- Esperanza Ruiz — variable (también publica en La Gaceta)
+- Mariona Gumpert — variable
 
 THE OBJECTIVE (búsqueda web theobjective.com "[columnista]" [fecha]):
 - Guadalupe Sánchez
@@ -551,7 +602,9 @@ THE OBJECTIVE (búsqueda web theobjective.com "[columnista]" [fecha]):
 - Manuel Arias Maldonado
 - Álvaro Nieto
 - Javier Benegas — viernes
-- Ketty Garat (análisis)
+- Ketty Garat (análisis político)
+- Iván Vélez (filosofía/cultura, variable)
+- Esperanza Aguirre (ex-política, columnas ocasionales)
 - Jorge San Miguel (variable, 1-2/semana)
 - Pablo de Lora — sábados → theobjective.com/autor/pablo-de-lora/
 - Manuel Fernández Ordóñez (Doctor Física Nuclear, energía/tecnología)
@@ -559,6 +612,8 @@ THE OBJECTIVE (búsqueda web theobjective.com "[columnista]" [fecha]):
 - Maite Rico — varios días, "Sujétame el vermú" martes, directora adjunta
 - Pablo Cambronero → theobjective.com/autor/pablo-cambronero/
 - Juan Luis Cebrián
+
+
 
 EL ESPAÑOL (búsqueda web):
 - Cristian Campos
@@ -583,9 +638,15 @@ EL PAÍS (de pago, usar almendron.com como agregador):
 - Daniel Gascón — viernes (columnista habitual semanal) → elpais.com/autor/daniel-gascon/
 
 LA GACETA DE LA IBEROSFERA:
-- (sin columnistas prioritarios específicos) → gaceta.es/opinion/
+- Iván Vélez (filosofía/cultura, variable)
+- Alba Vila (variable)
+- Esperanza Ruiz (variable)
+- Hughes (variable)
+- José Javier Esparza (variable)
+- gaceta.es/opinion/
 
 EL DEBATE (búsqueda web eldebate.com/opinion/):
+- Francisco Rosell (director, variable)
 - Juan Carlos Girauta
 - Antonio R. Naranjo
 
@@ -666,7 +727,10 @@ WORLDOPINION (PRIORITARIA, hasta 8 columnas firmadas):
 - Distribuye entre izquierda, centro y derecha
 - Si una región no tiene columna fresca firmada, DÉJALA SIN cubrir (NO sustituyas con anglo extra)
 
-WORLDNEWS (hasta 20 noticias):
+WORLDNEWS (hasta 20 piezas: noticias + reportajes + análisis):
+- 🎯 OBJETIVO: equilibrio entre PIEZAS CORTAS (noticias breaking) y PIEZAS LARGAS (reportajes, investigaciones, análisis profundos, perfiles, dossiers).
+- ⭐ MÍNIMO 3 piezas LARGAS por briefing si hay material: reportajes investigativos (NYT/WaPo/Atlantic/FT/Economist suelen tener piezas largas excelentes), análisis en profundidad, perfiles, crónicas internacionales.
+- ⭐ PIEZAS LARGAS RECONOCIBLES POR: título largo y descriptivo (no titular telegráfico) | autor periodista (no agencia AP/Reuters) | descripción >300 chars | keywords: "investigation", "deep dive", "the inside story", "long read", "feature", "essay", "explained", "what happened", "behind the scenes", "profile of"
 - HARD CAPS: Máx 6 piezas USA · Máx 4 piezas UK · Máx 3 piezas mismo medio
 - MÍNIMOS GARANTIZADOS por región (si hay material fresco del día):
   · 🇪🇺 Europa Occidental (FR/DE/IT): MÍNIMO 2
@@ -683,8 +747,8 @@ WORLDNEWS (hasta 20 noticias):
 - Total mínimos: ~14 piezas garantizadas globalmente, 6 piezas flexibles
 - Si una región NO tiene material fresco real, deja el slot vacío (PROHIBIDO rellenar con USA/UK extras o inventar piezas)
 - Equilibrio IZQ/DER
-- Eventos concretos del día (no análisis evergreen)
-- Mejor 16 piezas reales y distribuidas que 20 todas anglo
+- Mezcla eventos concretos del día CON piezas largas de fondo
+- Mejor 16 piezas reales (incluyendo 3-4 reportajes profundos) que 20 todas anglo
 - LEGAL EMBEBIDO: si hay sentencias internacionales relevantes del día (TJUE, CIJ, TPI, Supreme Court USA, antitrust CE/FTC, etc.), inclúyelas como pieza más en worldNews con la región del tribunal. Busca en: site:law360.com, site:mlex.com, site:reuters.com/legal, site:bloomberg.com/law
 
 ⭐ MEDIOS PRIORIZADOS POR REGIÓN (50+ medios con cobertura global plural):
@@ -936,10 +1000,10 @@ REGLA INELUDIBLE: Las piezas marcadas con ❌ son NOTICIAS o EDITORIALES institu
 Si en CANDIDATAS aparece una columna firmada por uno de estos autores, DEBES INCLUIRLA (siempre respetando los hard caps por medio). Son los referentes que el usuario quiere ver en su briefing diario:
 
 VOZPÓPULI ⭐:
-- Ignacia de Pano (martes), Gorka Maneiro, Carlos Martínez Gorriarán, Jesús Banegas, José Alejandro Vara, Manuel Marín (lunes, director), Irene González, Rubén Manso, Jesús Cacho (domingo), Agustín Valladolid (jueves), Pablo Sebastián
+- Ignacia de Pano (martes), Gorka Maneiro, Carlos Martínez Gorriarán, Jesús Banegas, José Alejandro Vara, Manuel Marín (lunes, director), Irene González, Rubén Manso, Jesús Cacho (domingo), Agustín Valladolid (jueves), Pablo Sebastián, Víctor Lenore, José Antonio Montano, Esperanza Ruiz, Mariona Gumpert
 
 THE OBJECTIVE ⭐:
-- Guadalupe Sánchez, Antonio Caño, Manuel Arias Maldonado, Álvaro Nieto, Javier Benegas (viernes), Ketty Garat, Jorge San Miguel, Pablo de Lora (sábados), Manuel Fernández Ordóñez, Victoria Carvajal (sábados), Maite Rico (martes "Sujétame el vermú"), Pablo Cambronero, Juan Luis Cebrián
+- Guadalupe Sánchez, Antonio Caño, Manuel Arias Maldonado, Álvaro Nieto, Javier Benegas (viernes), Ketty Garat, Iván Vélez, Esperanza Aguirre, Jorge San Miguel, Pablo de Lora (sábados), Manuel Fernández Ordóñez, Victoria Carvajal (sábados), Maite Rico (martes "Sujétame el vermú"), Pablo Cambronero, Juan Luis Cebrián
 
 EL ESPAÑOL:
 - Cristian Campos, Pedro J. Ramírez (domingos), Lorena G. Maldonado, Lorenzo Bernaldo de Quirós (domingos), José Ramón Pin Arboledas
@@ -953,8 +1017,14 @@ EL DIARIO:
 EL PAÍS:
 - Estefanía Molina (jueves), Diego S. Garrocho Salcedo, Lluís Bassets, Ana Iris Simón, Ángeles Caballero, Daniel Gascón
 
+EL MUNDO:
+- Arcadi Espada, Pedro G. Cuartango, Jorge Bustos
+
 EL DEBATE:
-- Juan Carlos Girauta, Antonio R. Naranjo
+- Francisco Rosell (director), Juan Carlos Girauta, Antonio R. Naranjo
+
+LA GACETA:
+- Iván Vélez, Alba Vila, Esperanza Ruiz, Hughes, José Javier Esparza
 
 OK DIARIO:
 - Graciano Palomo
@@ -1297,22 +1367,33 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
 
       const userPrompt = `FECHA: ${todayFull || todayShort}
 
-Tienes a continuación una lista de ${candidates.length} noticias de medios españoles, ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
+Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (NOTICIAS, REPORTAJES, INVESTIGACIONES y ANÁLISIS), ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
+
+🎯 OBJETIVO: armar un briefing diario equilibrado entre PIEZAS CORTAS (noticias del día) y PIEZAS LARGAS (reportajes de investigación, análisis en profundidad, crónicas, perfiles, dossiers). Ambos formatos son valiosos.
+
+TIPOS DE PIEZA QUE BUSCAS (todos válidos para esta sección):
+- 📰 NOTICIAS: titular + datos + qué pasó (políticas, sentencias, declaraciones, sucesos)
+- 🔍 REPORTAJES DE INVESTIGACIÓN: piezas con varios autores, profundizan en una historia
+- 📊 ANÁLISIS EN PROFUNDIDAD: por qué pasa lo que pasa, contexto, datos
+- 📜 CRÓNICAS y PERFILES: narrativa más larga, personajes
+- 📋 DOSSIERS: piezas extensas sobre un tema concreto
 
 REGLAS DE SELECCIÓN (en orden de prioridad):
-1. Devuelve las noticias que haya. Si solo hay 8 noticias frescas y relevantes, devuelve 8. No fuerces el cupo.
-2. Selecciona HASTA 25 noticias (puedes devolver menos si la lista es corta).
-3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos, decisiones gubernamentales, anuncios oficiales, hechos relevantes.
-4. DESCARTA: análisis genéricos, columnas de opinión, contenido evergreen sin actualidad.
-5. IDEAL si hay corpus suficiente: MÁX 4 noticias mismo medio, MÍN 7 medios distintos.
-6. ACEPTABLE si corpus limitado: hasta 4 noticias mismo medio, mín 4 medios distintos.
-7. PLURALIDAD: prioriza incluir al menos 1 noticia de El País o elDiario.es o InfoLibre (voces izquierda), y al menos 1 de La Vanguardia (perspectiva catalana) si hay material relevante.
-7.bis BALEARES PRIORITARIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares", "elDiario.es Baleares" o "Economía de Mallorca", PRIORIZA incluir 1-2 noticias de Baleares. Si no hay material apropiado, no fuerces.
-7.ter DEMÓCRATA OBLIGATORIO: si en CANDIDATAS aparece al menos 1 item con source "Demócrata", DEBES incluir mínimo 1 noticia suya. ⭐ INELUDIBLE.
-8. Equilibrio temático: política, economía, sociedad, sucesos, internacional con foco España.
-9. Mejor pocas noticias relevantes y frescas que muchas mediocres o forzadas.
+1. Devuelve las piezas que haya. Si solo hay 8 frescas y relevantes, devuelve 8. No fuerces el cupo.
+2. Selecciona HASTA 25 piezas (puedes devolver menos si la lista es corta).
+3. ⭐ MÍNIMO 3 piezas LARGAS por briefing si hay material: reportajes de investigación, análisis o crónicas. Estos suelen llevar autor periodista (Pardo, Pérez, Cobos en LD; Lillo, Águeda en eDS; Altozano en IL; Alcolea/Téllez en TO) o título descriptivo con varios elementos.
+4. ⭐ PIEZAS LARGAS RECONOCIBLES POR: título largo con varios elementos | autor que firma análisis (no agencia) | descripción >300 chars | varios firmantes (Cobos+Pardo+Pérez = reportaje investigativo) | keywords en título: "reportaje", "investigación", "análisis", "perfil", "crónica", "dossier", "claves", "qué hay detrás", "por qué"
+5. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos.
+6. DESCARTA: columnas firmadas de opinión, contenido evergreen sin actualidad, editoriales institucionales.
+7. IDEAL si hay corpus suficiente: MÁX 4 piezas mismo medio, MÍN 7 medios distintos.
+8. ACEPTABLE si corpus limitado: hasta 4 piezas mismo medio, mín 4 medios distintos.
+9. PLURALIDAD: prioriza incluir al menos 1 pieza de El País o elDiario.es o InfoLibre (voces izquierda), y al menos 1 de La Vanguardia (perspectiva catalana) si hay material relevante.
+9.bis BALEARES PRIORITARIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares", "elDiario.es Baleares" o "Economía de Mallorca", PRIORIZA incluir 1-2 noticias de Baleares. Si no hay material apropiado, no fuerces.
+9.ter DEMÓCRATA OBLIGATORIO: si en CANDIDATAS aparece al menos 1 item con source "Demócrata", DEBES incluir mínimo 1 pieza suya. ⭐ INELUDIBLE.
+10. Equilibrio temático: política, economía, sociedad, sucesos, internacional con foco España.
+11. Mejor pocas piezas relevantes y frescas que muchas mediocres o forzadas.
 
-Para cada noticia seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO).
+Para cada pieza seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO).
 
 CANDIDATAS:
 ${candidatesText}
