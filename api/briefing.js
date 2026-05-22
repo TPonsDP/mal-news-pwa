@@ -340,6 +340,8 @@ const KNOWN_OPINION_COLUMNISTS_GLOBAL = [
   'ignacio escolar',
   // La Gaceta
   'josé javier esparza', 'jose javier esparza', 'hughes',
+  // InfoLibre (columnistas, no periodistas)
+  'luis arroyo', 'lucila rodríguez-alarcón', 'lucila rodriguez-alarcon',
   // Recién añadidos
   'jose antonio montano', 'josé antonio montano',
   'esperanza aguirre',
@@ -356,6 +358,7 @@ const KNOWN_NEWS_REPORTERS_GLOBAL = {
     'fran serrato', 'luis manuel rafael',
     'antonio rodríguez', 'antonio rodriguez',
     'álvaro nieto', 'alvaro nieto',
+    'marcos ondarra', 'jaime susanna',
   ],
   'Libertad Digital': [
     'paco cobos', 'pablo pardo',
@@ -416,6 +419,37 @@ function isOpinionRSSItem(item) {
   // Periodista conocido de noticias
   const reporters = KNOWN_NEWS_REPORTERS_GLOBAL[item.source] || [];
   if (reporters.some(r => authorLow === r)) return false;
+
+  // ⭐ REGLA ESTRUCTURAL THE OBJECTIVE:
+  // Solo es opinión si URL contiene /elsubjetivo/ o /autor/ o el autor está en allowlist.
+  // Las noticias de TO están en /sociedad/, /economia/, /politica/, /españa/, /cultura/, etc.
+  if (item.source === 'The Objective') {
+    const url = String(item.url || '');
+    const isSubjetivoOrAutor = /\/elsubjetivo\//i.test(url) || /\/autor\//i.test(url);
+    if (!isSubjetivoOrAutor) {
+      // No es URL de opinión Y autor no estaba en allowlist (ya comprobado arriba)
+      return false;
+    }
+  }
+
+  // ⭐ DETECTOR META-DESCRIPCIÓN (3ª persona = news/análisis, no columna):
+  // Si la descripción empieza por el nombre del autor + verbo periodístico neutro,
+  // es una descripción meta del editor, no la voz directa del columnista.
+  // Ejemplo: "Marcos Ondarra analiza cómo..." → meta-descripción → news
+  // (Allowlist al inicio sobrescribe esto, así columnistas conocidos siempre son opinión.)
+  const description = String(item.description || '').trim();
+  if (description.length > 0) {
+    const descLow = description.toLowerCase();
+    if (descLow.startsWith(authorLow)) {
+      const afterAuthor = description.substring(author.length).trim();
+      // Verbos NEUTROS típicos de meta-descripción de news/análisis (NO de opinión directa)
+      const NEUTRAL_REPORT_VERBS = /^(analiza|examina|explica|describe|expone|relata|cuenta|narra|traza|profundiza|repasa|aborda|disecciona|desentraña|desentrana|reseña|resena|informa|detalla|recoge|reconstruye|desvela|revela|publica)/i;
+      if (NEUTRAL_REPORT_VERBS.test(afterAuthor)) {
+        return false; // meta-descripción = news/análisis = no opinión directa
+      }
+    }
+  }
+
   // Patrones de título característicos de noticias
   const title = String(item.title || '').trim();
   for (const pattern of NEWS_TITLE_PATTERNS) {
