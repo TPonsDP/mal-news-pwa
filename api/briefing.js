@@ -281,6 +281,26 @@ async function fetchInternationalOpinionRss(allowedISODates) {
   return { candidates: result.items.slice(0, 60), diagnostic: result.diagnostic };
 }
 
+// ============ PAYWALL SOURCES (paywall fuerte) ============
+// Estas fuentes requieren suscripción para acceder al contenido completo.
+// Se marcan con _isPaywall: true para que el frontend muestre 🔒
+const PAYWALL_SOURCES = new Set([
+  // España
+  'El País', 'El Mundo', 'ABC', 'El Español', 'InfoLibre', 'La Vanguardia',
+  // Internacional - paywall fuerte
+  'New York Times', 'NYT', 'Washington Post', 'WaPo',
+  'Wall Street Journal', 'WSJ',
+  'The Atlantic', 'Bloomberg', 'Financial Times', 'FT',
+  'The Economist', 'Foreign Affairs', 'Foreign Policy',
+  'The Spectator', 'Le Monde', 'Le Figaro',
+  'Haaretz', 'Japan Times', 'Clarín', 'El Mercurio', 'The New Yorker',
+]);
+
+function isPaywallSource(sourceName) {
+  if (!sourceName) return false;
+  return PAYWALL_SOURCES.has(sourceName);
+}
+
 // ============ HELPER GLOBAL: Filtro de opinión (firmas reales) ============
 // Lista BLANCA: columnistas CONFIRMADOS por el usuario (sobrescribe cualquier filtro).
 // Si una pieza está firmada por uno de ellos, ES opinión sí o sí.
@@ -729,6 +749,13 @@ WORLDOPINION (PRIORITARIA, hasta 8 columnas firmadas):
 
 WORLDNEWS (hasta 20 piezas: noticias + reportajes + análisis):
 - 🎯 OBJETIVO: equilibrio entre PIEZAS CORTAS (noticias breaking) y PIEZAS LARGAS (reportajes, investigaciones, análisis profundos, perfiles, dossiers).
+
+⭐⭐⭐ PRIORIDAD FUENTES GRATIS sobre paywall (CRÍTICO) ⭐⭐⭐
+- 🔓 GRATIS internacional: Politico, The Hill, Project Syndicate, Reuters, MarketWatch, Quartz, The Guardian, UnHerd, Kyiv Independent, Moscow Times, Times of Israel, The Hindu, Indian Express, Jakarta Post, Bangkok Post, Premium Times, El Espectador, Infobae, Mail&Guardian, National Review
+- 🔒 PAYWALL: NYT, WaPo, WSJ, The Atlantic, Bloomberg, FT, The Economist, Foreign Affairs, Foreign Policy, The Spectator, Le Monde, Le Figaro, Haaretz, Japan Times, Clarín, El Mercurio, New Yorker
+- Si el mismo tema está en una fuente gratis y una de pago, ELIGE LA GRATIS.
+- Solo usa pago si cubre un ángulo único no disponible en gratis ese día.
+- Las de pago aparecen marcadas con 🔒 cuando son necesarias.
 
 ⭐⭐⭐ REGLA INELUDIBLE — MÍNIMO 5 PIEZAS LARGAS POR BRIEFING ⭐⭐⭐
 Si después de seleccionar las 20 piezas tienes menos de 5 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": NYT, WaPo, Atlantic, FT, Bloomberg, The Economist, Foreign Affairs publican análisis profundo a diario.
@@ -1235,6 +1262,18 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         briefing.spainOpinion = cleanedItems;
         briefing.extraNews = extraNewsFromOpinion;
 
+        // Marcar con _isPaywall las piezas de fuentes paywall (para que el frontend muestre 🔒)
+        const markPaywall = (arr) => {
+          if (!Array.isArray(arr)) return;
+          arr.forEach(item => {
+            if (item && isPaywallSource(item.source)) {
+              item._isPaywall = true;
+            }
+          });
+        };
+        markPaywall(briefing.spainOpinion);
+        markPaywall(briefing.extraNews);
+
         // ============ ENFORCEMENT POST-MODELO ============
         // Si el modelo no cumple los mínimos obligatorios, FORZAR añadiendo del pool de candidatos
         // SOLO se fuerzan piezas que pasen isOpinionLike (autor real, no sumarios, no editoriales)
@@ -1395,16 +1434,37 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         'que hay detras', 'por qué', 'por que', 'la historia', 'el caso',
         'cómo', 'como',
       ];
+      // Patrones de URL típicos de piezas largas (más fiables que length del RSS)
+      const LONG_URL_PATTERNS = [
+        /\/reportaje[s]?\//i,
+        /\/investigaci[oó]n[es]?\//i,
+        /\/an[aá]lisis\//i,
+        /\/cr[oó]nica[s]?\//i,
+        /\/perfil[es]?\//i,
+        /\/dossier[es]?\//i,
+        /\/historia[s]?\//i,
+        /\/entrevista[s]?\//i,
+        /\/elsubjetivo\//i,       // The Objective sección reportajes
+        /\/desentra[ñn]a\//i,     // InfoLibre Desentraña
+        /\/long[\-_]?read/i,
+        /\/feature[s]?\//i,
+        /\/in[\-_]depth\//i,
+      ];
       const isLongFormPiece = (c) => {
+        // URL pattern = señal más fiable
+        const url = String(c.url || '');
+        for (const pattern of LONG_URL_PATTERNS) {
+          if (pattern.test(url)) return true;
+        }
         const descLen = String(c.description || '').length;
         const titleLen = String(c.title || '').length;
         const author = String(c.author || '').trim();
         // Multi-autores casi siempre indica investigación
         if (author.includes(' y ') || author.includes(', ')) return true;
-        // Descripción larga = pieza desarrollada
-        if (descLen > 400) return true;
+        // Descripción larga = pieza desarrollada (umbral bajado a 250)
+        if (descLen > 250) return true;
         // Título muy largo y descriptivo
-        if (titleLen > 90) return true;
+        if (titleLen > 80) return true;
         // Keywords típicas de pieza larga en título
         const titleLow = String(c.title || '').toLowerCase();
         if (LONG_KEYWORDS.some(k => titleLow.includes(k))) return true;
@@ -1436,6 +1496,12 @@ ${longCount >= 5
 - Las piezas 📊 LARGA son: reportajes de investigación (varios firmantes), análisis en profundidad, crónicas, perfiles, dossiers. Tu briefing es más rico si las incluyes.
 
 REGLAS DE SELECCIÓN:
+0. ⭐ PRIORIDAD FUENTES GRATIS sobre paywall (CRÍTICO):
+   - 🔓 GRATIS: Vozpópuli, Artículo 14, OK Diario, Libertad Digital, La Gaceta, El Debate, Demócrata, Agenda Pública, El Blog Salmón, Crónica Global, The Objective, elDiario.es
+   - 🔒 PAYWALL: El País, El Mundo, ABC, El Español, InfoLibre, La Vanguardia
+   - Si el mismo evento/tema está cubierto por una gratis y una de pago, ELIGE LA GRATIS.
+   - Solo selecciona una de pago si cubre un tema/ángulo único que ninguna gratis trata ese día.
+   - Esto NO elimina las de pago: aparecen marcadas con 🔒 si son necesarias.
 1. Devuelve las piezas que haya. Si solo hay 8 frescas y relevantes, devuelve 8. No fuerces el cupo.
 2. Selecciona HASTA 25 piezas (puedes devolver menos si la lista es corta).
 3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos.
@@ -1524,6 +1590,18 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           }
         }
 
+        // Marcar con _isPaywall las piezas de fuentes paywall
+        if (Array.isArray(briefing.spainNews)) {
+          briefing.spainNews.forEach(item => {
+            if (item && isPaywallSource(item.source)) {
+              item._isPaywall = true;
+            }
+          });
+        }
+
+        const paywallCount = (briefing.spainNews || []).filter(n => n._isPaywall).length;
+        const freeCount = (briefing.spainNews || []).length - paywallCount;
+
         briefing._meta = {
           totalCandidates: candidates.length,
           selectedCount: (briefing.spainNews || []).length,
@@ -1533,14 +1611,19 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
             return candidateMatch && isLongFormPiece(candidateMatch);
           }).length,
           mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
+          paywallCount,
+          freeCount,
           allowedDates: allowedISODates,
           feedDiagnostic: diagnostic,
           enforcementLog,
         };
 
+        const notes = [];
         if (enforcementLog.length > 0) {
-          briefing._note = `Se añadieron ${enforcementLog.length} piezas largas que el modelo había omitido (enforcement automático).`;
+          notes.push(`Se añadieron ${enforcementLog.length} piezas largas que el modelo había omitido (enforcement automático).`);
         }
+        notes.push(`📊 ${freeCount} gratis · 🔒 ${paywallCount} paywall`);
+        briefing._note = notes.join(' · ');
       }
       return res.status(200).json({ briefing, section });
     } catch (err) {
@@ -1630,6 +1713,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
       };
 
       const worldNewsArr = Array.isArray(briefing.worldNews) ? briefing.worldNews : [];
+      const worldOpinionArr = Array.isArray(briefing.worldOpinion) ? briefing.worldOpinion : [];
       const longInWorldNews = worldNewsArr.filter(isLongFormIntl);
       const longCount = longInWorldNews.length;
       const targetLongIntl = 5;
@@ -1640,6 +1724,20 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           piece._detectedLong = true;
         }
       });
+
+      // Marcar piezas paywall (worldNews + worldOpinion)
+      [worldNewsArr, worldOpinionArr].forEach(arr => {
+        arr.forEach(item => {
+          if (item && isPaywallSource(item.source)) {
+            item._isPaywall = true;
+          }
+        });
+      });
+
+      const paywallNews = worldNewsArr.filter(p => p._isPaywall).length;
+      const paywallOp = worldOpinionArr.filter(p => p._isPaywall).length;
+      const freeNews = worldNewsArr.length - paywallNews;
+      const freeOp = worldOpinionArr.length - paywallOp;
 
       const longWarning = longCount < targetLongIntl
         ? `⚠️ Solo ${longCount}/${targetLongIntl} piezas largas detectadas en worldNews. El modelo debería incluir más reportajes/análisis (NYT investigations, Atlantic features, FT big reads, etc.).`
@@ -1653,12 +1751,16 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         worldNewsLongCount: longCount,
         worldNewsLongTarget: targetLongIntl,
         worldNewsLongTitles: longInWorldNews.map(p => `${p.source}: ${p.title}`),
+        paywallCounts: { news: paywallNews, opinion: paywallOp },
+        freeCounts: { news: freeNews, opinion: freeOp },
         longWarning,
       };
 
-      if (longWarning) {
-        briefing._note = (briefing._note ? briefing._note + ' · ' : '') + longWarning;
-      }
+      const intlNotes = [];
+      if (longWarning) intlNotes.push(longWarning);
+      intlNotes.push(`Noticias: 📊 ${freeNews} gratis · 🔒 ${paywallNews} paywall`);
+      intlNotes.push(`Opinión: 📊 ${freeOp} gratis · 🔒 ${paywallOp} paywall`);
+      briefing._note = (briefing._note ? briefing._note + ' · ' : '') + intlNotes.join(' · ');
     }
     return res.status(200).json({ briefing, section });
   } catch (err) {
