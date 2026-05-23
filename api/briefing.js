@@ -57,6 +57,12 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
   { source: 'Artículo 14', url: 'https://news.google.com/rss/search?q=site:articulo14.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Agenda Pública', url: 'https://news.google.com/rss/search?q=site:agendapublica.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
+
+  // Económico / regional con opinión incluida
+  { source: 'Economía de Mallorca', url: 'https://www.economiademallorca.com/feed/', tier: 'main' },
+  { source: 'Economía de Mallorca', url: 'https://news.google.com/rss/search?q=site:economiademallorca.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
+  { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/opinion/rss', tier: 'main' },
+  { source: 'Crónica Global', url: 'https://news.google.com/rss/search?q=site:cronicaglobal.elespanol.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
 ];
 
 // ============ FEEDS RSS PARA NOTICIAS ESPAÑA ============
@@ -97,7 +103,16 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/balears/rss/' },
   { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/illes-balears/rss.xml' },
   { source: 'elDiario.es Baleares', url: 'https://news.google.com/rss/search?q=site:eldiario.es/illes-balears&hl=es-ES&gl=ES&ceid=ES:es' },
+  // El Debate Baleares
+  { source: 'El Debate Baleares', url: 'https://www.eldebate.com/baleares/rss/' },
+  { source: 'El Debate Baleares', url: 'https://www.eldebate.com/baleares/feed/' },
+  { source: 'El Debate Baleares', url: 'https://news.google.com/rss/search?q=site:eldebate.com/baleares&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Economía de Mallorca', url: 'https://www.economiademallorca.com/feed/' },
+
+  // ECONÓMICO nacional
+  { source: 'Cinco Días', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/cincodias.elpais.com/portada' },
+  { source: 'Cinco Días', url: 'https://cincodias.elpais.com/rss/cincodias/portada.xml' },
+  { source: 'Cinco Días', url: 'https://news.google.com/rss/search?q=site:cincodias.elpais.com&hl=es-ES&gl=ES&ceid=ES:es' },
 
   // Google News RSS (fallback solo para medios sin RSS público fiable)
   { source: 'El Mundo', url: 'https://news.google.com/rss/search?q=site:elmundo.es&hl=es-ES&gl=ES&ceid=ES:es' },
@@ -296,12 +311,139 @@ async function fetchInternationalOpinionRss(allowedISODates) {
   return { candidates: result.items.slice(0, 60), diagnostic: result.diagnostic };
 }
 
+// ============ MAPA DE REGIONES INTERNACIONAL ============
+const SOURCE_TO_REGION = {
+  // USA
+  'New York Times': 'USA', 'NYT': 'USA', 'The New York Times': 'USA',
+  'Washington Post': 'USA', 'WaPo': 'USA', 'The Washington Post': 'USA',
+  'Wall Street Journal': 'USA', 'WSJ': 'USA',
+  'The Atlantic': 'USA', 'Politico': 'USA', 'The Hill': 'USA',
+  'The New Yorker': 'USA', 'New Yorker': 'USA',
+  'MarketWatch': 'USA', 'Forbes': 'USA', 'Quartz': 'USA',
+  'National Review': 'USA', 'Vox': 'USA',
+  'AP': 'USA', 'Associated Press': 'USA',
+  'NPR': 'USA', 'CNN': 'USA', 'NBC': 'USA', 'CBS': 'USA',
+  'Axios': 'USA', 'Semafor': 'USA',
+  // UK
+  'The Guardian': 'UK', 'Guardian': 'UK',
+  'The Spectator': 'UK', 'Spectator': 'UK',
+  'UnHerd': 'UK', 'BBC': 'UK', 'The Telegraph': 'UK', 'Telegraph': 'UK',
+  'The Times': 'UK', 'Daily Mail': 'UK',
+  // Económico Global
+  'Bloomberg': 'Económico Global', 'Reuters': 'Económico Global',
+  'Financial Times': 'Económico Global', 'FT': 'Económico Global',
+  'The Economist': 'Económico Global', 'Economist': 'Económico Global',
+  'Nikkei Asia': 'Económico Global',
+  // Europa Occidental
+  'Le Figaro': 'Europa Occ', 'Le Monde': 'Europa Occ', 'Le Point': 'Europa Occ',
+  'Liberation': 'Europa Occ', 'Libération': 'Europa Occ',
+  'Die Zeit': 'Europa Occ', 'Der Spiegel': 'Europa Occ',
+  'Frankfurter Allgemeine': 'Europa Occ', 'FAZ': 'Europa Occ',
+  'La Repubblica': 'Europa Occ', 'Corriere della Sera': 'Europa Occ',
+  'Il Foglio': 'Europa Occ',
+  // Europa Este
+  'Kyiv Independent': 'Europa Este', 'Politico Europe': 'Europa Este',
+  'Notes from Poland': 'Europa Este', 'Gazeta Wyborcza': 'Europa Este',
+  'Euractiv': 'Europa Este',
+  // Oriente Medio
+  'Haaretz': 'Oriente Medio', 'Times of Israel': 'Oriente Medio',
+  'Al Jazeera': 'Oriente Medio', 'Arab News': 'Oriente Medio',
+  'Jerusalem Post': 'Oriente Medio', 'Al-Monitor': 'Oriente Medio',
+  // India → Asia
+  'The Hindu': 'Asia', 'Indian Express': 'Asia',
+  'Times of India': 'Asia', 'Hindustan Times': 'Asia',
+  // Asia Este → Asia
+  'Japan Times': 'Asia',
+  'South China Morning Post': 'Asia', 'SCMP': 'Asia',
+  'Korea Herald': 'Asia', 'Korea Times': 'Asia',
+  'Asahi Shimbun': 'Asia', 'Yomiuri Shimbun': 'Asia',
+  // China → Asia
+  'Caixin': 'Asia', 'Caixin Global': 'Asia',
+  'Global Times': 'Asia',
+  'China Daily': 'Asia',
+  'Sixth Tone': 'Asia',
+  'Xinhua': 'Asia', 'People\'s Daily': 'Asia',
+  // Corea del Sur (extra) → Asia
+  'Korea JoongAng Daily': 'Asia', 'JoongAng Daily': 'Asia', 'JoongAng Ilbo': 'Asia',
+  'Hankyoreh': 'Asia', 'The Hankyoreh': 'Asia',
+  'Chosun Ilbo': 'Asia', 'The Chosun Ilbo': 'Asia',
+  'Donga Ilbo': 'Asia',
+  'Yonhap': 'Asia', 'Yonhap News': 'Asia',
+  // SE Asia → Asia
+  'Jakarta Post': 'Asia', 'Bangkok Post': 'Asia',
+  'Straits Times': 'Asia', 'Philippine Daily Inquirer': 'Asia',
+  // Singapur (extra) → Asia
+  'Channel News Asia': 'Asia', 'CNA': 'Asia',
+  'The Business Times': 'Asia', 'Business Times Singapore': 'Asia',
+  'TODAY': 'Asia', 'TODAYonline': 'Asia',
+  // Indonesia (extra) → Asia
+  'Jakarta Globe': 'Asia',
+  'Tempo': 'Asia', 'Tempo English': 'Asia',
+  'Tirto': 'Asia', 'Tirto.id': 'Asia',
+  'Antara News': 'Asia', 'Antara': 'Asia',
+  'Kompas': 'Asia',
+  // LATAM
+  'Clarín': 'LATAM', 'Clarin': 'LATAM',
+  'La Nación': 'LATAM', 'La Nacion': 'LATAM',
+  'Infobae': 'LATAM',
+  'El Universal': 'LATAM', 'El Mercurio': 'LATAM',
+  'El Espectador': 'LATAM', 'Folha de S.Paulo': 'LATAM',
+  'Folha': 'LATAM', 'O Globo': 'LATAM', 'Estadão': 'LATAM',
+  'Milenio': 'LATAM',
+  // África
+  'Daily Maverick': 'África', 'Mail & Guardian': 'África',
+  'Premium Times': 'África', 'Africa Report': 'África',
+  'The Africa Report': 'África', 'AllAfrica': 'África',
+  // Rusia
+  'Moscow Times': 'Rusia', 'The Moscow Times': 'Rusia', 'Meduza': 'Rusia',
+  // Australia
+  'Sydney Morning Herald': 'Australia', 'The Australian': 'Australia',
+  // Turquía
+  'Hurriyet': 'Turquía', 'Daily Sabah': 'Turquía',
+  // Multilateral / Análisis
+  'Project Syndicate': 'Multilateral',
+  'Foreign Policy': 'Multilateral', 'Foreign Affairs': 'Multilateral',
+};
+
+const REGION_MIN = {
+  'USA': 0,          // sin mín (cap máx 6)
+  'UK': 0,           // sin mín (cap máx 4)
+  'Europa Occ': 2,
+  'Europa Este': 1,
+  'Oriente Medio': 2,
+  'Asia': 5,         // India + Asia Este + China + Corea + SE Asia + Singapur + Indonesia
+  'LATAM': 4,
+  'África': 1,
+  'Económico Global': 2,
+  'Rusia': 0,        // opcional: solo si hay noticia
+  'Australia': 0,
+  'Turquía': 0,
+  'Multilateral': 0,
+};
+
+const REGION_EMOJI = {
+  'USA': '🇺🇸', 'UK': '🇬🇧',
+  'Europa Occ': '🇪🇺', 'Europa Este': '🌍',
+  'Oriente Medio': '🕌',
+  'Asia': '🌏', 'LATAM': '🌎', 'África': '🌍',
+  'Económico Global': '💰', 'Rusia': '🇷🇺',
+  'Australia': '🇦🇺', 'Turquía': '🇹🇷',
+  'Multilateral': '🌐', 'Otros': '⚪',
+};
+
+function classifyRegion(source) {
+  if (!source) return 'Otros';
+  return SOURCE_TO_REGION[source] || 'Otros';
+}
+
+// ============ MAPA DE REGIONES INTERNACIONAL (END) ============
+
 // ============ PAYWALL SOURCES (paywall fuerte) ============
 // Estas fuentes requieren suscripción para acceder al contenido completo.
 // Se marcan con _isPaywall: true para que el frontend muestre 🔒
 const PAYWALL_SOURCES = new Set([
   // España
-  'El País', 'El Mundo', 'ABC', 'El Español', 'InfoLibre', 'La Vanguardia',
+  'El País', 'El Mundo', 'ABC', 'El Español', 'InfoLibre', 'La Vanguardia', 'Cinco Días',
   // Internacional - paywall fuerte
   'New York Times', 'NYT', 'Washington Post', 'WaPo',
   'Wall Street Journal', 'WSJ',
@@ -309,6 +451,8 @@ const PAYWALL_SOURCES = new Set([
   'The Economist', 'Foreign Affairs', 'Foreign Policy',
   'The Spectator', 'Le Monde', 'Le Figaro',
   'Haaretz', 'Japan Times', 'Clarín', 'El Mercurio', 'The New Yorker',
+  'South China Morning Post', 'SCMP', 'Caixin', 'Caixin Global',
+  'The Business Times', 'Business Times Singapore',
 ]);
 
 function isPaywallSource(sourceName) {
@@ -561,6 +705,8 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
     'Crónica Global': 5,
     'OK Diario Baleares': 4,
     'elDiario.es Baleares': 4,
+    'El Debate Baleares': 4,
+    'Cinco Días': 6,
     'Economía de Mallorca': 4,
     'El País': 8,
     'El Español': 8,
@@ -827,8 +973,8 @@ WORLDNEWS (hasta 20 piezas: noticias + reportajes + análisis):
 - 🎯 OBJETIVO: equilibrio entre PIEZAS CORTAS (noticias breaking) y PIEZAS LARGAS (reportajes, investigaciones, análisis profundos, perfiles, dossiers).
 
 ⭐⭐⭐ PRIORIDAD FUENTES GRATIS sobre paywall (CRÍTICO) ⭐⭐⭐
-- 🔓 GRATIS internacional: Politico, The Hill, Project Syndicate, Reuters, MarketWatch, Quartz, The Guardian, UnHerd, Kyiv Independent, Moscow Times, Times of Israel, The Hindu, Indian Express, Jakarta Post, Bangkok Post, Premium Times, El Espectador, Infobae, Mail&Guardian, National Review
-- 🔒 PAYWALL: NYT, WaPo, WSJ, The Atlantic, Bloomberg, FT, The Economist, Foreign Affairs, Foreign Policy, The Spectator, Le Monde, Le Figaro, Haaretz, Japan Times, Clarín, El Mercurio, New Yorker
+- 🔓 GRATIS internacional: Politico, The Hill, Project Syndicate, Reuters, MarketWatch, Quartz, The Guardian, UnHerd, Kyiv Independent, Moscow Times, Times of Israel, The Hindu, Indian Express, Jakarta Post, Bangkok Post, Premium Times, El Espectador, Infobae, Mail&Guardian, National Review, Global Times, China Daily, Sixth Tone, Korea Herald, Korea Times, Hankyoreh, Channel News Asia, TODAYonline, Jakarta Globe, Tempo
+- 🔒 PAYWALL: NYT, WaPo, WSJ, The Atlantic, Bloomberg, FT, The Economist, Foreign Affairs, Foreign Policy, The Spectator, Le Monde, Le Figaro, Haaretz, Japan Times, Clarín, El Mercurio, New Yorker, SCMP, Caixin, The Business Times Singapore
 - Si el mismo tema está en una fuente gratis y una de pago, ELIGE LA GRATIS.
 - Solo usa pago si cubre un ángulo único no disponible en gratis ese día.
 - Las de pago aparecen marcadas con 🔒 cuando son necesarias.
@@ -848,6 +994,18 @@ ESTRATEGIA DE BÚSQUEDA DE PIEZAS LARGAS (ejecuta estas búsquedas adicionales p
 - site:foreignpolicy.com 2026
 - site:theguardian.com "long read" 2026
 - site:project-syndicate.org 2026
+- site:scmp.com 2026 (China perspectiva HK)
+- site:caixinglobal.com 2026 (China negocios)
+- site:globaltimes.cn 2026 (China narrativa oficial)
+- site:chinadaily.com.cn 2026 (China voz oficial)
+- site:sixthtone.com 2026 (China cultura/sociedad)
+- site:koreaherald.com 2026 (Corea del Sur política)
+- site:koreajoongangdaily.joins.com 2026 (Corea del Sur económico)
+- site:english.hani.co.kr 2026 (Corea del Sur izquierda)
+- site:channelnewsasia.com 2026 (Singapur regional asiático)
+- site:businesstimes.com.sg 2026 (Singapur económico)
+- site:jakartaglobe.id 2026 (Indonesia)
+- site:en.tempo.co 2026 (Indonesia investigativo)
 
 PIEZAS LARGAS RECONOCIBLES POR:
 - Título largo y descriptivo (no titular telegráfico de agencia)
@@ -864,15 +1022,20 @@ CHECKLIST ANTES DE DEVOLVER JSON FINAL:
   · 🇪🇺 Europa Occidental (FR/DE/IT): MÍNIMO 2
   · 🌍 Europa Este (Ucrania/Polonia): MÍNIMO 1
   · 🕌 Oriente Medio (Israel/Mundo árabe): MÍNIMO 2
-  · 🇮🇳 India: MÍNIMO 1
-  · 🌏 Asia Este (Japón/China/Corea): MÍNIMO 1
-  · 🌏 Sudeste Asiático (Singapur/Indonesia/Tailandia/Filipinas): MÍNIMO 1
-  · 🌎 LATAM (Argentina/México/Brasil/Colombia/Chile): MÍNIMO 2
+  · 🌏 ASIA (India + China + Japón + Corea + SE Asia): MÍNIMO 5 ⭐⭐ INELUDIBLE
+    - China: SCMP, Caixin, Global Times, China Daily, Sixth Tone (mezcla independiente + oficial)
+    - Japón: Japan Times, Asahi, Yomiuri, Nikkei Asia
+    - Corea del Sur: Korea Herald, Korea Times, Korea JoongAng Daily, Hankyoreh, Chosun Ilbo, Yonhap
+    - India: The Hindu, Indian Express, Times of India, Hindustan Times
+    - Singapur: Straits Times, Channel News Asia (CNA), The Business Times, TODAYonline
+    - Indonesia: Jakarta Post, Jakarta Globe, Tempo, Antara, Kompas
+    - SE Asia general: Bangkok Post (Tailandia), Philippine Daily Inquirer
+  · 🌎 LATAM (Argentina/México/Brasil/Colombia/Chile): MÍNIMO 4 ⭐⭐ INELUDIBLE
   · 🌍 África (Sudáfrica/Nigeria/Kenia): MÍNIMO 1
-  · 💰 Económico global (Bloomberg/Reuters/FT/Forbes): MÍNIMO 2
-  · 🇷🇺 Rusia: MÍNIMO 1
+  · 💰 Económico global (Bloomberg/Reuters/FT/Forbes/MarketWatch): MÍNIMO 2
+  · 🇷🇺 Rusia: opcional, solo si hay noticia relevante (Moscow Times, Meduza)
   · 🇦🇺 Australia / 🇹🇷 Turquía: opcionales, priorizar si hay material relevante
-- Total mínimos: ~14 piezas garantizadas globalmente, 6 piezas flexibles
+- Total mínimos: ~17 piezas garantizadas globalmente, 3 piezas flexibles
 - Si una región NO tiene material fresco real, deja el slot vacío (PROHIBIDO rellenar con USA/UK extras o inventar piezas)
 - Equilibrio IZQ/DER
 - Mezcla eventos concretos del día CON piezas largas de fondo
@@ -1174,9 +1337,9 @@ Si hay candidatas válidas de estos medios, INCLÚYELAS en este orden de prefere
 REGLAS DE SELECCIÓN (en orden de prioridad):
 1. Selecciona piezas con autor real cuando sea posible. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" "/elsubjetivo/" o similar, también CUENTAN como columna válida. EXCEPCIÓN: items con source "Agenda Pública" o "Artículo 14" pueden incluirse aunque no aparezca autor (Google News no expone el autor, pero los artículos originales son análisis firmados de calidad).
 2. HARD CAPS INVIOLABLES por medio (NO se pueden superar):
-   - Vozpópuli: MÁX 4 columnas ⭐
+   - Vozpópuli: MÁX 5 columnas ⭐⭐ (MÍN 3 si hay material)
    - Artículo 14: MÁX 4 columnas ⭐
-   - The Objective: MÁX 3 columnas
+   - The Objective: MÁX 5 columnas ⭐⭐⭐ (MÍN 2)
    - InfoLibre: MÁX 2 columnas
    - La Gaceta: MÁX 3 columnas
    - Libertad Digital: MÁX 3 columnas
@@ -1186,19 +1349,24 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - El Mundo: MÁX 2 columnas
    - OK Diario: MÁX 2 columnas
    - El Debate: MÁX 2 columnas
-   - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo)
+   - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo · MÍN 1)
+   - Economía de Mallorca: MÁX 2 columnas (regional Baleares · análisis local)
+   - Crónica Global: MÁX 2 columnas (Cataluña · análisis catalán)
 2.bis MÍNIMOS OBLIGATORIOS (condicionales — solo aplican si hay material en CANDIDATAS):
-- Si en CANDIDATAS aparece ≥2 items de "Vozpópuli", DEBES incluir mínimo 2 columnas suyas. ⭐
+- Si en CANDIDATAS aparece ≥3 items de "Vozpópuli", DEBES incluir mínimo 3 columnas suyas (cap MÁX 5). ⭐⭐ INELUDIBLE
 - Si aparece ≥2 items de "Artículo 14", DEBES incluir mínimo 2 columnas suyas. ⭐
-- Si aparece ≥2 items de "The Objective", DEBES incluir mínimo 3 columnas suyas (cap MÁX 3). ⭐⭐⭐ INELUDIBLE
-- Si aparece ≥2 items de "elDiario.es", DEBES incluir mínimo 2 columnas suyas.
-- Si aparece ≥2 items de "InfoLibre", DEBES incluir mínimo 2 columnas suyas.
+- Si aparece ≥2 items de "The Objective", DEBES incluir mínimo 2 columnas suyas (cap MÁX 5). ⭐⭐⭐ INELUDIBLE
+- Si aparece ≥1 item de "elDiario.es", DEBES incluir mínimo 1 columna suya.
+- Si aparece ≥1 item de "InfoLibre", DEBES incluir mínimo 1 columna suya.
 - Si aparece ≥2 items de "Libertad Digital", DEBES incluir mínimo 2 columnas suyas.
 - Si aparece ≥1 item de "La Gaceta", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "Agenda Pública" o "El País", DEBES incluir mínimo 1 de cada uno.
 - Si aparece ≥1 item de "El Mundo", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "OK Diario", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "El Debate", DEBES incluir mínimo 1.
+- Si aparece ≥1 item de "El Blog Salmón", DEBES incluir mínimo 1.
+- Si aparece ≥1 item de "Economía de Mallorca", DEBES incluir mínimo 1 (foco Baleares).
+- Si aparece ≥1 item de "Crónica Global", DEBES incluir mínimo 1 (perspectiva catalana).
 
 CHEQUEO PRE-RESPUESTA OBLIGATORIO:
 Antes de devolver el JSON, RECUENTA cuántas columnas hay de cada medio prioritario.
@@ -1354,11 +1522,11 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         // Si el modelo no cumple los mínimos obligatorios, FORZAR añadiendo del pool de candidatos
         // SOLO se fuerzan piezas que pasen isOpinionLike (autor real, no sumarios, no editoriales)
         const REQUIRED_MIN = {
-          'Vozpópuli': 2,
+          'Vozpópuli': 3,
           'Artículo 14': 2,
-          'The Objective': 3,
-          'elDiario.es': 2,
-          'InfoLibre': 2,
+          'The Objective': 2,
+          'elDiario.es': 1,
+          'InfoLibre': 1,
           'La Gaceta': 1,
           'Libertad Digital': 2,
           'Agenda Pública': 1,
@@ -1366,6 +1534,9 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           'El Mundo': 1,
           'OK Diario': 1,
           'El Debate': 1,
+          'El Blog Salmón': 1,
+          'Economía de Mallorca': 1,
+          'Crónica Global': 1,
         };
 
         let items = briefing.spainOpinion || [];
@@ -1574,7 +1745,7 @@ ${longCount >= 5
 REGLAS DE SELECCIÓN:
 0. ⭐ PRIORIDAD FUENTES GRATIS sobre paywall (CRÍTICO):
    - 🔓 GRATIS: Vozpópuli, Artículo 14, OK Diario, Libertad Digital, La Gaceta, El Debate, Demócrata, Agenda Pública, El Blog Salmón, Crónica Global, The Objective, elDiario.es
-   - 🔒 PAYWALL: El País, El Mundo, ABC, El Español, InfoLibre, La Vanguardia
+   - 🔒 PAYWALL: El País, El Mundo, ABC, El Español, InfoLibre, La Vanguardia, Cinco Días
    - Si el mismo evento/tema está cubierto por una gratis y una de pago, ELIGE LA GRATIS.
    - Solo selecciona una de pago si cubre un tema/ángulo único que ninguna gratis trata ese día.
    - Esto NO elimina las de pago: aparecen marcadas con 🔒 si son necesarias.
@@ -1584,11 +1755,43 @@ REGLAS DE SELECCIÓN:
 4. DESCARTA: columnas firmadas de opinión solitaria, contenido evergreen sin actualidad, editoriales institucionales.
 5. IDEAL si hay corpus suficiente: MÁX 4 piezas mismo medio, MÍN 7 medios distintos.
 6. ACEPTABLE si corpus limitado: hasta 4 piezas mismo medio, mín 4 medios distintos.
-7. PLURALIDAD: prioriza incluir al menos 1 pieza de El País o elDiario.es o InfoLibre (voces izquierda), y al menos 1 de La Vanguardia (perspectiva catalana) si hay material relevante.
-7.bis BALEARES PRIORITARIO: si en CANDIDATAS aparece al menos 1 item con source "OK Diario Baleares", "elDiario.es Baleares" o "Economía de Mallorca", PRIORIZA incluir 1-2 noticias de Baleares. Si no hay material apropiado, no fuerces.
-7.ter DEMÓCRATA OBLIGATORIO: si en CANDIDATAS aparece al menos 1 item con source "Demócrata", DEBES incluir mínimo 1 pieza suya. ⭐ INELUDIBLE.
+7. MEDIOS PRIORITARIOS — MÍNIMOS OBLIGATORIOS (condicionales si hay material en CANDIDATAS):
+   GENERALISTAS NÚCLEO (mín 2-4 cada uno si hay material):
+   · Vozpópuli ⭐⭐: MÍN 4 (MÁX 6) — fuente principal
+   · El País: MÍN 2 (paywall, ángulo centro-izquierda)
+   · elDiario.es: MÍN 2 (izquierda, gratis)
+   · Libertad Digital: MÍN 2 (derecha clásica)
+   · The Objective ⭐: MÍN 3 (análisis centro, MÁX 4)
+
+   COMPLEMENTARIOS (mín 1 cada uno si hay ≥1 item):
+   · ABC, La Gaceta, OK Diario, El Debate, InfoLibre, Crónica Global, La Vanguardia: MÍN 1
+
+   ⭐ ECONÓMICO OBLIGATORIO: Invertia + Economía de Mallorca + Cinco Días cuentan como bloque económico.
+     Si entre los tres aparecen ≥3 items, DEBES incluir mínimo 3 piezas económicas.
+     Si hay menos material, inclúyelo todo.
+
+   ⭐ REGIONALES BALEARES OBLIGATORIO: si aparece ≥2 items totales entre "OK Diario Baleares",
+     "elDiario.es Baleares" y "El Debate Baleares", DEBES incluir mínimo 2 piezas baleares
+     (hasta 3 máximo). Si solo hay 1, incluir esa 1.
+
+   ⭐⭐ DEMÓCRATA INELUDIBLE: si aparece ≥2 items de "Demócrata", DEBES incluir mínimo 2 piezas suyas.
+       Si solo hay 1, incluir esa 1.
+
+   Suma de mínimos posibles: ~25 piezas obligatorias.
+   El modelo debe respetar los mínimos OBLIGATORIOS (⭐⭐) y luego priorizar lo demás según relevancia.
+
 8. Equilibrio temático: política, economía, sociedad, sucesos, internacional con foco España.
 9. Mejor pocas piezas relevantes y frescas que muchas mediocres o forzadas.
+
+CHEQUEO PRE-RESPUESTA OBLIGATORIO:
+Antes de devolver el JSON, RECUENTA cuántas noticias hay de cada medio prioritario y verifica los mínimos:
+- ¿Tienes 4 de Vozpópuli si aparecían ≥4? (⭐⭐ INELUDIBLE)
+- ¿Tienes 3 de The Objective si aparecían ≥3? (⭐⭐ INELUDIBLE)
+- ¿Tienes 2 de El País, elDiario.es, LD si aparecían?
+- ¿Tienes 2 de Demócrata si aparecían ≥2? (⭐⭐ INELUDIBLE)
+- ¿Tienes 3 económicas (Invertia + Eco Mallorca + Cinco Días) si aparecían ≥3? (⭐ OBLIGATORIO)
+- ¿Tienes 2 baleares (OK Bal + eDS Bal + El Debate Bal) si aparecía material?
+Si faltan mínimos y hay items disponibles en CANDIDATAS, reemplaza piezas "rellenas" por las que faltan.
 
 Para cada pieza seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO).
 
@@ -1662,15 +1865,134 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
               publishedDate: longItem.publishedDate,
               _forcedLong: true,
             });
-            enforcementLog.push(`+ ${longItem.source}: ${longItem.title.slice(0, 60)}...`);
+            selectedUrls.add(longItem.url);
+            enforcementLog.push(`📊 ${longItem.source}: ${longItem.title.slice(0, 60)}...`);
+          }
+        }
+
+        // ⭐ ENFORCEMENT MÍNIMOS POR MEDIO: si el modelo no respeta los mínimos, forzar
+        const REQUIRED_MIN_NEWS = {
+          'Vozpópuli': 4,
+          'El País': 2,
+          'elDiario.es': 2,
+          'Libertad Digital': 2,
+          'The Objective': 3,
+          'ABC': 1,
+          'La Gaceta': 1,
+          'OK Diario': 1,
+          'El Debate': 1,
+          'InfoLibre': 1,
+          'Crónica Global': 1,
+          'La Vanguardia': 1,
+          'Demócrata': 2,
+        };
+        // Cuotas máx para no pasarse al forzar
+        const MAX_CAP_NEWS = {
+          'Vozpópuli': 6, 'El País': 3, 'elDiario.es': 3,
+          'Libertad Digital': 3, 'The Objective': 4,
+          'ABC': 2, 'La Gaceta': 2, 'OK Diario': 2, 'El Debate': 2,
+          'InfoLibre': 2, 'Crónica Global': 2, 'La Vanguardia': 2,
+          'Demócrata': 3,
+        };
+
+        const countNewsPerSource = () => (briefing.spainNews || []).reduce((acc, x) => {
+          acc[x.source] = (acc[x.source] || 0) + 1;
+          return acc;
+        }, {});
+
+        for (const [source, requiredMin] of Object.entries(REQUIRED_MIN_NEWS)) {
+          const currentCounts = countNewsPerSource();
+          const current = currentCounts[source] || 0;
+          // Solo forzar si hay candidatos disponibles de ese medio
+          const availableFromSource = candidates.filter(c =>
+            c.source === source && !selectedUrls.has(c.url)
+          );
+          if (availableFromSource.length === 0) continue;
+          if (current >= requiredMin) continue;
+          const missing = requiredMin - current;
+          const toAdd = availableFromSource.slice(0, missing);
+          for (const item of toAdd) {
+            briefing.spainNews.push({
+              rank: briefing.spainNews.length + 1,
+              title: item.title,
+              summary: (item.description || '').slice(0, 250) + (item.description && item.description.length > 250 ? '...' : ''),
+              source: item.source,
+              url: item.url,
+              publishedDate: item.publishedDate,
+              _forcedMin: true,
+            });
+            selectedUrls.add(item.url);
+            enforcementLog.push(`📰 ${item.source}: ${item.title.slice(0, 60)}...`);
+          }
+        }
+
+        // ⭐ ENFORCEMENT ECONÓMICO: Invertia + Economía de Mallorca + Cinco Días → mínimo 3 combinados
+        const economicoSources = ['Invertia', 'Economía de Mallorca', 'Cinco Días'];
+        const currentCountsEcon = countNewsPerSource();
+        const economicoCurrent = economicoSources.reduce((sum, s) => sum + (currentCountsEcon[s] || 0), 0);
+        const economicoTargetMin = 3;
+        if (economicoCurrent < economicoTargetMin) {
+          const missingEcon = economicoTargetMin - economicoCurrent;
+          const availableEcon = candidates.filter(c =>
+            economicoSources.includes(c.source) && !selectedUrls.has(c.url)
+          );
+          const toAddEcon = availableEcon.slice(0, missingEcon);
+          for (const item of toAddEcon) {
+            briefing.spainNews.push({
+              rank: briefing.spainNews.length + 1,
+              title: item.title,
+              summary: (item.description || '').slice(0, 250) + (item.description && item.description.length > 250 ? '...' : ''),
+              source: item.source,
+              url: item.url,
+              publishedDate: item.publishedDate,
+              _forcedMin: true,
+              _economicoPriority: true,
+            });
+            selectedUrls.add(item.url);
+            enforcementLog.push(`💰 ${item.source}: ${item.title.slice(0, 60)}...`);
+          }
+        }
+
+        // ⭐ ENFORCEMENT BALEARES: OK Diario Baleares + elDiario.es Baleares + El Debate Baleares → mínimo 2 (máx 3)
+        const baleariesSources = ['OK Diario Baleares', 'elDiario.es Baleares', 'El Debate Baleares'];
+        const currentCounts2 = countNewsPerSource();
+        const baleariesCurrent = baleariesSources.reduce((sum, s) => sum + (currentCounts2[s] || 0), 0);
+        const baleariesTargetMin = 2;
+        if (baleariesCurrent < baleariesTargetMin) {
+          const missingBaleares = baleariesTargetMin - baleariesCurrent;
+          const availableBalearies = candidates.filter(c =>
+            baleariesSources.includes(c.source) && !selectedUrls.has(c.url)
+          );
+          const toAddBaleares = availableBalearies.slice(0, missingBaleares);
+          for (const item of toAddBaleares) {
+            briefing.spainNews.push({
+              rank: briefing.spainNews.length + 1,
+              title: item.title,
+              summary: (item.description || '').slice(0, 250) + (item.description && item.description.length > 250 ? '...' : ''),
+              source: item.source,
+              url: item.url,
+              publishedDate: item.publishedDate,
+              _forcedMin: true,
+              _baleariesPriority: true,
+            });
+            selectedUrls.add(item.url);
+            enforcementLog.push(`🏝️ ${item.source}: ${item.title.slice(0, 60)}...`);
           }
         }
 
         // Marcar con _isPaywall las piezas de fuentes paywall
+        // Marcar con _detectedLong las piezas que son largas (incluyendo las que el modelo seleccionó)
         if (Array.isArray(briefing.spainNews)) {
           briefing.spainNews.forEach(item => {
             if (item && isPaywallSource(item.source)) {
               item._isPaywall = true;
+            }
+            // Marcar como larga si no estaba ya marcada por enforcement
+            if (item && !item._forcedLong) {
+              const candidateMatch = candidates.find(c => c.url === item.url);
+              if (candidateMatch && isLongFormPiece(candidateMatch)) {
+                item._detectedLong = true;
+              }
             }
           });
         }
@@ -1819,6 +2141,39 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         ? `⚠️ Solo ${longCount}/${targetLongIntl} piezas largas detectadas en worldNews. El modelo debería incluir más reportajes/análisis (NYT investigations, Atlantic features, FT big reads, etc.).`
         : null;
 
+      // ⭐ CLASIFICACIÓN POR REGIÓN + conteo
+      const regionCounts = {};
+      worldNewsArr.forEach(piece => {
+        const region = classifyRegion(piece.source);
+        piece._region = region;
+        regionCounts[region] = (regionCounts[region] || 0) + 1;
+      });
+
+      // Detectar regiones donde faltan mínimos
+      const regionWarnings = Object.entries(REGION_MIN)
+        .filter(([region, min]) => min > 0 && (regionCounts[region] || 0) < min)
+        .map(([region, min]) => ({
+          region,
+          current: regionCounts[region] || 0,
+          min,
+          emoji: REGION_EMOJI[region] || '⚪',
+        }));
+
+      // Generar string visual del contador por región
+      const regionOrder = [
+        'USA', 'UK', 'Europa Occ', 'Europa Este', 'Oriente Medio',
+        'Asia', 'LATAM', 'África',
+        'Económico Global', 'Rusia', 'Australia', 'Turquía', 'Multilateral', 'Otros',
+      ];
+      const regionCounterString = regionOrder
+        .filter(r => (regionCounts[r] || 0) > 0)
+        .map(r => `${REGION_EMOJI[r] || '⚪'} ${r}: ${regionCounts[r]}`)
+        .join(' · ');
+
+      const regionWarningString = regionWarnings.length > 0
+        ? `⚠️ Faltan mínimos en: ${regionWarnings.map(w => `${w.emoji} ${w.region} (${w.current}/${w.min})`).join(', ')}`
+        : null;
+
       briefing._meta = {
         ...briefing._meta,
         intlOpinionCandidatesCount: intlOpinionCandidates.length,
@@ -1830,9 +2185,15 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         paywallCounts: { news: paywallNews, opinion: paywallOp },
         freeCounts: { news: freeNews, opinion: freeOp },
         longWarning,
+        regionCounts,
+        regionMin: REGION_MIN,
+        regionWarnings,
+        regionCounterString,
       };
 
       const intlNotes = [];
+      if (regionCounterString) intlNotes.push(regionCounterString);
+      if (regionWarningString) intlNotes.push(regionWarningString);
       if (longWarning) intlNotes.push(longWarning);
       intlNotes.push(`Noticias: 📊 ${freeNews} gratis · 🔒 ${paywallNews} paywall`);
       intlNotes.push(`Opinión: 📊 ${freeOp} gratis · 🔒 ${paywallOp} paywall`);
