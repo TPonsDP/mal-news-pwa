@@ -1004,7 +1004,7 @@ export default function App() {
     3: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
     4: { hour: 19, minute: 0,  label: 'Día de Estefanía Molina y Agustín Valladolid' },
     5: { hour: 19, minute: 0,  label: 'Cierra la semana laboral' },
-    6: { hour: 12, minute: 0,  label: 'Mañana relajada de sábado' },
+    6: { hour: 19, minute: 0,  label: 'Tarde de sábado · cierre semanal' },
     0: { hour: 19, minute: 0,  label: 'Domingo completo · FJL, Pedro J., Cebrián' },
   };
 
@@ -1014,7 +1014,7 @@ export default function App() {
     3: { hour: 21, minute: 30, label: 'Pico US business · LATAM activo' },
     4: { hour: 21, minute: 30, label: 'US tarde · Europa cerrada · LATAM peak' },
     5: { hour: 21, minute: 30, label: 'Cierre semanal · setup de fin de semana US' },
-    6: { hour: 18, minute: 0,  label: 'US Saturday cycle · LATAM despertando' },
+    6: { hour: 21, minute: 30, label: 'Sábado tarde · US weekend cycle · LATAM activo' },
     0: { hour: 18, minute: 30, label: 'NYT Sunday Review · WSJ Weekend · análisis dominical' },
   };
 
@@ -1348,7 +1348,10 @@ export default function App() {
 
   const intlSections = intlData ? [
     { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 20, type: 'news',
-      descriptor: 'Cobertura global plural · ≥6 regiones · equilibrio IZQ/DER · incluye sentencias relevantes', groupByContinent: true },
+      descriptor: 'Cobertura global plural · ≥6 regiones · equilibrio IZQ/DER · incluye sentencias relevantes · 5 piezas largas mín',
+      note: intlData._note,
+      meta: intlData._meta,
+      groupByContinent: true },
     { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 8, type: 'opinion',
       descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto',
       note: intlData._note,
