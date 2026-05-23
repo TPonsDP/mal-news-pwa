@@ -64,7 +64,12 @@ const SPAIN_OPINION_FEEDS = [
 // Cubre eventos del día: política, economía, sociedad, sucesos.
 const SPAIN_NEWS_FEEDS = [
   // RSS oficiales directos (los que tengan)
+  // ABC - múltiples URLs y Google News fallback
   { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_PortadaCompleta.xml' },
+  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abcPortada.xml' },
+  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_ultima.xml' },
+  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_espana.xml' },
+  { source: 'ABC', url: 'https://news.google.com/rss/search?q=site:abc.es&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada' },
   { source: 'The Objective', url: 'https://theobjective.com/feed/' },
   { source: 'La Gaceta', url: 'https://gaceta.es/feed/' },
@@ -72,16 +77,26 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'El Español', url: 'https://www.elespanol.com/rss' },
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
   { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/' },
+  // La Vanguardia - múltiples URLs
   { source: 'La Vanguardia', url: 'https://www.lavanguardia.com/mvc/feed/rss/home' },
+  { source: 'La Vanguardia', url: 'https://www.lavanguardia.com/rss/home.xml' },
+  { source: 'La Vanguardia', url: 'https://www.lavanguardia.com/mvc/feed/rss/politica' },
+  { source: 'La Vanguardia', url: 'https://news.google.com/rss/search?q=site:lavanguardia.com&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/rss' },
 
-  // Demócrata - WordPress feed estándar + alternativos
+  // Demócrata - WordPress feed + Google News fallback
   { source: 'Demócrata', url: 'https://democrata.es/feed/' },
   { source: 'Demócrata', url: 'https://democrata.es/rss/' },
+  { source: 'Demócrata', url: 'https://www.democrata.es/feed/' },
+  { source: 'Demócrata', url: 'https://news.google.com/rss/search?q=site:democrata.es&hl=es-ES&gl=ES&ceid=ES:es' },
 
   // BALEARES regional
   { source: 'OK Diario Baleares', url: 'https://okdiario.com/baleares/feed/' },
+  // elDiario.es Baleares - múltiples URLs
   { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/illes-balears/rss/' },
+  { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/balears/rss/' },
+  { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/illes-balears/rss.xml' },
+  { source: 'elDiario.es Baleares', url: 'https://news.google.com/rss/search?q=site:eldiario.es/illes-balears&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Economía de Mallorca', url: 'https://www.economiademallorca.com/feed/' },
 
   // Google News RSS (fallback solo para medios sin RSS público fiable)
@@ -399,6 +414,51 @@ const NEWS_TITLE_PATTERNS = [
 ];
 
 function isOpinionRSSItem(item) {
+  // ⭐ MODO LENIENT para feeds/sources que SON 100% opinión:
+  // estos no siempre exponen <author> en el RSS pero son opinión por naturaleza
+  const OPINION_ONLY_SOURCES = new Set([
+    'Artículo 14',
+    'Agenda Pública',
+    'El Blog Salmón',
+  ]);
+  const url = String(item.url || '');
+  const fromUrl = String(item._fromUrl || '').toLowerCase(); // URL del feed origen
+  const isOpinionUrlPath = /\/opinion\//i.test(url)
+    || /\/editoriales?\//i.test(url)
+    || /\/columna[s]?\//i.test(url)
+    || /\/editorial\//i.test(url)
+    || /\/elsubjetivo\//i.test(url)
+    || /\/firmas\//i.test(url)
+    || /\/tribuna\//i.test(url);
+  // ⭐ NUEVO: detectar si vino de un FEED de opinión (caso Google News)
+  // Google News usa URLs codificadas en el <link>, así que mirar item.url no basta.
+  // Usamos _fromUrl (la URL del feed) para saber si el query era de opinión.
+  const isFromOpinionFeed = fromUrl.includes('opinion')
+    || fromUrl.includes('articulo14.es')      // Artículo 14 = 100% opinión
+    || fromUrl.includes('agendapublica')       // Agenda Pública = 100% opinión
+    || fromUrl.includes('elblogsalmon')        // El Blog Salmón = 100% opinión/análisis
+    || fromUrl.includes('elsubjetivo')
+    || fromUrl.includes('/category/opinion')
+    || fromUrl.includes('googlenews+opinion')
+    || /news\.google\.com.*site%3A[^&]*(?:\/opinion|articulo14|agendapublica|elblogsalmon)/i.test(fromUrl);
+  const isOpinionOnlySource = OPINION_ONLY_SOURCES.has(item.source);
+
+  // En modo lenient, aceptamos sin requerir autor (pero verificamos patrones de news en título)
+  if (isOpinionOnlySource || isOpinionUrlPath || isFromOpinionFeed) {
+    // Aún rechazamos editorial/sumario explícito
+    const authorLow = String(item.author || '').toLowerCase().trim();
+    if (authorLow.includes('redacción') || authorLow.includes('redaccion')) return false;
+    if (authorLow === 'editorial' || authorLow === 'opinión' || authorLow === 'opinion') return false;
+    if (authorLow.includes('sumario')) return false;
+    // Rechaza patrones noticia en título
+    const titleLenient = String(item.title || '').trim();
+    for (const pattern of NEWS_TITLE_PATTERNS) {
+      if (pattern.test(titleLenient)) return false;
+    }
+    return true;
+  }
+
+  // Modo estricto: requiere autor real
   if (!item.author) return false;
   const author = String(item.author).trim();
   if (!author) return false;
@@ -412,45 +472,27 @@ function isOpinionRSSItem(item) {
   if (authorLow.includes('redacción') || authorLow.includes('redaccion')) return false;
   if (authorLow === 'editorial' || authorLow === 'opinión' || authorLow === 'opinion') return false;
   if (authorLow.includes('sumario')) return false;
-  // Agencias de noticias = noticia
   if (['efe', 'europa press', 'reuters', 'ap', 'afp', 'ansa', 'dpa'].includes(authorLow)) return false;
-  // Multi-autores = noticia
   if (author.includes(' y ') || author.includes(', ')) return false;
-  // Periodista conocido de noticias
   const reporters = KNOWN_NEWS_REPORTERS_GLOBAL[item.source] || [];
   if (reporters.some(r => authorLow === r)) return false;
 
-  // ⭐ REGLA ESTRUCTURAL THE OBJECTIVE:
-  // Solo es opinión si URL contiene /elsubjetivo/ o /autor/ o el autor está en allowlist.
-  // Las noticias de TO están en /sociedad/, /economia/, /politica/, /españa/, /cultura/, etc.
   if (item.source === 'The Objective') {
-    const url = String(item.url || '');
-    const isSubjetivoOrAutor = /\/elsubjetivo\//i.test(url) || /\/autor\//i.test(url);
-    if (!isSubjetivoOrAutor) {
-      // No es URL de opinión Y autor no estaba en allowlist (ya comprobado arriba)
-      return false;
-    }
+    const u = String(item.url || '');
+    const isSubjetivoOrAutor = /\/elsubjetivo\//i.test(u) || /\/autor\//i.test(u);
+    if (!isSubjetivoOrAutor) return false;
   }
 
-  // ⭐ DETECTOR META-DESCRIPCIÓN (3ª persona = news/análisis, no columna):
-  // Si la descripción empieza por el nombre del autor + verbo periodístico neutro,
-  // es una descripción meta del editor, no la voz directa del columnista.
-  // Ejemplo: "Marcos Ondarra analiza cómo..." → meta-descripción → news
-  // (Allowlist al inicio sobrescribe esto, así columnistas conocidos siempre son opinión.)
   const description = String(item.description || '').trim();
   if (description.length > 0) {
     const descLow = description.toLowerCase();
     if (descLow.startsWith(authorLow)) {
       const afterAuthor = description.substring(author.length).trim();
-      // Verbos NEUTROS típicos de meta-descripción de news/análisis (NO de opinión directa)
       const NEUTRAL_REPORT_VERBS = /^(analiza|examina|explica|describe|expone|relata|cuenta|narra|traza|profundiza|repasa|aborda|disecciona|desentraña|desentrana|reseña|resena|informa|detalla|recoge|reconstruye|desvela|revela|publica)/i;
-      if (NEUTRAL_REPORT_VERBS.test(afterAuthor)) {
-        return false; // meta-descripción = news/análisis = no opinión directa
-      }
+      if (NEUTRAL_REPORT_VERBS.test(afterAuthor)) return false;
     }
   }
 
-  // Patrones de título característicos de noticias
   const title = String(item.title || '').trim();
   for (const pattern of NEWS_TITLE_PATTERNS) {
     if (pattern.test(title)) return false;
