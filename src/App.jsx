@@ -523,6 +523,69 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
           </p>
         )}
 
+        {/* Panel CONTADOR POR REGIÓN (solo si meta tiene regionCounts) */}
+        {meta?.regionCounts && Object.keys(meta.regionCounts).length > 0 && (
+          <div style={{
+            marginTop: '10px',
+            padding: '8px 12px',
+            background: 'rgba(255,255,255,0.20)',
+            border: '1px solid rgba(255,255,255,0.40)',
+            borderRadius: '8px',
+            fontSize: '10.5px',
+            fontFamily: "'Verdana', sans-serif",
+            color: 'white',
+            backdropFilter: 'blur(8px)',
+          }}>
+            <div style={{
+              fontWeight: '800',
+              letterSpacing: '0.06em',
+              marginBottom: '6px',
+              fontSize: '10.5px',
+            }}>
+              🌐 PIEZAS POR REGIÓN
+            </div>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '6px 10px',
+              lineHeight: 1.6,
+            }}>
+              {Object.entries(meta.regionCounts)
+                .filter(([_, count]) => count > 0)
+                .sort((a, b) => b[1] - a[1])
+                .map(([region, count]) => {
+                  const min = (meta.regionMin && meta.regionMin[region]) || 0;
+                  const isBelow = min > 0 && count < min;
+                  return (
+                    <span key={region} style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '2px 8px',
+                      background: isBelow ? 'rgba(220,38,38,0.30)' : 'rgba(255,255,255,0.12)',
+                      borderRadius: '4px',
+                      fontWeight: '700',
+                      border: isBelow ? '1px solid rgba(220,38,38,0.50)' : '1px solid transparent',
+                    }}>
+                      <span>{region}</span>
+                      <span style={{ fontWeight: '800' }}>{count}{min > 0 ? `/${min}` : ''}</span>
+                    </span>
+                  );
+                })}
+            </div>
+            {meta.regionWarnings && meta.regionWarnings.length > 0 && (
+              <div style={{
+                marginTop: '6px',
+                fontSize: '10px',
+                opacity: 0.92,
+                fontStyle: 'italic',
+              }}>
+                ⚠️ Faltan mínimos: {meta.regionWarnings.map(w => `${w.region} (${w.current}/${w.min})`).join(' · ')}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Panel de diagnóstico de feeds DENTRO de la cabecera — visible inmediatamente al cargar */}
         {meta?.feedDiagnostic && meta.feedDiagnostic.length > 0 && (
           <details style={{
@@ -1410,7 +1473,7 @@ export default function App() {
     if (spainOpinionStatus === 'loading') return 'Buscando opinión España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainOpinionStatus === 'done') return `🔄 Recargar opinión España (${realSpainOpinionCount})`;
-    return '✍️ Opinión España (hasta 16)';
+    return '✍️ Opinión España (hasta 22)';
   })();
 
   const spainNewsBtnLabel = (() => {
@@ -1844,7 +1907,7 @@ export default function App() {
         {hasAnyData && (
           <div style={{ textAlign: 'center', margin: '0 0 24px', padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <span style={{ fontSize: '11px', color: BRAND.orange, letterSpacing: '0.15em', fontWeight: '700' }}>
-              {totalPieces} / 44 PIEZAS
+              {totalPieces} / 75 PIEZAS
             </span>
             <span style={{ fontSize: '10px', color: 'rgba(30,58,138,0.55)', marginLeft: '12px', fontStyle: 'italic' }}>
               {merged.date}
