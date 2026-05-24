@@ -36,13 +36,20 @@ const SPAIN_OPINION_FEEDS = [
 
   { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml', tier: 'main' },
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/', tier: 'main' },
-  { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/', tier: 'main' },
   { source: 'El Mundo', url: 'https://www.elmundo.es/rss/opinion.xml', tier: 'main' },
   { source: 'OK Diario', url: 'https://www.okdiario.com/opinion/feed/', tier: 'main' },
   { source: 'OK Diario', url: 'https://okdiario.com/autor/graciano-palomo/feed/', tier: 'vip:G.Palomo' },
   { source: 'El Blog Salmón', url: 'https://www.elblogsalmon.com/feed', tier: 'main' },
   { source: 'El Blog Salmón', url: 'https://www.elblogsalmon.com/rss2.xml', tier: 'rss2' },
   { source: 'El Blog Salmón', url: 'https://feeds.weblogssl.com/elblogsalmon', tier: 'weblogssl' },
+
+  // 📰 IZQUIERDA - voces alternativas (gratis)
+  { source: 'Huffington Post', url: 'https://www.huffingtonpost.es/seccion/opinion/feed/', tier: 'main' },
+  { source: 'Huffington Post', url: 'https://www.huffingtonpost.es/feed/', tier: 'general' },
+  { source: 'Huffington Post', url: 'https://news.google.com/rss/search?q=site:huffingtonpost.es/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
+  { source: 'Público', url: 'https://www.publico.es/opinion/rss', tier: 'main' },
+  { source: 'Público', url: 'https://blogs.publico.es/feed/', tier: 'blogs' },
+  { source: 'Público', url: 'https://news.google.com/rss/search?q=site:publico.es/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
 
   // El Debate - varias URLs alternativas (A)
   { source: 'El Debate', url: 'https://www.eldebate.com/feed/', tier: 'main' },
@@ -81,13 +88,25 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'La Gaceta', url: 'https://gaceta.es/feed/' },
   { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml' },
   { source: 'El Español', url: 'https://www.elespanol.com/rss' },
+  // OK Diario general (no solo Baleares)
+  { source: 'OK Diario', url: 'https://okdiario.com/feed/' },
+  { source: 'OK Diario', url: 'https://news.google.com/rss/search?q=site:okdiario.com&hl=es-ES&gl=ES&ceid=ES:es' },
+  // El Debate general (no solo Baleares)
+  { source: 'El Debate', url: 'https://www.eldebate.com/feed/' },
+  { source: 'El Debate', url: 'https://www.eldebate.com/rss/' },
+  { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
-  { source: 'InfoLibre', url: 'https://www.infolibre.es/rss/' },
-  // La Vanguardia - múltiples URLs
-  { source: 'La Vanguardia', url: 'https://www.lavanguardia.com/mvc/feed/rss/home' },
-  { source: 'La Vanguardia', url: 'https://www.lavanguardia.com/rss/home.xml' },
-  { source: 'La Vanguardia', url: 'https://www.lavanguardia.com/mvc/feed/rss/politica' },
-  { source: 'La Vanguardia', url: 'https://news.google.com/rss/search?q=site:lavanguardia.com&hl=es-ES&gl=ES&ceid=ES:es' },
+  // 📰 IZQUIERDA alternativa (gratis) - mismos sesgos
+  { source: 'Huffington Post', url: 'https://www.huffingtonpost.es/feed/' },
+  { source: 'Huffington Post', url: 'https://news.google.com/rss/search?q=site:huffingtonpost.es&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Público', url: 'https://www.publico.es/rss' },
+  { source: 'Público', url: 'https://www.publico.es/rss/general' },
+  { source: 'Público', url: 'https://news.google.com/rss/search?q=site:publico.es&hl=es-ES&gl=ES&ceid=ES:es' },
+  // El Nacional.cat - catalán independentista, gratis
+  { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/es/rss' },
+  { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/ca/rss' },
+  { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/es/feed' },
+  { source: 'El Nacional.cat', url: 'https://news.google.com/rss/search?q=site:elnacional.cat&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/rss' },
 
   // Demócrata - WordPress feed + Google News fallback
@@ -485,7 +504,7 @@ function classifyRegion(source) {
 // Se marcan con _isPaywall: true para que el frontend muestre 🔒
 const PAYWALL_SOURCES = new Set([
   // España
-  'El País', 'El Mundo', 'ABC', 'El Español', 'InfoLibre', 'La Vanguardia', 'Cinco Días',
+  'El País', 'El Mundo', 'ABC', 'El Español', 'Cinco Días',
   // Internacional - paywall fuerte
   'New York Times', 'NYT', 'Washington Post', 'WaPo',
   'Wall Street Journal', 'WSJ',
@@ -541,7 +560,6 @@ const KNOWN_OPINION_COLUMNISTS_GLOBAL = [
   'ignacio escolar',
   // La Gaceta
   'josé javier esparza', 'jose javier esparza', 'hughes',
-  // InfoLibre (columnistas, no periodistas)
   'luis arroyo', 'lucila rodríguez-alarcón', 'lucila rodriguez-alarcon',
   // Recién añadidos
   'jose antonio montano', 'josé antonio montano',
@@ -570,12 +588,6 @@ const KNOWN_NEWS_REPORTERS_GLOBAL = {
   'elDiario.es': [
     'javier lillo', 'elena herrera', 'pedro águeda', 'pedro agueda',
     'jose precedo', 'josé precedo', 'pedro simón', 'pedro simon',
-  ],
-  'InfoLibre': [
-    'manuel altozano', 'antonio ruiz valdivia',
-    'marta monforte jaén', 'marta monforte jaen',
-    'álvaro sánchez castrillo', 'alvaro sanchez castrillo',
-    'manuel rico',
   ],
   'Vozpópuli': [
     'alberto sanz', 'efe', 'europa press',
@@ -734,7 +746,6 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
     'Vozpópuli': 12,
     'Artículo 14': 12,
     'The Objective': 10,
-    'InfoLibre': 10,
     'La Gaceta': 8,
     'Libertad Digital': 10,
     'Agenda Pública': 6,
@@ -743,7 +754,7 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
     'ABC': 6,
     'OK Diario': 6,
     'El Blog Salmón': 4,
-    'La Vanguardia': 6,
+    'El Nacional.cat': 6,
     'Crónica Global': 5,
     'OK Diario Baleares': 4,
     'elDiario.es Baleares': 4,
@@ -1289,7 +1300,6 @@ export default async function handler(req, res) {
         'The Objective': ['roberto alcolea', 'juan carlos téllez', 'juan carlos tellez', 'fran serrato', 'luis manuel rafael', 'antonio rodríguez', 'antonio rodriguez'],
         'Libertad Digital': ['paco cobos', 'pablo pardo', 'miguel ángel pérez', 'miguel angel perez', 'miguel puga'],
         'elDiario.es': ['javier lillo', 'elena herrera', 'pedro águeda', 'pedro agueda'],
-        'InfoLibre': ['manuel altozano', 'antonio ruiz valdivia', 'marta monforte jaén', 'marta monforte jaen', 'álvaro sánchez castrillo', 'alvaro sanchez castrillo'],
       };
 
       // Pre-filtro de opinión: marcar candidatos como ✅ COLUMNA o ❌ NOTICIA/EDITORIAL
@@ -1370,10 +1380,11 @@ REGLA IMPORTANTE: si una pieza tiene como author/firma uno de estos nombres, esa
 1. Vozpópuli ⭐
 2. Artículo 14 ⭐
 3. The Objective
-4. InfoLibre
-5. La Gaceta
-6. Libertad Digital
-7. elDiario.es
+4. Huffington Post (izquierda, gratis)
+5. Público (izquierda, gratis)
+6. La Gaceta
+7. Libertad Digital
+8. elDiario.es
 Si hay candidatas válidas de estos medios, INCLÚYELAS en este orden de preferencia hasta el cap de cada uno.
 
 REGLAS DE SELECCIÓN (en orden de prioridad):
@@ -1382,7 +1393,8 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - Vozpópuli: MÁX 5 columnas ⭐⭐ (MÍN 3 si hay material)
    - Artículo 14: MÁX 4 columnas ⭐
    - The Objective: MÁX 5 columnas ⭐⭐⭐ (MÍN 2)
-   - InfoLibre: MÁX 2 columnas
+   - Huffington Post: MÁX 2 columnas (izquierda alternativa, gratis)
+   - Público: MÁX 2 columnas (izquierda alternativa, gratis)
    - La Gaceta: MÁX 3 columnas
    - Libertad Digital: MÁX 3 columnas
    - Agenda Pública: MÁX 2 columnas
@@ -1399,7 +1411,8 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
 - Si aparece ≥2 items de "Artículo 14", DEBES incluir mínimo 2 columnas suyas. ⭐
 - Si aparece ≥2 items de "The Objective", DEBES incluir mínimo 2 columnas suyas (cap MÁX 5). ⭐⭐⭐ INELUDIBLE
 - Si aparece ≥1 item de "elDiario.es", DEBES incluir mínimo 1 columna suya.
-- Si aparece ≥1 item de "InfoLibre", DEBES incluir mínimo 1 columna suya.
+- Si aparece ≥1 item de "Huffington Post", DEBES incluir mínimo 1 columna suya (izquierda).
+- Si aparece ≥1 item de "Público", DEBES incluir mínimo 1 columna suya (izquierda).
 - Si aparece ≥2 items de "Libertad Digital", DEBES incluir mínimo 2 columnas suyas.
 - Si aparece ≥1 item de "La Gaceta", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "Agenda Pública" o "El País", DEBES incluir mínimo 1 de cada uno.
@@ -1428,15 +1441,17 @@ EJEMPLO DE DISTRIBUCIÓN IDEAL si hay corpus suficiente:
 - Vozpópuli: 4 (preferido #1, tope)
 - Artículo 14: 3 (preferido #2)
 - The Objective: 2 (preferido #3)
-- InfoLibre: 2 (preferido #4, mínimo 1)
-- La Gaceta: 2 (preferido #5)
-- Libertad Digital: 2 (preferido #6)
-- elDiario.es: 1 (preferido #7, mínimo 1)
+- Huffington Post: 1 (izquierda, mínimo 1)
+- Público: 1 (izquierda, mínimo 1)
+- La Gaceta: 2 (preferido #6)
+- Libertad Digital: 2 (preferido #7)
+- elDiario.es: 1 (preferido #8, mínimo 1)
 - Agenda Pública: 1 (mínimo)
 - El País: 1 (mínimo)
-- Total: 20 → ajusta a 20 según calidad (objetivo)
+- El Mundo: 1 (mínimo)
+- Total: 19 → ajusta a 20 según calidad (objetivo)
 
-Si un medio preferido no tiene candidatas, completa con los siguientes en orden de preferencia (después la lista de 7 preferidos, viene El Mundo y El País).
+Si un medio preferido no tiene candidatas, completa con los siguientes en orden de preferencia.
 
 Para cada columna seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú).
 
@@ -1495,8 +1510,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           'The Objective': ['roberto alcolea', 'juan carlos téllez', 'juan carlos tellez', 'fran serrato', 'luis manuel rafael', 'antonio rodríguez', 'antonio rodriguez'],
           'Libertad Digital': ['paco cobos', 'pablo pardo', 'miguel ángel pérez', 'miguel angel perez', 'miguel puga'],
           'elDiario.es': ['javier lillo', 'elena herrera', 'pedro águeda', 'pedro agueda'],
-          'InfoLibre': ['manuel altozano', 'antonio ruiz valdivia', 'marta monforte jaén', 'marta monforte jaen', 'álvaro sánchez castrillo', 'alvaro sanchez castrillo'],
-        };
+          };
 
         // ============ FILTRO OPINIÓN ESTRICTO ============
         // Detecta si una pieza es realmente columna firmada (no noticia/editorial/sumario)
@@ -1568,7 +1582,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           'Artículo 14': 2,
           'The Objective': 2,
           'elDiario.es': 1,
-          'InfoLibre': 1,
+          'Huffington Post': 1,
+          'Público': 1,
           'La Gaceta': 1,
           'Libertad Digital': 2,
           'Agenda Pública': 1,
@@ -1734,7 +1749,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         /\/historia[s]?\//i,
         /\/entrevista[s]?\//i,
         /\/elsubjetivo\//i,       // The Objective sección reportajes
-        /\/desentra[ñn]a\//i,     // InfoLibre Desentraña
+        /\/desentra[ñn]a\//i,     // patrón desentraña URL
         /\/long[\-_]?read/i,
         /\/feature[s]?\//i,
         /\/in[\-_]depth\//i,
@@ -1787,7 +1802,7 @@ ${longCount >= 5
 REGLAS DE SELECCIÓN:
 0. ⭐ PRIORIDAD FUENTES GRATIS sobre paywall (CRÍTICO):
    - 🔓 GRATIS: Vozpópuli, Artículo 14, OK Diario, Libertad Digital, La Gaceta, El Debate, Demócrata, Agenda Pública, El Blog Salmón, Crónica Global, The Objective, elDiario.es
-   - 🔒 PAYWALL: El País, El Mundo, ABC, El Español, InfoLibre, La Vanguardia, Cinco Días
+   - 🔒 PAYWALL: El País, El Mundo, ABC, El Español, Cinco Días
    - Si el mismo evento/tema está cubierto por una gratis y una de pago, ELIGE LA GRATIS.
    - Solo selecciona una de pago si cubre un tema/ángulo único que ninguna gratis trata ese día.
    - Esto NO elimina las de pago: aparecen marcadas con 🔒 si son necesarias.
@@ -1806,7 +1821,7 @@ REGLAS DE SELECCIÓN:
    · The Objective ⭐: MÍN 3 (análisis centro, MÁX 4)
 
    COMPLEMENTARIOS (mín 1 cada uno si hay ≥1 item):
-   · ABC, La Gaceta, OK Diario, El Debate, InfoLibre, Crónica Global, La Vanguardia: MÍN 1
+   · ABC, La Gaceta, OK Diario, El Debate, Huffington Post, Público, Crónica Global, El Nacional.cat: MÍN 1
 
    ⭐ ECONÓMICO OBLIGATORIO: Invertia + Economía de Mallorca + Cinco Días cuentan como bloque económico.
      Si entre los tres aparecen ≥3 items, DEBES incluir mínimo 3 piezas económicas.
@@ -1923,9 +1938,10 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           'La Gaceta': 1,
           'OK Diario': 1,
           'El Debate': 1,
-          'InfoLibre': 1,
+          'Huffington Post': 1,
+          'Público': 1,
           'Crónica Global': 1,
-          'La Vanguardia': 1,
+          'El Nacional.cat': 1,
           'Demócrata': 2,
         };
         // Cuotas máx para no pasarse al forzar
@@ -1933,7 +1949,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           'Vozpópuli': 6, 'El País': 3, 'elDiario.es': 3,
           'Libertad Digital': 3, 'The Objective': 4,
           'ABC': 2, 'La Gaceta': 2, 'OK Diario': 2, 'El Debate': 2,
-          'InfoLibre': 2, 'Crónica Global': 2, 'La Vanguardia': 2,
+          'Huffington Post': 2, 'Público': 2,
+          'Crónica Global': 2, 'El Nacional.cat': 2,
           'Demócrata': 3,
         };
 
