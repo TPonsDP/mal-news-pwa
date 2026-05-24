@@ -243,11 +243,14 @@ const INTERNATIONAL_OPINION_FEEDS = [
   // 🇬🇧 UK
   { source: 'The Guardian', url: 'https://www.theguardian.com/commentisfree/rss', tier: 'opinion' },
   { source: 'The Spectator', url: 'https://www.spectator.co.uk/feed', tier: 'main' },
+  { source: 'The Spectator', url: 'https://news.google.com/rss/search?q=site:spectator.co.uk+opinion&hl=en-GB&gl=GB&ceid=GB:en', tier: 'gn-fallback' },
   { source: 'UnHerd', url: 'https://unherd.com/feed/', tier: 'main' },
 
   // 💰 ECONÓMICO GLOBAL
   { source: 'Bloomberg', url: 'https://feeds.bloomberg.com/opinion/news.rss', tier: 'opinion' },
+  { source: 'Bloomberg', url: 'https://news.google.com/rss/search?q=site:bloomberg.com+opinion&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Reuters', url: 'https://www.reutersagency.com/feed/?best-topics=business-finance', tier: 'business' },
+  { source: 'Reuters', url: 'https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'MarketWatch', url: 'https://feeds.marketwatch.com/marketwatch/topstories/', tier: 'main' },
   { source: 'Quartz', url: 'https://qz.com/feed', tier: 'main' },
   { source: 'Forbes', url: 'https://www.forbes.com/business/feed/', tier: 'business' },
@@ -263,13 +266,19 @@ const INTERNATIONAL_OPINION_FEEDS = [
 
   // 🌍 EUROPA ESTE
   { source: 'Kyiv Independent', url: 'https://kyivindependent.com/feed', tier: 'main' },
+  { source: 'Kyiv Independent', url: 'https://kyivindependent.com/rss/', tier: 'alt' },
+  { source: 'Kyiv Independent', url: 'https://news.google.com/rss/search?q=site:kyivindependent.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
 
   // 🇷🇺 RUSIA (independiente)
   { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/opinion', tier: 'opinion' },
+  { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/news', tier: 'news' },
+  { source: 'The Moscow Times', url: 'https://news.google.com/rss/search?q=site:themoscowtimes.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
 
   // 🕌 ORIENTE MEDIO
   { source: 'Haaretz', url: 'https://www.haaretz.com/srv/htz---rss-opinion', tier: 'opinion' },
+  { source: 'Haaretz', url: 'https://news.google.com/rss/search?q=site:haaretz.com+opinion&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Times of Israel', url: 'https://www.timesofisrael.com/feed/', tier: 'main' },
+  { source: 'Times of Israel', url: 'https://news.google.com/rss/search?q=site:timesofisrael.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
 
   // 🇮🇳 INDIA
   { source: 'The Hindu', url: 'https://www.thehindu.com/opinion/feeder/default.rss', tier: 'opinion' },
@@ -278,22 +287,55 @@ const INTERNATIONAL_OPINION_FEEDS = [
   // 🌏 ASIA ESTE
   { source: 'Japan Times', url: 'https://www.japantimes.co.jp/feed/', tier: 'main' },
 
+  // 🇨🇳 CHINA
+  { source: 'SCMP', url: 'https://www.scmp.com/rss/91/feed', tier: 'main' },
+  { source: 'SCMP', url: 'https://news.google.com/rss/search?q=site:scmp.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
+  { source: 'Caixin', url: 'https://www.caixinglobal.com/rss/', tier: 'main' },
+  { source: 'Caixin', url: 'https://news.google.com/rss/search?q=site:caixinglobal.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
+  { source: 'Global Times', url: 'https://www.globaltimes.cn/rss/outbrain.xml', tier: 'main' },
+  { source: 'China Daily', url: 'http://www.chinadaily.com.cn/rss/world_rss.xml', tier: 'main' },
+  { source: 'Sixth Tone', url: 'https://www.sixthtone.com/rss', tier: 'main' },
+
+  // 🇰🇷 COREA DEL SUR
+  { source: 'Korea Herald', url: 'https://www.koreaherald.com/common_prog/rssdispatch.php?ct=02', tier: 'main' },
+  { source: 'Korea Herald', url: 'https://news.google.com/rss/search?q=site:koreaherald.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
+  { source: 'Korea JoongAng Daily', url: 'https://koreajoongangdaily.joins.com/rss/all', tier: 'main' },
+  { source: 'Hankyoreh', url: 'https://english.hani.co.kr/rss/', tier: 'main' },
+  { source: 'Chosun Ilbo', url: 'https://news.google.com/rss/search?q=site:chosun.com+english&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
+
+  // 🇸🇬 SINGAPUR
+  { source: 'Channel News Asia', url: 'https://www.channelnewsasia.com/rss', tier: 'main' },
+  { source: 'Channel News Asia', url: 'https://news.google.com/rss/search?q=site:channelnewsasia.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
+  { source: 'The Business Times', url: 'https://www.businesstimes.com.sg/rss', tier: 'main' },
+  { source: 'Straits Times', url: 'https://www.straitstimes.com/news/world/rss.xml', tier: 'main' },
+  { source: 'Straits Times', url: 'https://news.google.com/rss/search?q=site:straitstimes.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
+
   // 🌏 SUDESTE ASIÁTICO
   { source: 'Jakarta Post', url: 'https://www.thejakartapost.com/feed', tier: 'main' },
+  { source: 'Jakarta Post', url: 'https://news.google.com/rss/search?q=site:thejakartapost.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
+  { source: 'Jakarta Globe', url: 'https://jakartaglobe.id/feed/', tier: 'main' },
+  { source: 'Tempo', url: 'https://en.tempo.co/rss', tier: 'main' },
+  { source: 'Tempo', url: 'https://news.google.com/rss/search?q=site:en.tempo.co&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Bangkok Post', url: 'https://www.bangkokpost.com/rss/data/most-recent.xml', tier: 'main' },
 
   // 🌍 ÁFRICA
   { source: 'Daily Maverick', url: 'https://www.dailymaverick.co.za/feed/', tier: 'main' },
+  { source: 'Daily Maverick', url: 'https://news.google.com/rss/search?q=site:dailymaverick.co.za&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Mail & Guardian', url: 'https://mg.co.za/feed/', tier: 'main' },
   { source: 'Premium Times', url: 'https://www.premiumtimesng.com/feed', tier: 'main' },
   { source: 'Africa Report', url: 'https://www.theafricareport.com/feed/', tier: 'main' },
+  { source: 'Africa Report', url: 'https://news.google.com/rss/search?q=site:theafricareport.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
 
   // 🌎 LATAM
   { source: 'Infobae', url: 'https://www.infobae.com/feeds/rss/', tier: 'main' },
+  { source: 'Infobae', url: 'https://news.google.com/rss/search?q=site:infobae.com&hl=es-419&gl=AR&ceid=AR:es-419', tier: 'gn-fallback' },
   { source: 'Clarín', url: 'https://www.clarin.com/rss/lo-ultimo/', tier: 'main' },
   { source: 'El Espectador', url: 'https://www.elespectador.com/arc/outboundfeeds/rss/category/opinion/', tier: 'opinion' },
+  { source: 'El Espectador', url: 'https://www.elespectador.com/arc/outboundfeeds/rss/', tier: 'main' },
+  { source: 'El Espectador', url: 'https://news.google.com/rss/search?q=site:elespectador.com&hl=es-419&gl=CO&ceid=CO:es-419', tier: 'gn-fallback' },
   { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss/rss_actualidad.asp', tier: 'main' },
   { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss.asp', tier: 'general' },
+  { source: 'El Mercurio', url: 'https://news.google.com/rss/search?q=site:emol.com&hl=es-419&gl=CL&ceid=CL:es-419', tier: 'gn-fallback' },
 ];
 
 async function fetchSpainOpinionRss(allowedISODates) {
