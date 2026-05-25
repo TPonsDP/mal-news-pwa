@@ -209,6 +209,8 @@ function parseFeedItems(xml, source) {
     if (author && /<name>/i.test(author)) {
       author = extractTagContent(author, 'name');
     }
+    // EXTRAER IMAGEN del feed RSS (varios formatos posibles)
+    const image = extractImageFromItem(itemXml, description);
     if (title && link) {
       items.push({
         source,
@@ -218,10 +220,46 @@ function parseFeedItems(xml, source) {
         pubDate: cleanText(pubDate || ''),
         publishedDate: rfcToISODate(pubDate),
         description: cleanText(description).slice(0, 300),
+        image: image || null,
       });
     }
   }
   return items;
+}
+
+// Extrae URL de imagen del item RSS probando varios formatos
+function extractImageFromItem(itemXml, description) {
+  // 1. <media:content url="..." medium="image"/>
+  const mediaContent = itemXml.match(/<media:content[^>]+url="([^"]+)"[^>]*medium="image"/i)
+    || itemXml.match(/<media:content[^>]+url="([^"]+\.(?:jpg|jpeg|png|webp|gif)[^"]*)"/i);
+  if (mediaContent && mediaContent[1]) return mediaContent[1];
+
+  // 2. <media:thumbnail url="..."/>
+  const mediaThumb = itemXml.match(/<media:thumbnail[^>]+url="([^"]+)"/i);
+  if (mediaThumb && mediaThumb[1]) return mediaThumb[1];
+
+  // 3. <enclosure url="..." type="image/..."/>
+  const enclosure = itemXml.match(/<enclosure[^>]+url="([^"]+)"[^>]*type="image/i);
+  if (enclosure && enclosure[1]) return enclosure[1];
+
+  // 4. <itunes:image href="..."/>
+  const itunes = itemXml.match(/<itunes:image[^>]+href="([^"]+)"/i);
+  if (itunes && itunes[1]) return itunes[1];
+
+  // 5. <image><url>...</url></image>
+  const imageBlock = itemXml.match(/<image>\s*<url>([^<]+)<\/url>/i);
+  if (imageBlock && imageBlock[1]) return imageBlock[1];
+
+  // 6. Primera <img src="..."> en description
+  const imgInDesc = (description || '').match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (imgInDesc && imgInDesc[1]) return imgInDesc[1];
+
+  // 7. Buscar URL de imagen directa en content:encoded
+  const contentEncoded = extractTagContent(itemXml, 'content:encoded');
+  const imgInContent = contentEncoded.match(/<img[^>]+src=["']([^"']+)["']/i);
+  if (imgInContent && imgInContent[1]) return imgInContent[1];
+
+  return null;
 }
 
 function extractTagContent(xml, tag) {
@@ -1032,6 +1070,14 @@ WORLDNEWS (hasta 20 piezas: noticias + reportajes + análisis):
 - Solo usa pago si cubre un ángulo único no disponible en gratis ese día.
 - Las de pago aparecen marcadas con 🔒 cuando son necesarias.
 
+⭐⭐⭐ TEMAS A EXCLUIR OBLIGATORIAMENTE ⭐⭐⭐
+NUNCA incluyas:
+- 🚫 SUCESOS: asesinatos individuales, accidentes, violaciones, homicidios, atracos, incendios sin contexto político (SALVO impacto sistémico claro tipo violencia policial estructural, mafia, crimen de Estado, atentados terroristas con repercusión geopolítica).
+- 🚫 DEPORTES: fútbol, ligas, fichajes, Champions, Eurocopa, NBA, NFL, F1, tenis, atletismo. NO se incluye nunca.
+- 🚫 CELEBRITIES/FARÁNDULA: prensa rosa, divorcios famosos, premios Grammy, Oscars sin relevancia política, gala/alfombra roja.
+- 🚫 Catástrofes naturales puras sin matiz político/humanitario importante.
+SÍ incluye: política internacional, economía global, conflictos geopolíticos, diplomacia, instituciones multilaterales, ciencia/tecnología con impacto político, cultura/sociedad con relevancia estructural.
+
 ⭐⭐⭐ REGLA INELUDIBLE — MÍNIMO 5 PIEZAS LARGAS POR BRIEFING ⭐⭐⭐
 Si después de seleccionar las 20 piezas tienes menos de 5 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": NYT, WaPo, Atlantic, FT, Bloomberg, The Economist, Foreign Affairs publican análisis profundo a diario.
 
@@ -1574,6 +1620,23 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         markPaywall(briefing.spainOpinion);
         markPaywall(briefing.extraNews);
 
+        // Enriquecer piezas con imagen desde candidatos (matching por URL)
+        const candidatesByUrl = new Map();
+        candidates.forEach(c => {
+          if (c.url) candidatesByUrl.set(c.url, c);
+        });
+        const enrichImages = (arr) => {
+          if (!Array.isArray(arr)) return;
+          arr.forEach(item => {
+            if (item && item.url && !item.image) {
+              const cand = candidatesByUrl.get(item.url);
+              if (cand && cand.image) item.image = cand.image;
+            }
+          });
+        };
+        enrichImages(briefing.spainOpinion);
+        enrichImages(briefing.extraNews);
+
         // ============ ENFORCEMENT POST-MODELO ============
         // Si el modelo no cumple los mínimos obligatorios, FORZAR añadiendo del pool de candidatos
         // SOLO se fuerzan piezas que pasen isOpinionLike (autor real, no sumarios, no editoriales)
@@ -1808,8 +1871,13 @@ REGLAS DE SELECCIÓN:
    - Esto NO elimina las de pago: aparecen marcadas con 🔒 si son necesarias.
 1. Devuelve las piezas que haya. Si solo hay 8 frescas y relevantes, devuelve 8. No fuerces el cupo.
 2. Selecciona HASTA 25 piezas (puedes devolver menos si la lista es corta).
-3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, sucesos.
-4. DESCARTA: columnas firmadas de opinión solitaria, contenido evergreen sin actualidad, editoriales institucionales.
+3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, leyes aprobadas, decisiones judiciales con relevancia institucional.
+4. DESCARTA OBLIGATORIAMENTE:
+   - 🚫 SUCESOS: asesinatos, accidentes, violaciones, homicidios, atracos, incendios sin contexto político (SALVO si tienen impacto político/sistémico claro tipo violencia policial, mafia conocida, crimen de Estado).
+   - 🚫 DEPORTES: fútbol, ligas, fichajes, resultados, Eurocopa, baloncesto, F1, tenis. NO se incluye nunca.
+   - 🚫 CELEBRITIES/FARÁNDULA: prensa rosa, divorcios famosos, GH, Eurovisión, gala/alfombra roja, OT, MasterChef.
+   - 🚫 Columnas firmadas de opinión solitaria, evergreen sin actualidad, editoriales institucionales.
+   - 🚫 Catástrofes naturales sin matiz político importante.
 5. IDEAL si hay corpus suficiente: MÁX 4 piezas mismo medio, MÍN 7 medios distintos.
 6. ACEPTABLE si corpus limitado: hasta 4 piezas mismo medio, mín 4 medios distintos.
 7. MEDIOS PRIORITARIOS — MÍNIMOS OBLIGATORIOS (condicionales si hay material en CANDIDATAS):
@@ -1837,7 +1905,7 @@ REGLAS DE SELECCIÓN:
    Suma de mínimos posibles: ~25 piezas obligatorias.
    El modelo debe respetar los mínimos OBLIGATORIOS (⭐⭐) y luego priorizar lo demás según relevancia.
 
-8. Equilibrio temático: política, economía, sociedad, sucesos, internacional con foco España.
+8. Equilibrio temático: política, economía, sociedad, justicia/corrupción de relevancia política, internacional con foco España, cultura/ciencia/tecnología.
 9. Mejor pocas piezas relevantes y frescas que muchas mediocres o forzadas.
 
 CHEQUEO PRE-RESPUESTA OBLIGATORIO:
@@ -1920,6 +1988,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
               source: longItem.source,
               url: longItem.url,
               publishedDate: longItem.publishedDate,
+              image: longItem.image || null,
               _forcedLong: true,
             });
             selectedUrls.add(longItem.url);
@@ -1978,6 +2047,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
               source: item.source,
               url: item.url,
               publishedDate: item.publishedDate,
+              image: item.image || null,
               _forcedMin: true,
             });
             selectedUrls.add(item.url);
@@ -2004,6 +2074,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
               source: item.source,
               url: item.url,
               publishedDate: item.publishedDate,
+              image: item.image || null,
               _forcedMin: true,
               _economicoPriority: true,
             });
@@ -2031,6 +2102,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
               source: item.source,
               url: item.url,
               publishedDate: item.publishedDate,
+              image: item.image || null,
               _forcedMin: true,
               _baleariesPriority: true,
             });
@@ -2041,6 +2113,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
 
         // Marcar con _isPaywall las piezas de fuentes paywall
         // Marcar con _detectedLong las piezas que son largas (incluyendo las que el modelo seleccionó)
+        // Enriquecer con imagen desde candidatos
         if (Array.isArray(briefing.spainNews)) {
           briefing.spainNews.forEach(item => {
             if (item && isPaywallSource(item.source)) {
@@ -2052,6 +2125,11 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
               if (candidateMatch && isLongFormPiece(candidateMatch)) {
                 item._detectedLong = true;
               }
+            }
+            // Adjuntar imagen del candidato si no tiene
+            if (item && item.url && !item.image) {
+              const cand = candidates.find(c => c.url === item.url);
+              if (cand && cand.image) item.image = cand.image;
             }
           });
         }
