@@ -181,46 +181,102 @@ function getDayOfWeek(isoDate) {
 // PALETA DE COLORES POR MEDIO — para badge de fuente en tarjetas
 // ============================================================
 const SOURCE_BADGE_COLORS = {
-  // España opinión
-  'Vozpópuli': '#E63946',
-  'The Objective': '#1A1A1A',
-  'El País': '#D32F2F',
-  'elDiario.es': '#DC2626',
-  'ABC': '#9B2335',
-  'El Español': '#ED1C24',
-  'InfoLibre': '#047857',
-  'La Gaceta': '#991B1B',
-  'Libertad Digital': '#7E22CE',
-  'El Debate': '#D97706',
-  'Artículo 14': '#4A5568',
-  'Agenda Pública': '#0F766E',
-  'almendron': '#FB923C',
-  'El Blog Salmón': '#16A34A',
-  // España noticias adicionales
-  'El Mundo': '#C8102E',
-  'OK Diario Baleares': '#F59E0B',
+  // ============ ESPAÑA — FAVORITOS DEL USUARIO (matching gradiente Opinión) ============
+  'Vozpópuli': '#65A30D',         // ⭐⭐ VERDE LIMA (favorito, matching opinion gradient start)
+  'The Objective': '#FACC15',     // ⭐⭐ AMARILLO/GOLD (favorito, matching opinion gradient end)
+  'Demócrata': '#0EA5E9',         // ⭐ AZUL CIELO (alternativa)
+
+  // ============ ESPAÑA OPINIÓN ============
+  'Artículo 14': '#0F766E',       // teal oscuro
+  'Libertad Digital': '#1E40AF',  // azul oscuro
+  'La Gaceta': '#7C2D12',         // marrón rojizo (derecha tradicional)
+  'El Debate': '#9333EA',         // morado
+  'Agenda Pública': '#475569',    // gris pizarra
+  'El Blog Salmón': '#FB7185',    // salmón rosado (literal)
+  'Economía de Mallorca': '#0891B2', // turquesa
+
+  // ============ ESPAÑA NOTICIAS (medios paywall en rojo/granate) ============
+  'El País': '#D32F2F',           // rojo País
+  'El Mundo': '#9B0000',           // granate El Mundo
+  'ABC': '#1A365D',                // azul oscuro ABC
+  'El Español': '#E11D48',         // rojo Español
+  'Cinco Días': '#7F1D1D',         // granate financiero
+
+  // ============ IZQUIERDA (gratis) ============
+  'elDiario.es': '#DC2626',        // rojo eDS
+  'Huffington Post': '#10B981',    // verde HuffPost
+  'Público': '#EF4444',            // rojo Público
+
+  // ============ OK DIARIO (naranja/dorado) ============
   'OK Diario': '#F59E0B',
+  'OK Diario Baleares': '#F59E0B',
+
+  // ============ REGIONALES BALEARES ============
   'elDiario.es Baleares': '#DC2626',
-  'Economía de Mallorca': '#0F766E',
-  'La Vanguardia': '#1A365D',
-  'Crónica Global': '#475569',
-  // Internacional
-  'NYT': '#000000', 'New York Times': '#000000',
-  'WSJ': '#1A1A1A', 'Wall Street Journal': '#1A1A1A',
-  'FT': '#990F3D', 'Financial Times': '#990F3D',
+  'El Debate Baleares': '#9333EA',
+
+  // ============ CATALANES ============
+  'Crónica Global': '#475569',     // gris azulado (constitucionalista)
+  'El Nacional.cat': '#FACC15',    // amarillo (color independentista catalán)
+
+  // ============ ECONÓMICO ============
+  'Invertia': '#0891B2',           // turquesa financiero
+  'almendron': '#FB923C',
+
+  // ============ INTERNACIONAL ============
+  'NYT': '#0A0A0A', 'New York Times': '#0A0A0A',
+  'WSJ': '#DA251D', 'Wall Street Journal': '#DA251D',
+  'FT': '#FFF1E5', 'Financial Times': '#FFF1E5',  // beige FT
   'Guardian': '#052962', 'The Guardian': '#052962',
   'BBC': '#BB1919',
-  'Reuters': '#FF8000',
-  'AP': '#000000', 'Associated Press': '#000000',
-  'Bloomberg': '#FA0000',
+  'Reuters': '#D97706',
+  'AP': '#171717', 'Associated Press': '#171717',
+  'MarketWatch': '#00B043',
+  'Bloomberg': '#FA6900',
   'Economist': '#E3120B', 'The Economist': '#E3120B',
   'Le Monde': '#003366',
+  'Le Figaro': '#005DAA',
   'Hindu': '#1F3864', 'The Hindu': '#1F3864',
   'Times of Israel': '#0F4C81',
   'Haaretz': '#103D6E',
   'Politico': '#E11D48',
   'Atlantic': '#0F2D52', 'The Atlantic': '#0F2D52',
   'Washington Post': '#0E1828', 'WaPo': '#0E1828',
+  // China
+  'SCMP': '#B59E5F',               // dorado SCMP
+  'South China Morning Post': '#B59E5F',
+  'Caixin': '#C8102E',
+  'Global Times': '#DC2626',
+  'China Daily': '#DA251D',
+  'Sixth Tone': '#27AE60',
+  // Corea
+  'Korea Herald': '#003876',
+  'Korea Times': '#1B3B6F',
+  'Korea JoongAng Daily': '#C8102E',
+  'Hankyoreh': '#1976D2',
+  'Chosun Ilbo': '#003366',
+  // Singapur
+  'Channel News Asia': '#E60028', 'CNA': '#E60028',
+  'The Business Times': '#003F87',
+  'Straits Times': '#1D4ED8',
+  // Indonesia
+  'Jakarta Post': '#0066B3',
+  'Jakarta Globe': '#005EB8',
+  'Tempo': '#D70026',
+  // LATAM
+  'Clarín': '#E2231A',
+  'Infobae': '#3B82F6',
+  'El Espectador': '#005D8F',
+  'El Mercurio': '#0D2C54',
+  // Otros
+  'UnHerd': '#0066CC',
+  'The Spectator': '#990000',
+  'Kyiv Independent': '#0057B7',
+  'Moscow Times': '#1F2937',
+  'Daily Maverick': 'linear-gradient(135deg, #18181B 0%, #18181B 60%, #C8102E 60%, #C8102E 100%)',
+  'Mail & Guardian': '#E60012',
+  'Africa Report': '#9B2335',
+  'Premium Times': '#003366',
 };
 
 function getSourceColor(source) {
@@ -235,13 +291,62 @@ function getSourceColor(source) {
   return '#1A365D'; // fallback navy
 }
 
+// Devuelve el color de texto óptimo (blanco o negro) según luminancia del fondo
+// Necesario para fondos amarillos/claros donde texto blanco no se lee.
+function getReadableTextColor(bgHex) {
+  if (!bgHex || !bgHex.startsWith('#')) return '#FFFFFF';
+  const hex = bgHex.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  // Fórmula luminancia relativa (W3C)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? '#1A1A1A' : '#FFFFFF';
+}
+
 // Calcula tiempo de lectura en minutos basado en title + summary
 // Aproximación: 1000 caracteres ≈ 1 minuto de lectura cómoda
 function calculateReadTime(item) {
-  const text = `${item.title || ''} ${item.summary || ''}`;
-  const chars = text.length;
-  const minutes = Math.max(1, Math.ceil(chars / 1000));
-  return minutes;
+  const isLong = item._forcedLong || item._detectedLong;
+  const source = (item.source || '').toLowerCase();
+
+  // Categorización por medio
+  // Medios que publican piezas muy largas habitualmente (10-15 min normal)
+  const isHeavyLongform = /\b(nyt|new york times|the atlantic|atlantic|financial times|\bft\b|economist|foreign affairs|foreign policy|new yorker|washington post|wapo|le monde)\b/i.test(source);
+
+  // Medios con reportajes medianos cuando son LARGA (6-9 min)
+  const isMediumLongform = /\b(voz|the objective|el país|el mundo|el confidencial|libertad digital|la gaceta|eldiario|p[uú]blico|huffington|\babc\b|el español|el debate|demócrata)\b/i.test(source);
+
+  // Agencias de cable - artículos siempre breves
+  const isBrief = /\b(ap|associated press|efe|europa press|reuters|yonhap|antara|xinhua)\b/i.test(source);
+
+  // Medios de análisis económico/político (longitud media-alta)
+  const isAnalysis = /\b(bloomberg|cinco días|invertia|project syndicate|el blog salm[oó]n|economía de mallorca|marketwatch|forbes|quartz|nikkei)\b/i.test(source);
+
+  // Base en minutos según categoría + LARGA flag
+  let baseMinutes;
+  if (isLong) {
+    if (isHeavyLongform) baseMinutes = 12;       // NYT/Atlantic/FT reportajes
+    else if (isMediumLongform) baseMinutes = 7;  // Vozpópuli/TO/EP reportajes
+    else baseMinutes = 6;                          // Resto LARGAS
+  } else {
+    if (isBrief) baseMinutes = 2;                  // Cables AP/Reuters
+    else if (isAnalysis) baseMinutes = 4;          // Bloomberg/Cinco Días
+    else if (isHeavyLongform) baseMinutes = 5;     // NYT no-LARGA aún es algo largo
+    else baseMinutes = 3;                          // Resto normal
+  }
+
+  // Modificador por longitud del summary disponible (más rico = artículo más largo probable)
+  const summaryChars = (item.summary || '').length;
+  if (summaryChars > 250) baseMinutes += 2;
+  else if (summaryChars > 150) baseMinutes += 1;
+
+  // Variación estable basada en hash de la URL (siempre devuelve el mismo número para la misma pieza)
+  const text = item.url || item.title || '';
+  const hash = text.split('').reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0);
+  const variance = (Math.abs(hash) % 3) - 1; // -1, 0, +1
+
+  return Math.max(1, baseMinutes + variance);
 }
 
 // Formatea fecha como "LUN 18 MAY"
@@ -257,200 +362,410 @@ function formatDateBadge(isoDate) {
   }
 }
 
-function NewsCard({ item, index, sectionColor, type }) {
+// Agrupa items por su campo source, preservando el orden de primera aparición
+function groupBySource(items) {
+  if (!Array.isArray(items)) return [];
+  const map = new Map();
+  for (const item of items) {
+    const key = item.source || '—';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(item);
+  }
+  return Array.from(map.entries()).map(([source, items]) => ({ source, items }));
+}
+
+// MEDIAGROUP · Diseño C minimalista
+// - Borde lateral izquierdo: COLOR DE LA SECCIÓN (Opinión/Noticias/Internacional)
+// - Cabecera con fondo: COLOR DE IDENTIDAD del medio (Vozpópuli, El País, etc.)
+// - Lista de noticias en formato minimalista (sin imágenes, jerarquía tipográfica)
+function MediaGroup({ source, items, sectionColor, type, groupIndex }) {
+  const isOpinion = type === 'opinion';
+  const sourceColor = getSourceColor(source);
+  // Si el color es un gradiente (linear-gradient), usar texto blanco; si no, calcular luminancia
+  const isGradient = sourceColor.startsWith('linear-gradient');
+  const textColor = isGradient ? '#FFFFFF' : getReadableTextColor(sourceColor);
+  const pieceCount = items.length;
+  const pieceLabel = isOpinion
+    ? (pieceCount === 1 ? 'COLUMNA' : 'COLUMNAS')
+    : (pieceCount === 1 ? 'PIEZA' : 'PIEZAS');
+
+  return (
+    <div style={{
+      borderLeft: `5px solid ${sectionColor}`,
+      paddingLeft: '14px',
+      marginBottom: '22px',
+      animation: `fadeSlide 0.35s ease ${Math.min(groupIndex * 0.05, 0.4)}s both`,
+    }}>
+      {/* HEADER del medio: fondo en su color de identidad + texto legible */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        background: sourceColor,
+        color: textColor,
+        padding: '5px 10px',
+        marginBottom: '12px',
+        marginLeft: '-2px',
+        borderRadius: '3px',
+        fontFamily: "'Helvetica Neue', Arial, sans-serif",
+        boxShadow: textColor === '#1A1A1A' ? 'inset 0 0 0 1px rgba(0,0,0,0.1)' : 'none',
+      }}>
+        <span style={{
+          fontSize: '11px',
+          fontWeight: '800',
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+        }}>
+          {source}
+        </span>
+        <span style={{
+          fontSize: '9px',
+          fontWeight: '600',
+          opacity: textColor === '#1A1A1A' ? 0.7 : 0.9,
+          letterSpacing: '0.05em',
+        }}>
+          {pieceCount} {pieceLabel}
+        </span>
+      </div>
+
+      {/* LISTA de piezas del medio */}
+      {items.map((item, i) => {
+        const dateBadge = formatDateBadge(item.publishedDate);
+        const readTime = calculateReadTime(item);
+        const isLastItem = i === items.length - 1;
+
+        return (
+          <article key={i} style={{
+            paddingBottom: isLastItem ? '0' : '14px',
+            marginBottom: isLastItem ? '0' : '14px',
+            borderBottom: isLastItem ? 'none' : '1px solid #EEE',
+          }}>
+            {/* Badges minimalistas inline */}
+            {(item._isPaywall || item._forcedLong || item._detectedLong || dateBadge) && (
+              <div style={{
+                display: 'flex',
+                gap: '6px',
+                marginBottom: '5px',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                fontFamily: "'Helvetica Neue', Arial, sans-serif",
+              }}>
+                {item._isPaywall && (
+                  <span style={{
+                    fontSize: '9px',
+                    color: '#D43131',
+                    background: 'rgba(212,49,49,0.08)',
+                    padding: '1px 5px',
+                    borderRadius: '2px',
+                    fontWeight: '700',
+                  }}>
+                    🔒 PAGO
+                  </span>
+                )}
+                {(item._forcedLong || item._detectedLong) && (
+                  <span style={{
+                    fontSize: '9px',
+                    color: '#65A30D',
+                    background: 'rgba(101,163,13,0.08)',
+                    padding: '1px 5px',
+                    borderRadius: '2px',
+                    fontWeight: '700',
+                  }}>
+                    📊 LARGA
+                  </span>
+                )}
+                {dateBadge && (
+                  <span style={{
+                    fontSize: '9px',
+                    color: '#888',
+                    letterSpacing: '0.05em',
+                  }}>
+                    {dateBadge}
+                  </span>
+                )}
+                <span style={{
+                  fontSize: '9px',
+                  color: '#888',
+                  marginLeft: 'auto',
+                  letterSpacing: '0.03em',
+                }}>
+                  {readTime} min
+                </span>
+              </div>
+            )}
+
+            {/* Título */}
+            {item.url ? (
+              <a href={item.url} target="_blank" rel="noopener noreferrer"
+                style={{ textDecoration: 'none', color: 'inherit' }}>
+                <h3 style={{
+                  margin: '0 0 5px',
+                  fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                  fontSize: isOpinion ? '14.5px' : '14.5px',
+                  fontWeight: '600',
+                  color: '#1A1A1A',
+                  lineHeight: 1.3,
+                  letterSpacing: '-0.005em',
+                  cursor: 'pointer',
+                }}>
+                  {item.title}
+                </h3>
+              </a>
+            ) : (
+              <h3 style={{
+                margin: '0 0 5px',
+                fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                fontSize: '14.5px',
+                fontWeight: '600',
+                color: '#1A1A1A',
+                lineHeight: 1.3,
+              }}>
+                {item.title}
+              </h3>
+            )}
+
+            {/* Resumen */}
+            {item.summary && (
+              <p style={{
+                margin: '0',
+                fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                fontSize: '11.5px',
+                lineHeight: 1.5,
+                color: '#666',
+                fontStyle: isOpinion ? 'italic' : 'normal',
+              }}>
+                {item.summary}
+              </p>
+            )}
+
+            {/* Autor (opinión) */}
+            {isOpinion && item.author && (
+              <p style={{
+                margin: '4px 0 0',
+                fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                fontSize: '10.5px',
+                color: sourceColor,
+                fontWeight: '600',
+                letterSpacing: '0.02em',
+              }}>
+                — {item.author}
+              </p>
+            )}
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+// LEGACY: mantenemos NewsCard para retrocompat, aunque ya no se usa por defecto
+function NewsCard({ item, index, sectionColor, type, isLead }) {
   const isOpinion = type === 'opinion';
   const sourceColor = getSourceColor(item.source);
   const dateBadge = formatDateBadge(item.publishedDate);
   const readTime = calculateReadTime(item);
+  const hasImage = !!item.image;
 
+  // Estilo LEAD: primera pieza, más grande, foto arriba
+  // Estilo NORMAL: resto, compacto, foto pequeña a la derecha
   return (
-    <div style={{
+    <article style={{
       background: BRAND.card,
-      borderLeft: `4px solid ${sectionColor}`,
-      borderRadius: '0 8px 8px 0',
-      padding: '12px 14px',
-      marginBottom: '6px',
+      borderTop: isLead ? `3px solid ${sectionColor}` : 'none',
+      borderLeft: isLead ? 'none' : `3px solid ${sectionColor}`,
+      borderRadius: '6px',
+      padding: isLead ? '0' : '10px 12px',
+      marginBottom: isLead ? '14px' : '8px',
       boxShadow: BRAND.shadow,
       animation: `fadeSlide 0.35s ease ${Math.min(index * 0.03, 0.5)}s both`,
+      overflow: 'hidden',
     }}>
-      {/* TOP ROW · Badges de medio + fecha + tiempo lectura + lean */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
-        marginBottom: '8px',
-      }}>
-        {/* Badge medio (color del medio) */}
-        {item.source && (
-          <span style={{
-            background: sourceColor,
-            color: 'white',
-            fontSize: '9px',
-            fontWeight: '800',
-            letterSpacing: '0.08em',
-            padding: '3px 8px',
-            borderRadius: '4px',
-            fontFamily: "'Verdana', 'Geneva', sans-serif",
-            textTransform: 'uppercase',
-          }}>
-            {item.source}
-          </span>
-        )}
-
-        {/* Badge paywall 🔒 */}
-        {item._isPaywall && (
-          <span
-            title="Requiere suscripción"
+      {/* IMAGEN LEAD arriba */}
+      {isLead && hasImage && (
+        <a href={item.url} target="_blank" rel="noopener noreferrer">
+          <img
+            src={item.image}
+            alt={item.title}
+            loading="lazy"
             style={{
-              background: 'rgba(212, 49, 49, 0.12)',
-              color: '#D43131',
-              border: '1px solid rgba(212, 49, 49, 0.30)',
-              fontSize: '10px',
-              fontWeight: '700',
-              padding: '3px 6px',
-              borderRadius: '4px',
-              fontFamily: "'Verdana', 'Geneva', sans-serif",
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '3px',
+              width: '100%',
+              height: '180px',
+              objectFit: 'cover',
+              display: 'block',
             }}
-          >
-            🔒 PAGO
-          </span>
-        )}
-
-        {/* Badge LARGA si el backend marcó */}
-        {(item._forcedLong || item._detectedLong) && (
-          <span
-            title="Pieza larga: reportaje / investigación / análisis"
-            style={{
-              background: 'rgba(101, 163, 13, 0.12)',
-              color: '#65A30D',
-              border: '1px solid rgba(101, 163, 13, 0.30)',
-              fontSize: '10px',
-              fontWeight: '700',
-              padding: '3px 6px',
-              borderRadius: '4px',
-              fontFamily: "'Verdana', 'Geneva', sans-serif",
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '3px',
-            }}
-          >
-            📊 LARGA
-          </span>
-        )}
-
-        {/* Badge fecha */}
-        {dateBadge && (
-          <span style={{
-            background: 'rgba(26,54,93,0.08)',
-            color: 'rgba(26,54,93,0.75)',
-            fontSize: '9px',
-            fontWeight: '700',
-            letterSpacing: '0.08em',
-            padding: '3px 8px',
-            borderRadius: '4px',
-            fontFamily: "'Verdana', 'Geneva', sans-serif",
-          }}>
-            {dateBadge}
-          </span>
-        )}
-
-        {/* Badge tiempo de lectura */}
-        <span style={{
-          background: 'rgba(250,105,0,0.10)',
-          color: '#C2410C',
-          fontSize: '9px',
-          fontWeight: '700',
-          letterSpacing: '0.04em',
-          padding: '3px 8px',
-          borderRadius: '4px',
-          fontFamily: "'Verdana', 'Geneva', sans-serif",
-        }}>
-          {readTime} min
-        </span>
-
-        {/* Lean badge (solo si existe) - empujado a la derecha */}
-        {item.lean && (
-          <span style={{ marginLeft: 'auto' }}>
-            <LeanBadge lean={item.lean} />
-          </span>
-        )}
-      </div>
-
-      {/* Título (clickable si hay URL) */}
-      {item.url ? (
-        <a href={item.url} target="_blank" rel="noopener noreferrer"
-          style={{ textDecoration: 'none', color: 'inherit' }}>
-          <h3 style={{
-            margin: '0 0 5px',
-            fontSize: isOpinion ? '14px' : '13px',
-            fontFamily: "'Verdana', 'Geneva', sans-serif",
-            fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
-            cursor: 'pointer',
-          }}>
-            {item.title}
-          </h3>
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
         </a>
-      ) : (
-        <h3 style={{
-          margin: '0 0 5px',
-          fontSize: isOpinion ? '14px' : '13px',
-          fontFamily: "'Verdana', 'Geneva', sans-serif",
-          fontWeight: '700', color: BRAND.navyDeep, lineHeight: 1.3,
-        }}>
-          {item.title}
-        </h3>
       )}
 
-      {/* Resumen */}
-      {item.summary && (
-        <p style={{
-          margin: '0 0 6px', fontSize: '11.5px',
-          color: BRAND.inkSoft, lineHeight: 1.5,
-          fontFamily: "'Verdana', 'Geneva', sans-serif",
-          fontStyle: isOpinion ? 'italic' : 'normal',
-          display: '-webkit-box',
-          WebkitLineClamp: isOpinion ? 2 : 3,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-        }}>
-          {item.summary}
-        </p>
-      )}
-
-      {/* Footer · autor (si opinion) + link "leer" */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        gap: '8px', fontSize: '10.5px', color: BRAND.navyDeep,
-        fontFamily: "'Verdana', 'Geneva', sans-serif",
-      }}>
-        <span style={{
-          fontWeight: '700',
-          fontStyle: 'italic',
-          opacity: 0.8,
-        }}>
-          {isOpinion && item.author && `— ${item.author}`}
-          {!isOpinion && item.region && item.region}
-        </span>
-        {item.url && (
-          <a
-            href={item.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: sectionColor,
-              textDecoration: 'none',
-              borderBottom: `1px dotted ${sectionColor}`,
-              fontWeight: '700',
-              fontSize: '10.5px',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            leer →
+      <div style={{ padding: isLead ? '12px 14px 14px' : '0', display: 'flex', gap: '10px' }}>
+        {/* IMAGEN NORMAL al lado derecho */}
+        {!isLead && hasImage && (
+          <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
+            <img
+              src={item.image}
+              alt=""
+              loading="lazy"
+              style={{
+                width: '70px',
+                height: '70px',
+                objectFit: 'cover',
+                borderRadius: '4px',
+                display: 'block',
+              }}
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
           </a>
         )}
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* TOP ROW: Badges */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap',
+            marginBottom: '6px',
+          }}>
+            {item.source && (
+              <span style={{
+                background: sourceColor, color: 'white',
+                fontSize: '8.5px', fontWeight: '800',
+                letterSpacing: '0.08em',
+                padding: '2px 7px', borderRadius: '3px',
+                fontFamily: "'Verdana', 'Geneva', sans-serif",
+                textTransform: 'uppercase',
+              }}>
+                {item.source}
+              </span>
+            )}
+
+            {item._isPaywall && (
+              <span title="Requiere suscripción" style={{
+                background: 'rgba(212,49,49,0.12)', color: '#D43131',
+                border: '1px solid rgba(212,49,49,0.30)',
+                fontSize: '9px', fontWeight: '700',
+                padding: '2px 5px', borderRadius: '3px',
+                fontFamily: "'Verdana', 'Geneva', sans-serif",
+              }}>
+                🔒
+              </span>
+            )}
+
+            {(item._forcedLong || item._detectedLong) && (
+              <span title="Pieza larga" style={{
+                background: 'rgba(101,163,13,0.12)', color: '#65A30D',
+                border: '1px solid rgba(101,163,13,0.30)',
+                fontSize: '9px', fontWeight: '700',
+                padding: '2px 5px', borderRadius: '3px',
+                fontFamily: "'Verdana', 'Geneva', sans-serif",
+              }}>
+                📊 LARGA
+              </span>
+            )}
+
+            {dateBadge && (
+              <span style={{
+                background: 'rgba(26,54,93,0.06)', color: 'rgba(26,54,93,0.65)',
+                fontSize: '8.5px', fontWeight: '700',
+                letterSpacing: '0.06em',
+                padding: '2px 6px', borderRadius: '3px',
+                fontFamily: "'Verdana', 'Geneva', sans-serif",
+              }}>
+                {dateBadge}
+              </span>
+            )}
+
+            <span style={{
+              fontSize: '8.5px', color: '#94704A',
+              fontWeight: '600', letterSpacing: '0.04em',
+              fontFamily: "'Verdana', 'Geneva', sans-serif",
+              marginLeft: 'auto',
+            }}>
+              {readTime} min
+            </span>
+
+            {item.lean && (
+              <LeanBadge lean={item.lean} />
+            )}
+          </div>
+
+          {/* TÍTULO SERIF EDITORIAL */}
+          {item.url ? (
+            <a href={item.url} target="_blank" rel="noopener noreferrer"
+              style={{ textDecoration: 'none', color: 'inherit' }}>
+              <h3 style={{
+                margin: '0 0 6px',
+                fontSize: isLead ? '17px' : (isOpinion ? '14.5px' : '13.5px'),
+                fontFamily: "'Georgia', 'Times New Roman', serif",
+                fontWeight: '600',
+                color: BRAND.navyDeep,
+                lineHeight: 1.25,
+                letterSpacing: '-0.005em',
+                cursor: 'pointer',
+              }}>
+                {item.title}
+              </h3>
+            </a>
+          ) : (
+            <h3 style={{
+              margin: '0 0 6px',
+              fontSize: isLead ? '17px' : (isOpinion ? '14.5px' : '13.5px'),
+              fontFamily: "'Georgia', 'Times New Roman', serif",
+              fontWeight: '600',
+              color: BRAND.navyDeep,
+              lineHeight: 1.25,
+            }}>
+              {item.title}
+            </h3>
+          )}
+
+          {/* RESUMEN SERIF EDITORIAL */}
+          {item.summary && (
+            <p style={{
+              margin: '0 0 6px',
+              fontSize: isLead ? '12.5px' : '11.5px',
+              color: BRAND.inkSoft,
+              lineHeight: 1.55,
+              fontFamily: "'Georgia', 'Times New Roman', serif",
+              fontStyle: isOpinion ? 'italic' : 'normal',
+              display: '-webkit-box',
+              WebkitLineClamp: isLead ? 4 : (isOpinion ? 2 : 3),
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}>
+              {item.summary}
+            </p>
+          )}
+
+          {/* FOOTER */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            gap: '8px', fontSize: '10px', color: BRAND.navyDeep,
+            fontFamily: "'Georgia', 'Times New Roman', serif",
+          }}>
+            <span style={{ fontStyle: 'italic', fontWeight: '500', opacity: 0.75 }}>
+              {isOpinion && item.author && `— ${item.author}`}
+              {!isOpinion && item.region && item.region}
+            </span>
+            {item.url && (
+              <a href={item.url} target="_blank" rel="noopener noreferrer"
+                style={{
+                  color: sectionColor,
+                  textDecoration: 'none',
+                  borderBottom: `1px dotted ${sectionColor}`,
+                  fontWeight: '700',
+                  fontSize: '10px',
+                  whiteSpace: 'nowrap',
+                  fontFamily: "'Verdana', 'Geneva', sans-serif",
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                leer →
+              </a>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -756,7 +1071,7 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
             )}
           </div>
         ) : groupedItems ? (
-          // Render agrupado por continentes
+          // Render agrupado por continentes Y dentro por medio
           groupedItems.map((group, gi) => (
             <div key={group.continent} style={{ marginBottom: gi < groupedItems.length - 1 ? '12px' : '0' }}>
               <div style={{
@@ -779,11 +1094,31 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
                 <span>{group.continent}</span>
                 <span style={{ opacity: 0.6, fontWeight: '500' }}>· {group.items.length}</span>
               </div>
-              {group.items.map((item, i) => <NewsCard key={`${group.continent}-${i}`} item={item} index={i} sectionColor={color} type={type} />)}
+              {/* Dentro de cada continente, AGRUPAR por medio */}
+              {groupBySource(group.items).map((mediaGroup, mgi) => (
+                <MediaGroup
+                  key={`${group.continent}-${mediaGroup.source}`}
+                  source={mediaGroup.source}
+                  items={mediaGroup.items}
+                  sectionColor={color}
+                  type={type}
+                  groupIndex={mgi}
+                />
+              ))}
             </div>
           ))
         ) : (
-          items.map((item, i) => <NewsCard key={i} item={item} index={i} sectionColor={color} type={type} />)
+          // Render flat agrupado por medio
+          groupBySource(items).map((mediaGroup, mgi) => (
+            <MediaGroup
+              key={mediaGroup.source}
+              source={mediaGroup.source}
+              items={mediaGroup.items}
+              sectionColor={color}
+              type={type}
+              groupIndex={mgi}
+            />
+          ))
         )}
 
       </div>
