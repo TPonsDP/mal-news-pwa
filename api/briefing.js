@@ -1249,12 +1249,58 @@ function extractJson(raw) {
     try { return JSON.parse(s.slice(0, firstBalanced + 1)); } catch (_) {}
   }
 
-  // Intento 3: JSON truncado (cortado a la mitad) - intentar reparar cerrando estructuras abiertas
+  // Intento 3: JSON truncado (cortado a la mitad) - reparación inteligente
+  // Estrategia: localizar el último objeto válido dentro de cada array, recortar arrays
+  // a su último elemento completo, y cerrar estructuras pendientes.
   let repaired = s;
-  // Si hay un texto trailing tras un } válido, recortar ahí
   if (firstBalanced > 0) {
     repaired = s.slice(0, firstBalanced + 1);
   }
+
+  // Intentar truncar arrays incompletos a su última coma válida
+  // Buscamos patrones tipo `[{ ... },{ ... },{ <truncado>`
+  // Algoritmo: recorrer desde el final, encontrar el último `},` o `}]` válido,
+  // y truncar después de él para cerrar el array correctamente.
+  function trimToLastCompleteObject(jsonStr) {
+    let d = 0, b = 0, inS = false, e = false;
+    let lastValidArrayPos = -1;
+    let inArrayStack = [];
+
+    for (let i = 0; i < jsonStr.length; i++) {
+      const c = jsonStr[i];
+      if (e) { e = false; continue; }
+      if (c === '\\' && inS) { e = true; continue; }
+      if (c === '"') { inS = !inS; continue; }
+      if (inS) continue;
+
+      if (c === '{') d++;
+      else if (c === '}') {
+        d--;
+        // Si estamos dentro de un array y se acaba de cerrar un objeto bien formado
+        if (b > 0 && d === inArrayStack[inArrayStack.length - 1]) {
+          lastValidArrayPos = i; // posición del } que cierra el objeto en el array
+        }
+      }
+      else if (c === '[') {
+        b++;
+        inArrayStack.push(d);
+      }
+      else if (c === ']') {
+        b--;
+        inArrayStack.pop();
+      }
+    }
+
+    // Si quedó un array abierto con objetos válidos antes del truncamiento
+    if (b > 0 && lastValidArrayPos > 0) {
+      return jsonStr.slice(0, lastValidArrayPos + 1);
+    }
+    return jsonStr;
+  }
+
+  repaired = trimToLastCompleteObject(repaired);
+
+  // Cerrar todas las estructuras pendientes
   let d = 0, b = 0, inS = false, e = false;
   for (let i = 0; i < repaired.length; i++) {
     const c = repaired[i];
@@ -1270,7 +1316,14 @@ function extractJson(raw) {
   if (inS) repaired += '"';
   while (b-- > 0) repaired += ']';
   while (d-- > 0) repaired += '}';
-  try { return JSON.parse(repaired); } catch (err) {
+  try {
+    const result = JSON.parse(repaired);
+    // Marcar como recuperado parcialmente
+    if (result && typeof result === 'object') {
+      result._recoveredFromTruncation = true;
+    }
+    return result;
+  } catch (err) {
     throw new Error(`JSON truncado y no reparable: ${err.message}`);
   }
 }
@@ -1918,7 +1971,7 @@ Antes de devolver el JSON, RECUENTA cuántas noticias hay de cada medio priorita
 - ¿Tienes 2 baleares (OK Bal + eDS Bal + El Debate Bal) si aparecía material?
 Si faltan mínimos y hay items disponibles en CANDIDATAS, reemplaza piezas "rellenas" por las que faltan.
 
-Para cada pieza seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO).
+Para cada pieza seleccionada, escribe un "summary" propio de 1-2 frases CORTAS (máx 200 caracteres). No copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO. NO te excedas para no truncar el JSON.
 
 CANDIDATAS:
 ${candidatesText}
@@ -1935,7 +1988,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 10000,
+          max_tokens: 16000,
           messages: [{ role: 'user', content: userPrompt }],
           // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
         }),
