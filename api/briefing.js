@@ -280,12 +280,36 @@ function extractTagContent(xml, tag) {
 }
 
 function cleanText(s) {
-  return String(s || '')
+  let result = String(s || '')
+    // Quitar CDATA wrapper
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/<[^>]+>/g, '')
+    // Quitar tags HTML (incluye <a href>, <img>, <p>, <br>, etc.)
+    .replace(/<[^>]+>/g, ' ')
+    // Entidades nombradas
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    .replace(/&nbsp;/g, ' ').replace(/&hellip;/g, '…')
+    .replace(/&laquo;/g, '«').replace(/&raquo;/g, '»')
+    .replace(/&ldquo;/g, '"').replace(/&rdquo;/g, '"')
+    .replace(/&lsquo;/g, "'").replace(/&rsquo;/g, "'")
+    .replace(/&ndash;/g, '–').replace(/&mdash;/g, '—')
+    .replace(/&aacute;/g, 'á').replace(/&eacute;/g, 'é').replace(/&iacute;/g, 'í')
+    .replace(/&oacute;/g, 'ó').replace(/&uacute;/g, 'ú').replace(/&ntilde;/g, 'ñ')
+    .replace(/&Aacute;/g, 'Á').replace(/&Eacute;/g, 'É').replace(/&Iacute;/g, 'Í')
+    .replace(/&Oacute;/g, 'Ó').replace(/&Uacute;/g, 'Ú').replace(/&Ntilde;/g, 'Ñ')
+    .replace(/&uuml;/g, 'ü').replace(/&Uuml;/g, 'Ü');
+  // Entidades numéricas decimales: &#8216; &#8217; etc.
+  result = result.replace(/&#(\d+);/g, (_, code) => {
+    try { return String.fromCharCode(parseInt(code, 10)); } catch (_) { return ''; }
+  });
+  // Entidades numéricas hexadecimales: &#x2019;
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+    try { return String.fromCharCode(parseInt(hex, 16)); } catch (_) { return ''; }
+  });
+  // URL Google News trackers que aparecen como description (Público bug)
+  result = result.replace(/https?:\/\/news\.google\.com\/rss\/articles\/[A-Za-z0-9_\-=]+\.\.\.?/g, '');
+  // Espacios múltiples
+  return result.replace(/\s+/g, ' ').trim();
 }
 
 function rfcToISODate(dateStr) {
@@ -405,18 +429,18 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'El Mercurio', url: 'https://news.google.com/rss/search?q=site:emol.com&hl=es-419&gl=CL&ceid=CL:es-419', tier: 'gn-fallback' },
 ];
 
-async function fetchSpainOpinionRss(allowedISODates) {
-  const result = await fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48, isOpinionRSSItem);
+async function fetchSpainOpinionRss(allowedISODates, excludeUrls) {
+  const result = await fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48, isOpinionRSSItem, excludeUrls);
   return { candidates: result.items.slice(0, 120), diagnostic: result.diagnostic };
 }
 
-async function fetchSpainNewsRss(allowedISODates) {
-  const result = await fetchFeedsAndFilter(SPAIN_NEWS_FEEDS, allowedISODates, 36);
+async function fetchSpainNewsRss(allowedISODates, excludeUrls) {
+  const result = await fetchFeedsAndFilter(SPAIN_NEWS_FEEDS, allowedISODates, 36, null, excludeUrls);
   return { candidates: result.items.slice(0, 80), diagnostic: result.diagnostic };
 }
 
-async function fetchInternationalOpinionRss(allowedISODates) {
-  const result = await fetchFeedsAndFilter(INTERNATIONAL_OPINION_FEEDS, allowedISODates, 48);
+async function fetchInternationalOpinionRss(allowedISODates, excludeUrls) {
+  const result = await fetchFeedsAndFilter(INTERNATIONAL_OPINION_FEEDS, allowedISODates, 48, null, excludeUrls);
   return { candidates: result.items.slice(0, 60), diagnostic: result.diagnostic };
 }
 
@@ -860,7 +884,7 @@ function isOpinionRSSItem(item) {
   return true;
 }
 
-async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opinionFilter = null) {
+async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opinionFilter = null, excludeUrls = null) {
   // Para cada feed, fetchear y registrar resultado completo
   const feedResults = await Promise.all(feedList.map(feed => fetchOneFeed(feed)));
 
@@ -901,6 +925,19 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
   let preCapPool = inDate;
   if (typeof opinionFilter === 'function') {
     preCapPool = inDate.filter(opinionFilter);
+  }
+
+  // ⭐ DEDUP CROSS-DAY: excluir URLs que ya aparecieron en briefings recientes
+  let excludedByDedup = 0;
+  if (excludeUrls && excludeUrls.size > 0) {
+    const beforeCount = preCapPool.length;
+    preCapPool = preCapPool.filter(item => {
+      if (!item.url) return true;
+      // Normalizar URLs: quitar parámetros tracking comunes y fragmentos
+      const normalizeUrl = (u) => u.split('#')[0].split('?')[0].toLowerCase().replace(/\/$/, '');
+      return !excludeUrls.has(normalizeUrl(item.url)) && !excludeUrls.has(item.url);
+    });
+    excludedByDedup = beforeCount - preCapPool.length;
   }
 
   // CAP POR FUENTE PERSONALIZADO (ampliado para opinión)
@@ -1202,6 +1239,16 @@ NUNCA incluyas:
 - 🚫 Catástrofes naturales puras sin matiz político/humanitario importante.
 SÍ incluye: política internacional, economía global, conflictos geopolíticos, diplomacia, instituciones multilaterales, ciencia/tecnología con impacto político, cultura/sociedad con relevancia estructural.
 
+⭐⭐ REGLA ANTI-REDUNDANCIA TEMÁTICA INTERNACIONAL ⭐⭐
+Para un mismo evento o tema global (ej: "Trump aranceles", "guerra Ucrania", "elecciones México", "Israel Gaza"):
+- MÁXIMO 3 piezas del mismo tema, vengan del medio que vengan.
+- Si hay 5+ medios cubriendo lo mismo, elige las 3 que aporten ÁNGULO DIFERENTE:
+  · 1 ángulo USA (NYT/WaPo/Bloomberg/Politico)
+  · 1 ángulo regional afectado (Le Monde si tema europeo, SCMP si China, Haaretz si Israel)
+  · 1 análisis (Foreign Affairs / Project Syndicate / Atlantic / Economist)
+- Prefiere DIVERSIDAD TEMÁTICA sobre repetición: mejor 20 temas distintos con 1 pieza cada uno que 6 temas con 3 piezas cada uno.
+- Esto es especialmente crítico para Trump/USA donde 10 medios escriben sobre lo mismo: limita a 3 con ángulos distintos.
+
 ⭐⭐⭐ REGLA INELUDIBLE — MÍNIMO 5 PIEZAS LARGAS POR BRIEFING ⭐⭐⭐
 Si después de seleccionar las 20 piezas tienes menos de 5 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": NYT, WaPo, Atlantic, FT, Bloomberg, The Economist, Foreign Affairs publican análisis profundo a diario.
 
@@ -1486,7 +1533,10 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Falta ANTHROPIC_API_KEY en variables de entorno de Vercel' });
   }
 
-  const { date, dateFull, requestTime, section } = req.body || {};
+  const { date, dateFull, requestTime, section, excludeUrls } = req.body || {};
+  // excludeUrls: array de URLs (de briefings recientes) que el modelo debe IGNORAR
+  // para evitar repetir piezas día tras día.
+  const excludeUrlsSet = new Set(Array.isArray(excludeUrls) ? excludeUrls : []);
   const todayShort = date || new Date().toLocaleDateString('es-ES');
   const todayFull = dateFull || todayShort;
   const nowTime = requestTime || 'no especificada';
@@ -1522,7 +1572,7 @@ export default async function handler(req, res) {
     let currentStep = 'init';
     try {
       currentStep = 'fetch-rss';
-      const { candidates, diagnostic } = await fetchSpainOpinionRss(allowedISODates);
+      const { candidates, diagnostic } = await fetchSpainOpinionRss(allowedISODates, excludeUrlsSet);
 
       if (!candidates || candidates.length === 0) {
         // Diagnóstico detallado: qué devolvió cada feed
@@ -1985,7 +2035,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
   // Igual que spainOpinion: pre-fetch RSS de portadas + Google News, sin web_search.
   if (section === 'spainNews') {
     try {
-      const { candidates, diagnostic } = await fetchSpainNewsRss(allowedISODates);
+      const { candidates, diagnostic } = await fetchSpainNewsRss(allowedISODates, excludeUrlsSet);
 
       if (!candidates || candidates.length === 0) {
         const detail = diagnostic.map(d =>
@@ -2114,6 +2164,21 @@ REGLAS DE SELECCIÓN:
    El modelo debe respetar los mínimos OBLIGATORIOS (⭐⭐) y luego priorizar lo demás según relevancia.
 
 8. Equilibrio temático: política, economía, sociedad, justicia/corrupción de relevancia política, internacional con foco España, cultura/ciencia/tecnología.
+
+⭐⭐ REGLA ANTI-REDUNDANCIA TEMÁTICA ⭐⭐
+Para un mismo evento o tema (ej: "Sánchez recula con el IVA", "sentencia caso Ábalos", "trama Acciona-Sumar"):
+- MÁXIMO 3 piezas del mismo tema, vengan del medio que vengan.
+- Si hay 5+ medios cubriendo lo mismo, elige las 3 que aporten ÁNGULO DIFERENTE:
+  · 1 de izquierda (El País / elDiario.es / HuffPost / Público)
+  · 1 de derecha (Vozpópuli / Libertad Digital / OK Diario / La Gaceta)
+  · 1 análisis/centro (The Objective / Demócrata / Letras Libres)
+- Si las 3 cubren exactamente lo mismo sin ángulo distinto, REDUCE a 2 o 1 y libera espacio para otro tema diferente.
+- Prefiere DIVERSIDAD TEMÁTICA sobre repetición: mejor 25 temas distintos que 8 temas con 3 piezas cada uno.
+
+CHEQUEO PRE-RESPUESTA:
+- Antes del JSON, mentalmente agrupa las 25 piezas por TEMA.
+- Si algún tema tiene más de 3 piezas → recorta a 3 con ángulos diversos.
+- Si tras recortar quedas en menos de 25, busca temas distintos no cubiertos.
 9. Mejor pocas piezas relevantes y frescas que muchas mediocres o forzadas.
 
 CHEQUEO PRE-RESPUESTA OBLIGATORIO:
@@ -2383,7 +2448,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
     let intlOpinionDiagnostic = [];
     if (section === 'international') {
       try {
-        const intlResult = await fetchInternationalOpinionRss(allowedISODates);
+        const intlResult = await fetchInternationalOpinionRss(allowedISODates, excludeUrlsSet);
         intlOpinionCandidates = intlResult.candidates || [];
         intlOpinionDiagnostic = intlResult.diagnostic || [];
       } catch (e) {
