@@ -194,6 +194,8 @@ const SOURCE_BADGE_COLORS = {
   'Agenda Pública': '#475569',    // gris pizarra
   'El Blog Salmón': '#FB7185',    // salmón rosado (literal)
   'Economía de Mallorca': '#0891B2', // turquesa
+  'Ethic': '#581C87',                // púrpura intelectual
+  'Letras Libres': '#4A5568',        // gris elegante editorial
 
   // ============ ESPAÑA NOTICIAS (medios paywall en rojo/granate) ============
   'El País': '#D32F2F',           // rojo País
