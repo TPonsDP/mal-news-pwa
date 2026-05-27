@@ -51,6 +51,16 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'Público', url: 'https://blogs.publico.es/feed/', tier: 'blogs' },
   { source: 'Público', url: 'https://news.google.com/rss/search?q=site:publico.es/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
 
+  // 📰 ETHIC - revista intelectual / filosofía / sociedad (gratis)
+  { source: 'Ethic', url: 'https://ethic.es/feed/', tier: 'main' },
+  { source: 'Ethic', url: 'https://www.ethic.es/feed/', tier: 'alt' },
+  { source: 'Ethic', url: 'https://news.google.com/rss/search?q=site:ethic.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
+
+  // 📰 LETRAS LIBRES - revista cultural intelectual (gratis)
+  { source: 'Letras Libres', url: 'https://letraslibres.com/feed/', tier: 'main' },
+  { source: 'Letras Libres', url: 'https://letraslibres.com/rss/', tier: 'alt' },
+  { source: 'Letras Libres', url: 'https://news.google.com/rss/search?q=site:letraslibres.com&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
+
   // El Debate - varias URLs alternativas (A)
   { source: 'El Debate', url: 'https://www.eldebate.com/feed/', tier: 'main' },
   { source: 'El Debate', url: 'https://www.eldebate.com/opinion/feed/', tier: 'opinion' },
@@ -416,92 +426,206 @@ const SOURCE_TO_REGION = {
   'New York Times': 'USA', 'NYT': 'USA', 'The New York Times': 'USA',
   'Washington Post': 'USA', 'WaPo': 'USA', 'The Washington Post': 'USA',
   'Wall Street Journal': 'USA', 'WSJ': 'USA',
-  'The Atlantic': 'USA', 'Politico': 'USA', 'The Hill': 'USA',
+  'The Atlantic': 'USA', 'Atlantic': 'USA',
+  'Politico': 'USA', 'POLITICO': 'USA',
+  'The Hill': 'USA', 'TheHill': 'USA',
   'The New Yorker': 'USA', 'New Yorker': 'USA',
-  'MarketWatch': 'USA', 'Forbes': 'USA', 'Quartz': 'USA',
-  'National Review': 'USA', 'Vox': 'USA',
-  'AP': 'USA', 'Associated Press': 'USA',
-  'NPR': 'USA', 'CNN': 'USA', 'NBC': 'USA', 'CBS': 'USA',
+  'MarketWatch': 'USA',
+  'Forbes': 'USA',
+  'Quartz': 'USA',
+  'National Review': 'USA',
+  'Vox': 'USA',
+  'AP': 'USA', 'Associated Press': 'USA', 'AP News': 'USA',
+  'NPR': 'USA', 'CNN': 'USA', 'NBC': 'USA', 'CBS': 'USA', 'CBS News': 'USA',
+  'ABC News': 'USA',
   'Axios': 'USA', 'Semafor': 'USA',
+  'Bloomberg Opinion': 'USA',
+  'USA Today': 'USA',
+  'Time': 'USA', 'TIME': 'USA',
+  'Newsweek': 'USA',
+  'Slate': 'USA',
+  'The Hill': 'USA',
+  'ProPublica': 'USA',
+
   // UK
   'The Guardian': 'UK', 'Guardian': 'UK',
   'The Spectator': 'UK', 'Spectator': 'UK',
-  'UnHerd': 'UK', 'BBC': 'UK', 'The Telegraph': 'UK', 'Telegraph': 'UK',
-  'The Times': 'UK', 'Daily Mail': 'UK',
+  'UnHerd': 'UK', 'BBC': 'UK', 'BBC News': 'UK',
+  'The Telegraph': 'UK', 'Telegraph': 'UK',
+  'The Times': 'UK', 'Times UK': 'UK',
+  'Daily Mail': 'UK', 'The Daily Mail': 'UK',
+  'The Independent': 'UK', 'Independent': 'UK',
+  'Sky News': 'UK',
+  'Evening Standard': 'UK',
+  'The Sun': 'UK',
+  'Mirror': 'UK', 'The Mirror': 'UK',
+
   // Económico Global
-  'Bloomberg': 'Económico Global', 'Reuters': 'Económico Global',
-  'Financial Times': 'Económico Global', 'FT': 'Económico Global',
-  'The Economist': 'Económico Global', 'Economist': 'Económico Global',
-  'Nikkei Asia': 'Económico Global',
+  'Bloomberg': 'Económico Global', 'Bloomberg.com': 'Económico Global',
+  'Reuters': 'Económico Global', 'Reuters.com': 'Económico Global',
+  'Financial Times': 'Económico Global', 'FT': 'Económico Global', 'FT.com': 'Económico Global',
+  'The Economist': 'Económico Global', 'Economist': 'Económico Global', 'Economist.com': 'Económico Global',
+  'Nikkei Asia': 'Económico Global', 'Nikkei': 'Económico Global', 'Nikkei.com': 'Económico Global',
+  'CNBC': 'Económico Global',
+  'Business Insider': 'Económico Global',
+
   // Europa Occidental
-  'Le Figaro': 'Europa Occ', 'Le Monde': 'Europa Occ', 'Le Point': 'Europa Occ',
+  'Le Figaro': 'Europa Occ', 'Figaro': 'Europa Occ',
+  'Le Monde': 'Europa Occ',
+  'Le Point': 'Europa Occ',
   'Liberation': 'Europa Occ', 'Libération': 'Europa Occ',
-  'Die Zeit': 'Europa Occ', 'Der Spiegel': 'Europa Occ',
+  'L\'Express': 'Europa Occ',
+  'France 24': 'Europa Occ', 'France24': 'Europa Occ',
+  'RFI': 'Europa Occ',
+  'Die Zeit': 'Europa Occ', 'Zeit': 'Europa Occ',
+  'Der Spiegel': 'Europa Occ', 'Spiegel': 'Europa Occ',
   'Frankfurter Allgemeine': 'Europa Occ', 'FAZ': 'Europa Occ',
-  'La Repubblica': 'Europa Occ', 'Corriere della Sera': 'Europa Occ',
+  'Süddeutsche Zeitung': 'Europa Occ', 'Sueddeutsche': 'Europa Occ',
+  'Deutsche Welle': 'Europa Occ', 'DW': 'Europa Occ',
+  'La Repubblica': 'Europa Occ',
+  'Corriere della Sera': 'Europa Occ', 'Corriere': 'Europa Occ',
   'Il Foglio': 'Europa Occ',
+  'La Stampa': 'Europa Occ',
+  'Il Sole 24 Ore': 'Europa Occ',
+  'NRC': 'Europa Occ',
+  'De Volkskrant': 'Europa Occ',
+
   // Europa Este
-  'Kyiv Independent': 'Europa Este', 'Politico Europe': 'Europa Este',
-  'Notes from Poland': 'Europa Este', 'Gazeta Wyborcza': 'Europa Este',
-  'Euractiv': 'Europa Este',
+  'Kyiv Independent': 'Europa Este',
+  'Politico Europe': 'Europa Este',
+  'Notes from Poland': 'Europa Este',
+  'Gazeta Wyborcza': 'Europa Este',
+  'Euractiv': 'Europa Este', 'EURACTIV': 'Europa Este',
+  'Hungary Today': 'Europa Este',
+  'Visegrad Insight': 'Europa Este',
+
   // Oriente Medio
-  'Haaretz': 'Oriente Medio', 'Times of Israel': 'Oriente Medio',
-  'Al Jazeera': 'Oriente Medio', 'Arab News': 'Oriente Medio',
-  'Jerusalem Post': 'Oriente Medio', 'Al-Monitor': 'Oriente Medio',
-  // India → Asia
-  'The Hindu': 'Asia', 'Indian Express': 'Asia',
-  'Times of India': 'Asia', 'Hindustan Times': 'Asia',
-  // Asia Este → Asia
-  'Japan Times': 'Asia',
+  'Haaretz': 'Oriente Medio',
+  'Times of Israel': 'Oriente Medio', 'The Times of Israel': 'Oriente Medio',
+  'Al Jazeera': 'Oriente Medio', 'Al Jazeera English': 'Oriente Medio', 'Al-Jazeera': 'Oriente Medio',
+  'Arab News': 'Oriente Medio',
+  'Jerusalem Post': 'Oriente Medio', 'The Jerusalem Post': 'Oriente Medio',
+  'Al-Monitor': 'Oriente Medio', 'Al Monitor': 'Oriente Medio',
+  'Middle East Eye': 'Oriente Medio', 'MEE': 'Oriente Medio',
+  'The National': 'Oriente Medio',  // UAE
+  'Asharq Al-Awsat': 'Oriente Medio',
+  'Daily Sabah': 'Oriente Medio',  // Turkey but often Middle East focused
+
+  // India + Asia Este + SE Asia → Asia (combinado)
+  'The Hindu': 'Asia', 'Hindu': 'Asia',
+  'Indian Express': 'Asia', 'The Indian Express': 'Asia',
+  'Times of India': 'Asia', 'The Times of India': 'Asia',
+  'Hindustan Times': 'Asia',
+  'NDTV': 'Asia',
+  'The Wire': 'Asia',  // India
+  'Scroll.in': 'Asia',
+  'Mint': 'Asia',
+  'Japan Times': 'Asia', 'The Japan Times': 'Asia',
   'South China Morning Post': 'Asia', 'SCMP': 'Asia',
-  'Korea Herald': 'Asia', 'Korea Times': 'Asia',
-  'Asahi Shimbun': 'Asia', 'Yomiuri Shimbun': 'Asia',
-  // China → Asia
+  'Korea Herald': 'Asia', 'The Korea Herald': 'Asia',
+  'Korea Times': 'Asia', 'The Korea Times': 'Asia',
+  'Asahi Shimbun': 'Asia', 'Asahi': 'Asia',
+  'Yomiuri Shimbun': 'Asia', 'Yomiuri': 'Asia',
+  'Mainichi': 'Asia',
   'Caixin': 'Asia', 'Caixin Global': 'Asia',
   'Global Times': 'Asia',
   'China Daily': 'Asia',
   'Sixth Tone': 'Asia',
-  'Xinhua': 'Asia', 'People\'s Daily': 'Asia',
-  // Corea del Sur (extra) → Asia
+  'Xinhua': 'Asia', 'Xinhua News': 'Asia',
+  'People\'s Daily': 'Asia',
   'Korea JoongAng Daily': 'Asia', 'JoongAng Daily': 'Asia', 'JoongAng Ilbo': 'Asia',
   'Hankyoreh': 'Asia', 'The Hankyoreh': 'Asia',
-  'Chosun Ilbo': 'Asia', 'The Chosun Ilbo': 'Asia',
+  'Chosun Ilbo': 'Asia', 'The Chosun Ilbo': 'Asia', 'Chosun': 'Asia',
   'Donga Ilbo': 'Asia',
   'Yonhap': 'Asia', 'Yonhap News': 'Asia',
-  // SE Asia → Asia
-  'Jakarta Post': 'Asia', 'Bangkok Post': 'Asia',
-  'Straits Times': 'Asia', 'Philippine Daily Inquirer': 'Asia',
-  // Singapur (extra) → Asia
+  'Jakarta Post': 'Asia', 'The Jakarta Post': 'Asia',
+  'Bangkok Post': 'Asia',
+  'Straits Times': 'Asia', 'The Straits Times': 'Asia',
+  'Philippine Daily Inquirer': 'Asia', 'Inquirer': 'Asia',
   'Channel News Asia': 'Asia', 'CNA': 'Asia',
   'The Business Times': 'Asia', 'Business Times Singapore': 'Asia',
   'TODAY': 'Asia', 'TODAYonline': 'Asia',
-  // Indonesia (extra) → Asia
   'Jakarta Globe': 'Asia',
   'Tempo': 'Asia', 'Tempo English': 'Asia',
   'Tirto': 'Asia', 'Tirto.id': 'Asia',
   'Antara News': 'Asia', 'Antara': 'Asia',
   'Kompas': 'Asia',
+  'Vietnam News': 'Asia',
+  'Channel 8': 'Asia',
+  'Taiwan News': 'Asia',
+  'The Star': 'Asia',  // Malaysia
+  'Free Malaysia Today': 'Asia',
+
   // LATAM
   'Clarín': 'LATAM', 'Clarin': 'LATAM',
   'La Nación': 'LATAM', 'La Nacion': 'LATAM',
   'Infobae': 'LATAM',
-  'El Universal': 'LATAM', 'El Mercurio': 'LATAM',
-  'El Espectador': 'LATAM', 'Folha de S.Paulo': 'LATAM',
-  'Folha': 'LATAM', 'O Globo': 'LATAM', 'Estadão': 'LATAM',
+  'El Universal': 'LATAM',
+  'El Mercurio': 'LATAM',
+  'El Espectador': 'LATAM',
+  'Folha de S.Paulo': 'LATAM', 'Folha': 'LATAM', 'Folha de Sao Paulo': 'LATAM',
+  'O Globo': 'LATAM',
+  'Estadão': 'LATAM', 'Estadao': 'LATAM', 'O Estado de S.Paulo': 'LATAM',
   'Milenio': 'LATAM',
+  'La Tercera': 'LATAM',
+  'La Jornada': 'LATAM',
+  'Página 12': 'LATAM', 'Pagina 12': 'LATAM',
+  'Excélsior': 'LATAM', 'Excelsior': 'LATAM',
+  'Reforma': 'LATAM',
+  'Animal Político': 'LATAM', 'Animal Politico': 'LATAM',
+  'El Comercio': 'LATAM',  // Perú
+  'El Tiempo': 'LATAM',  // Colombia
+  'Semana': 'LATAM',
+  'La República': 'LATAM',
+  'La Prensa': 'LATAM',
+
   // África
-  'Daily Maverick': 'África', 'Mail & Guardian': 'África',
-  'Premium Times': 'África', 'Africa Report': 'África',
-  'The Africa Report': 'África', 'AllAfrica': 'África',
+  'Daily Maverick': 'África', 'The Daily Maverick': 'África',
+  'Mail & Guardian': 'África', 'Mail and Guardian': 'África',
+  'Premium Times': 'África',
+  'Africa Report': 'África', 'The Africa Report': 'África',
+  'AllAfrica': 'África', 'allAfrica': 'África',
+  'News24': 'África',
+  'Vanguard': 'África',  // Nigeria
+  'Daily Nation': 'África',  // Kenya
+  'The Standard': 'África',  // Kenya
+  'Punch': 'África',  // Nigeria
+  'BusinessDay': 'África',
+  'Cape Argus': 'África',
+
   // Rusia
-  'Moscow Times': 'Rusia', 'The Moscow Times': 'Rusia', 'Meduza': 'Rusia',
+  'Moscow Times': 'Rusia', 'The Moscow Times': 'Rusia',
+  'Meduza': 'Rusia',
+  'Novaya Gazeta': 'Rusia',
+  'RBC': 'Rusia',
+
   // Australia
-  'Sydney Morning Herald': 'Australia', 'The Australian': 'Australia',
+  'Sydney Morning Herald': 'Australia', 'The Sydney Morning Herald': 'Australia',
+  'The Australian': 'Australia',
+  'The Age': 'Australia',
+  'ABC News Australia': 'Australia',  // careful: AU vs US ABC
+
   // Turquía
-  'Hurriyet': 'Turquía', 'Daily Sabah': 'Turquía',
+  'Hurriyet': 'Turquía', 'Hurriyet Daily News': 'Turquía',
+  // Daily Sabah ya en Oriente Medio por foco regional
+
   // Multilateral / Análisis
   'Project Syndicate': 'Multilateral',
-  'Foreign Policy': 'Multilateral', 'Foreign Affairs': 'Multilateral',
+  'Foreign Policy': 'Multilateral',
+  'Foreign Affairs': 'Multilateral',
+  'AFP': 'Multilateral', 'Agence France-Presse': 'Multilateral',
+  'EFE': 'Multilateral',  // Spanish agency but multilateral coverage
+  'DPA': 'Multilateral',  // German agency
+  'UN News': 'Multilateral', 'United Nations': 'Multilateral',
+  'IMF': 'Multilateral',
+  'World Bank': 'Multilateral',
+  'Council on Foreign Relations': 'Multilateral', 'CFR': 'Multilateral',
+  'Brookings': 'Multilateral',
+  'Carnegie Endowment': 'Multilateral',
+  'CSIS': 'Multilateral',
+  'Chatham House': 'Multilateral',
+  'European Council on Foreign Relations': 'Multilateral', 'ECFR': 'Multilateral',
+  'OECD': 'Multilateral',
 };
 
 const REGION_MIN = {
@@ -1117,24 +1241,47 @@ CHECKLIST ANTES DE DEVOLVER JSON FINAL:
 □ Las LARGAS aportan profundidad y tiempo de lectura >3 min
 
 - HARD CAPS: Máx 6 piezas USA · Máx 4 piezas UK · Máx 3 piezas mismo medio
-- MÍNIMOS GARANTIZADOS por región (si hay material fresco del día):
-  · 🇪🇺 Europa Occidental (FR/DE/IT): MÍNIMO 2
-  · 🌍 Europa Este (Ucrania/Polonia): MÍNIMO 1
-  · 🕌 Oriente Medio (Israel/Mundo árabe): MÍNIMO 2
-  · 🌏 ASIA (India + China + Japón + Corea + SE Asia): MÍNIMO 5 ⭐⭐ INELUDIBLE
-    - China: SCMP, Caixin, Global Times, China Daily, Sixth Tone (mezcla independiente + oficial)
+⭐⭐⭐ MÍNIMOS REGIONALES — REGLA INVIOLABLE ⭐⭐⭐
+ANTES de seleccionar las 20 piezas internacionales, OBLIGATORIAMENTE asegúrate de cubrir:
+  · 🇪🇺 Europa Occidental (FR/DE/IT): MÍNIMO 2 piezas
+  · 🌍 Europa Este (Ucrania/Polonia): MÍNIMO 1 pieza
+  · 🕌 Oriente Medio (Israel/Mundo árabe/Irán): MÍNIMO 2 piezas
+  · 🌏 ASIA (India + China + Japón + Corea + SE Asia): MÍNIMO 5 piezas ⭐⭐ INELUDIBLE
+    - China: SCMP, Caixin, Global Times, China Daily, Sixth Tone
     - Japón: Japan Times, Asahi, Yomiuri, Nikkei Asia
     - Corea del Sur: Korea Herald, Korea Times, Korea JoongAng Daily, Hankyoreh, Chosun Ilbo, Yonhap
     - India: The Hindu, Indian Express, Times of India, Hindustan Times
     - Singapur: Straits Times, Channel News Asia (CNA), The Business Times, TODAYonline
     - Indonesia: Jakarta Post, Jakarta Globe, Tempo, Antara, Kompas
     - SE Asia general: Bangkok Post (Tailandia), Philippine Daily Inquirer
-  · 🌎 LATAM (Argentina/México/Brasil/Colombia/Chile): MÍNIMO 4 ⭐⭐ INELUDIBLE
-  · 🌍 África (Sudáfrica/Nigeria/Kenia): MÍNIMO 1
-  · 💰 Económico global (Bloomberg/Reuters/FT/Forbes/MarketWatch): MÍNIMO 2
+  · 🌎 LATAM (Argentina/México/Brasil/Colombia/Chile): MÍNIMO 4 piezas ⭐⭐ INELUDIBLE
+    - Clarín, La Nación, Infobae (Argentina)
+    - Folha, O Globo, Estadão (Brasil)
+    - El Universal, Milenio, Reforma (México)
+    - El Espectador, El Tiempo, Semana (Colombia)
+    - El Mercurio, La Tercera (Chile)
+  · 🌍 África (Sudáfrica/Nigeria/Kenia/Egipto): MÍNIMO 1 pieza
+    - Daily Maverick, Mail & Guardian, News24 (Sudáfrica)
+    - Premium Times, Vanguard, Punch (Nigeria)
+    - The Africa Report, AllAfrica (panafricanos)
+  · 💰 Económico global (Bloomberg/Reuters/FT/Forbes/MarketWatch/Economist): MÍNIMO 2 piezas
   · 🇷🇺 Rusia: opcional, solo si hay noticia relevante (Moscow Times, Meduza)
-  · 🇦🇺 Australia / 🇹🇷 Turquía: opcionales, priorizar si hay material relevante
-- Total mínimos: ~17 piezas garantizadas globalmente, 3 piezas flexibles
+  · 🇦🇺 Australia / 🇹🇷 Turquía: opcionales
+
+🚫 NO empieces a generar el JSON hasta haber MENTALMENTE confirmado que vas a cubrir cada región MÍN.
+🚫 USA y UK están limitados a CAP MÁX (no MIN), no abuses de ellos. Si te falta espacio para LATAM/Asia/África, RECORTA USA/UK.
+
+CHECKLIST OBLIGATORIO antes de generar:
+□ ¿He buscado activamente en SCMP, Caixin o Korea Herald? (Asia)
+□ ¿He buscado en Clarín, Infobae, Folha o El Mercurio? (LATAM)
+□ ¿He buscado en Daily Maverick o Premium Times? (África)
+□ ¿He buscado en Haaretz, Al Jazeera o Times of Israel? (Oriente Medio)
+□ ¿He cubierto Le Monde/Le Figaro/Der Spiegel? (Europa Occ)
+□ ¿He cubierto Kyiv Independent? (Europa Este)
+
+Si la respuesta a alguna es NO, EJECUTA búsquedas adicionales antes de continuar.
+
+Total mínimos: ~17 piezas garantizadas globalmente, 3 piezas flexibles para USA/UK.
 - Si una región NO tiene material fresco real, deja el slot vacío (PROHIBIDO rellenar con USA/UK extras o inventar piezas)
 - Equilibrio IZQ/DER
 - Mezcla eventos concretos del día CON piezas largas de fondo
@@ -1344,16 +1491,18 @@ export default async function handler(req, res) {
   const todayFull = dateFull || todayShort;
   const nowTime = requestTime || 'no especificada';
 
-  // Calcular las DOS fechas ISO aceptadas (hoy, ayer) respecto a la fecha de referencia.
-  // 48h en lugar de 72h: prioridad por frescura. Para weekends/festivos, ajustar manualmente.
+  // Calcular las TRES fechas ISO aceptadas (ayer, hoy, mañana UTC).
+  // Incluimos "mañana" para cubrir bordes de timezone: piezas publicadas 00-02h Madrid
+  // tienen pubDate UTC del día siguiente, y serían rechazadas incorrectamente.
   const allowedISODates = (() => {
     try {
       const parts = todayShort.split('/').map(p => parseInt(p, 10));
       const [d, m, y] = parts;
       const ref = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
       const yest = new Date(ref.getTime() - 24 * 60 * 60 * 1000);
+      const tomorrow = new Date(ref.getTime() + 24 * 60 * 60 * 1000);
       const iso = (dt) => dt.toISOString().slice(0, 10);
-      return [iso(ref), iso(yest)];
+      return [iso(ref), iso(yest), iso(tomorrow)];
     } catch (_) {
       return [];
     }
@@ -1505,6 +1654,8 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo · MÍN 1)
    - Economía de Mallorca: MÁX 2 columnas (regional Baleares · análisis local)
    - Crónica Global: MÁX 2 columnas (Cataluña · análisis catalán)
+   - Ethic: MÁX 2 columnas (revista intelectual · filosofía/sociedad/ética)
+   - Letras Libres: MÁX 2 columnas (revista cultural intelectual · ensayo político-cultural)
 2.bis MÍNIMOS OBLIGATORIOS (condicionales — solo aplican si hay material en CANDIDATAS):
 - Si en CANDIDATAS aparece ≥3 items de "Vozpópuli", DEBES incluir mínimo 3 columnas suyas (cap MÁX 5). ⭐⭐ INELUDIBLE
 - Si aparece ≥2 items de "Artículo 14", DEBES incluir mínimo 2 columnas suyas. ⭐
@@ -1520,6 +1671,8 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
 - Si aparece ≥1 item de "El Debate", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "El Blog Salmón", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "Economía de Mallorca", DEBES incluir mínimo 1 (foco Baleares).
+- Si aparece ≥1 item de "Ethic", DEBES incluir mínimo 1 (análisis intelectual/ético).
+- Si aparece ≥1 item de "Letras Libres", DEBES incluir mínimo 1 (ensayo cultural/político).
 - Si aparece ≥1 item de "Crónica Global", DEBES incluir mínimo 1 (perspectiva catalana).
 
 CHEQUEO PRE-RESPUESTA OBLIGATORIO:
@@ -1710,6 +1863,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           'El Blog Salmón': 1,
           'Economía de Mallorca': 1,
           'Crónica Global': 1,
+          'Ethic': 1,
+          'Letras Libres': 1,
         };
 
         let items = briefing.spainOpinion || [];
@@ -2364,6 +2519,18 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         ? `⚠️ Faltan mínimos en: ${regionWarnings.map(w => `${w.emoji} ${w.region} (${w.current}/${w.min})`).join(', ')}`
         : null;
 
+      // Detectar fuentes en "Otros" para diagnóstico (medios no mapeados)
+      const otrosSources = worldNewsArr
+        .filter(p => p._region === 'Otros')
+        .map(p => p.source)
+        .reduce((acc, src) => {
+          acc[src] = (acc[src] || 0) + 1;
+          return acc;
+        }, {});
+      const otrosSourcesList = Object.entries(otrosSources)
+        .map(([src, count]) => `${src} (${count})`)
+        .join(', ');
+
       briefing._meta = {
         ...briefing._meta,
         intlOpinionCandidatesCount: intlOpinionCandidates.length,
@@ -2379,6 +2546,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         regionMin: REGION_MIN,
         regionWarnings,
         regionCounterString,
+        otrosSourcesList,
+        otrosSources,
       };
 
       const intlNotes = [];
