@@ -7,6 +7,23 @@ import { useState, useEffect } from 'react';
 // queda guardada hasta que regeneres ese botón o pulses "limpiar".
 
 const CACHE_KEY = 'mal-news-briefing-v1';
+const PRESSREADER_KEY = 'mal-news-pressreader-enabled';
+
+// ============ PRESSREADER · Acceso del usuario ============
+// El usuario puede activar este toggle si tiene PressReader (vía biblioteca o
+// suscripción €9.99/mes). Cuando está activo, los medios disponibles en
+// PressReader se marcan con 📚 verde en lugar de 🔒 rojo PAGO.
+function loadPressReaderEnabled() {
+  try {
+    return localStorage.getItem(PRESSREADER_KEY) === 'true';
+  } catch (_) { return false; }
+}
+
+function savePressReaderEnabled(enabled) {
+  try {
+    localStorage.setItem(PRESSREADER_KEY, enabled ? 'true' : 'false');
+  } catch (_) { /* no-op */ }
+}
 
 function loadBriefingCache() {
   try {
@@ -256,11 +273,9 @@ const SOURCE_BADGE_COLORS = {
   'Korea Times': '#1B3B6F',
   'Korea JoongAng Daily': '#C8102E',
   'Hankyoreh': '#1976D2',
-  'Chosun Ilbo': '#003366',
   // Singapur
   'Channel News Asia': '#E60028', 'CNA': '#E60028',
   'The Business Times': '#003F87',
-  'Straits Times': '#1D4ED8',
   // Indonesia
   'Jakarta Post': '#0066B3',
   'Jakarta Globe': '#005EB8',
@@ -452,7 +467,18 @@ function MediaGroup({ source, items, sectionColor, type, groupIndex }) {
                 alignItems: 'center',
                 fontFamily: "'Helvetica Neue', Arial, sans-serif",
               }}>
-                {item._isPaywall && (
+                {item._isPaywall && item._isPressReader && (typeof window !== 'undefined' && window.__pressReaderEnabled) ? (
+                  <span style={{
+                    fontSize: '9px',
+                    color: '#0891B2',
+                    background: 'rgba(8,145,178,0.10)',
+                    padding: '1px 5px',
+                    borderRadius: '2px',
+                    fontWeight: '700',
+                  }}>
+                    📚 PRESSREADER
+                  </span>
+                ) : item._isPaywall && (
                   <span style={{
                     fontSize: '9px',
                     color: '#D43131',
@@ -639,7 +665,17 @@ function NewsCard({ item, index, sectionColor, type, isLead }) {
               </span>
             )}
 
-            {item._isPaywall && (
+            {item._isPaywall && item._isPressReader && (typeof window !== 'undefined' && window.__pressReaderEnabled) ? (
+              <span title="Disponible en PressReader" style={{
+                background: 'rgba(8,145,178,0.12)', color: '#0891B2',
+                border: '1px solid rgba(8,145,178,0.30)',
+                fontSize: '9px', fontWeight: '700',
+                padding: '2px 5px', borderRadius: '3px',
+                fontFamily: "'Verdana', 'Geneva', sans-serif",
+              }}>
+                📚
+              </span>
+            ) : item._isPaywall && (
               <span title="Requiere suscripción" style={{
                 background: 'rgba(212,49,49,0.12)', color: '#D43131',
                 border: '1px solid rgba(212,49,49,0.30)',
@@ -1155,6 +1191,25 @@ export default function App() {
   // Timestamp de la última hidratación / guardado (para mostrar "hace Xh")
   const [cacheTimestamp, setCacheTimestamp] = useState(null);
 
+  // PressReader: si el usuario tiene acceso (vía biblioteca o suscripción)
+  // hace que los medios disponibles allí se marquen con 📚 verde en vez de 🔒 PAGO
+  const [pressReaderEnabled, setPressReaderEnabled] = useState(loadPressReaderEnabled());
+
+  // Sincronizar a window para que NewsCard/MediaGroup puedan acceder sin prop drilling
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__pressReaderEnabled = pressReaderEnabled;
+    }
+  }, [pressReaderEnabled]);
+
+  const togglePressReader = () => {
+    setPressReaderEnabled(prev => {
+      const next = !prev;
+      savePressReaderEnabled(next);
+      return next;
+    });
+  };
+
   // Hidratar desde localStorage al montar (solo una vez)
   useEffect(() => {
     const cache = loadBriefingCache();
@@ -1219,10 +1274,50 @@ export default function App() {
     const dateFull = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
     try {
+      // ⭐ DEDUP CROSS-DAY: recolectar URLs de briefings recientes (últimos 5 días)
+      // para que el backend las excluya del pool y no se repitan piezas.
+      const recentUrls = (() => {
+        try {
+          const cache = loadBriefingCache();
+          if (!cache) return [];
+          const urls = new Set();
+          const todayKey = todayShort;
+          // Solo recolectar de DÍAS ANTERIORES, no el actual
+          Object.entries(cache).forEach(([dateKey, dayBriefing]) => {
+            if (dateKey === todayKey) return; // no excluyamos lo que ya tenemos hoy
+            // Solo últimos 5 días
+            try {
+              const [d, m, y] = dateKey.split('/').map(p => parseInt(p, 10));
+              const cacheDate = new Date(Date.UTC(y, m - 1, d));
+              const todayDate = new Date(Date.UTC(...todayKey.split('/').map(p => parseInt(p, 10)).reverse().map((v, i) => i === 1 ? v - 1 : v)));
+              const daysAgo = (todayDate - cacheDate) / (24 * 60 * 60 * 1000);
+              if (daysAgo > 5 || daysAgo < 0) return;
+            } catch (_) { /* siempre incluir si no parsea fecha */ }
+            // Extraer URLs de las 3 secciones
+            ['spainOpinion', 'spainNews', 'extraNews', 'worldOpinion', 'worldNews'].forEach(key => {
+              const arr = dayBriefing?.[key];
+              if (Array.isArray(arr)) {
+                arr.forEach(item => {
+                  if (item?.url) {
+                    const normalized = item.url.split('#')[0].split('?')[0].toLowerCase().replace(/\/$/, '');
+                    urls.add(normalized);
+                    urls.add(item.url);
+                  }
+                });
+              }
+            });
+          });
+          return Array.from(urls);
+        } catch (e) {
+          console.warn('Error recolectando URLs recientes:', e);
+          return [];
+        }
+      })();
+
       const res = await fetch('/api/briefing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: todayShort, dateFull, requestTime, section }),
+        body: JSON.stringify({ date: todayShort, dateFull, requestTime, section, excludeUrls: recentUrls }),
       });
 
       if (!res.ok) {
@@ -1399,13 +1494,13 @@ export default function App() {
   // Internacional: optimizado para pico US + LATAM
   // ===================================================
   const SCHEDULE_SPAIN = {
-    1: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
-    2: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
-    3: { hour: 19, minute: 0,  label: 'Tarde laboral · máxima frescura' },
-    4: { hour: 19, minute: 0,  label: 'Día de Estefanía Molina y Agustín Valladolid' },
-    5: { hour: 19, minute: 0,  label: 'Cierra la semana laboral' },
-    6: { hour: 19, minute: 0,  label: 'Tarde de sábado · cierre semanal' },
-    0: { hour: 19, minute: 0,  label: 'Domingo completo · FJL, Pedro J., Cebrián' },
+    1: { hour: 21, minute: 0, label: 'Noche · ciclo completo del día' },
+    2: { hour: 21, minute: 0, label: 'Noche · ciclo completo del día' },
+    3: { hour: 21, minute: 0, label: 'Noche · ciclo completo del día' },
+    4: { hour: 21, minute: 0, label: 'Día de Estefanía Molina y Agustín Valladolid' },
+    5: { hour: 21, minute: 0, label: 'Cierra la semana · briefing nocturno' },
+    6: { hour: 21, minute: 0, label: 'Sábado noche · análisis del cierre semanal' },
+    0: { hour: 21, minute: 0, label: 'Domingo noche · FJL, Pedro J., Cebrián' },
   };
 
   const SCHEDULE_INTL = {
@@ -1414,8 +1509,8 @@ export default function App() {
     3: { hour: 21, minute: 30, label: 'Pico US business · LATAM activo' },
     4: { hour: 21, minute: 30, label: 'US tarde · Europa cerrada · LATAM peak' },
     5: { hour: 21, minute: 30, label: 'Cierre semanal · setup de fin de semana US' },
-    6: { hour: 21, minute: 30, label: 'Sábado tarde · US weekend cycle · LATAM activo' },
-    0: { hour: 18, minute: 30, label: 'NYT Sunday Review · WSJ Weekend · análisis dominical' },
+    6: { hour: 22, minute: 0,  label: 'Sábado noche · US weekend cycle · LATAM activo' },
+    0: { hour: 22, minute: 0,  label: 'Domingo noche · NYT Sunday Review · WSJ Weekend' },
   };
 
   function calculateNextBriefingForSchedule(schedule) {
@@ -2053,6 +2148,30 @@ export default function App() {
             </button>
           </div>
         )}
+
+        {/* TOGGLE PRESSREADER · marca medios disponibles en PressReader */}
+        <div style={{
+          textAlign: 'center', fontSize: '10px', color: BRAND.inkSoft,
+          marginBottom: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
+        }}>
+          <span>📚 Tengo PressReader:</span>
+          <button
+            onClick={togglePressReader}
+            style={{
+              fontSize: '10px',
+              padding: '3px 10px',
+              borderRadius: '12px',
+              border: `1px solid ${pressReaderEnabled ? '#0891B2' : BRAND.inkSoft}`,
+              background: pressReaderEnabled ? 'rgba(8,145,178,0.10)' : 'transparent',
+              color: pressReaderEnabled ? '#0891B2' : BRAND.inkSoft,
+              cursor: 'pointer',
+              fontWeight: '700',
+            }}
+            title="Activa si tienes acceso a PressReader. Los paywalls disponibles ahí se marcarán con 📚 en vez de 🔒"
+          >
+            {pressReaderEnabled ? '✓ ACTIVADO' : 'desactivado'}
+          </button>
+        </div>
 
         {/* TRES BOTONES: cada uno con su gradiente identitario y texto blanco */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
