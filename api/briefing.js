@@ -392,14 +392,11 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Korea Herald', url: 'https://news.google.com/rss/search?q=site:koreaherald.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Korea JoongAng Daily', url: 'https://koreajoongangdaily.joins.com/rss/all', tier: 'main' },
   { source: 'Hankyoreh', url: 'https://english.hani.co.kr/rss/', tier: 'main' },
-  { source: 'Chosun Ilbo', url: 'https://news.google.com/rss/search?q=site:chosun.com+english&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
 
   // 🇸🇬 SINGAPUR
   { source: 'Channel News Asia', url: 'https://www.channelnewsasia.com/rss', tier: 'main' },
   { source: 'Channel News Asia', url: 'https://news.google.com/rss/search?q=site:channelnewsasia.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'The Business Times', url: 'https://www.businesstimes.com.sg/rss', tier: 'main' },
-  { source: 'Straits Times', url: 'https://www.straitstimes.com/news/world/rss.xml', tier: 'main' },
-  { source: 'Straits Times', url: 'https://news.google.com/rss/search?q=site:straitstimes.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
 
   // 🌏 SUDESTE ASIÁTICO
   { source: 'Jakarta Post', url: 'https://www.thejakartapost.com/feed', tier: 'main' },
@@ -540,8 +537,6 @@ const SOURCE_TO_REGION = {
   'Indian Express': 'Asia', 'The Indian Express': 'Asia',
   'Times of India': 'Asia', 'The Times of India': 'Asia',
   'Hindustan Times': 'Asia',
-  'NDTV': 'Asia',
-  'The Wire': 'Asia',  // India
   'Scroll.in': 'Asia',
   'Mint': 'Asia',
   'Japan Times': 'Asia', 'The Japan Times': 'Asia',
@@ -559,12 +554,8 @@ const SOURCE_TO_REGION = {
   'People\'s Daily': 'Asia',
   'Korea JoongAng Daily': 'Asia', 'JoongAng Daily': 'Asia', 'JoongAng Ilbo': 'Asia',
   'Hankyoreh': 'Asia', 'The Hankyoreh': 'Asia',
-  'Chosun Ilbo': 'Asia', 'The Chosun Ilbo': 'Asia', 'Chosun': 'Asia',
-  'Donga Ilbo': 'Asia',
-  'Yonhap': 'Asia', 'Yonhap News': 'Asia',
   'Jakarta Post': 'Asia', 'The Jakarta Post': 'Asia',
   'Bangkok Post': 'Asia',
-  'Straits Times': 'Asia', 'The Straits Times': 'Asia',
   'Philippine Daily Inquirer': 'Asia', 'Inquirer': 'Asia',
   'Channel News Asia': 'Asia', 'CNA': 'Asia',
   'The Business Times': 'Asia', 'Business Times Singapore': 'Asia',
@@ -572,7 +563,6 @@ const SOURCE_TO_REGION = {
   'Jakarta Globe': 'Asia',
   'Tempo': 'Asia', 'Tempo English': 'Asia',
   'Tirto': 'Asia', 'Tirto.id': 'Asia',
-  'Antara News': 'Asia', 'Antara': 'Asia',
   'Kompas': 'Asia',
   'Vietnam News': 'Asia',
   'Channel 8': 'Asia',
@@ -705,6 +695,38 @@ const PAYWALL_SOURCES = new Set([
 function isPaywallSource(sourceName) {
   if (!sourceName) return false;
   return PAYWALL_SOURCES.has(sourceName);
+}
+
+// ============ PRESSREADER: Paywall internacionales DISPONIBLES en PressReader ============
+// Estos medios tienen sus ediciones impresas disponibles en PressReader.
+// Si el usuario tiene acceso (biblioteca o suscripción €9.99/mes), puede leerlos ahí.
+// Se marcan con flag _isPressReader para que el frontend muestre badge 📚 alternativo.
+const PRESSREADER_AVAILABLE_SOURCES = new Set([
+  // 🇬🇧 UK
+  'Financial Times', 'FT', 'FT.com',
+  'The Economist', 'Economist',
+  'The Spectator', 'Spectator',
+  'The Times', 'Times UK',
+  'The Telegraph', 'Telegraph',
+  // 🇺🇸 USA (los que SIGUEN en PressReader)
+  'Bloomberg', 'Bloomberg.com', 'Bloomberg News',
+  'Newsweek',
+  // 🇫🇷 Europa Occ
+  'Le Monde',
+  'Le Figaro',
+  // 🌏 Asia
+  'Japan Times', 'The Japan Times',
+  'The Business Times', 'Business Times Singapore',
+  'South China Morning Post', 'SCMP',
+  // 🇪🇸 España (algunas ediciones)
+  'El País', 'El Mundo', 'ABC', 'La Vanguardia',
+  // 🌎 LATAM
+  'El Mercurio',
+]);
+
+function isPressReaderAvailable(sourceName) {
+  if (!sourceName) return false;
+  return PRESSREADER_AVAILABLE_SOURCES.has(sourceName);
 }
 
 // ============ HELPER GLOBAL: Filtro de opinión (firmas reales) ============
@@ -1296,10 +1318,10 @@ ANTES de seleccionar las 20 piezas internacionales, OBLIGATORIAMENTE asegúrate 
   · 🌏 ASIA (India + China + Japón + Corea + SE Asia): MÍNIMO 5 piezas ⭐⭐ INELUDIBLE
     - China: SCMP, Caixin, Global Times, China Daily, Sixth Tone
     - Japón: Japan Times, Asahi, Yomiuri, Nikkei Asia
-    - Corea del Sur: Korea Herald, Korea Times, Korea JoongAng Daily, Hankyoreh, Chosun Ilbo, Yonhap
-    - India: The Hindu, Indian Express, Times of India, Hindustan Times
-    - Singapur: Straits Times, Channel News Asia (CNA), The Business Times, TODAYonline
-    - Indonesia: Jakarta Post, Jakarta Globe, Tempo, Antara, Kompas
+    - Corea del Sur: Korea Herald, Korea Times, Korea JoongAng Daily, Hankyoreh
+    - India: The Hindu, Indian Express, Times of India, Hindustan Times, Scroll.in
+    - Singapur: Channel News Asia (CNA), The Business Times, TODAYonline
+    - Indonesia: Jakarta Post, Jakarta Globe, Tempo, Kompas, Tirto
     - SE Asia general: Bangkok Post (Tailandia), Philippine Daily Inquirer
   · 🌎 LATAM (Argentina/México/Brasil/Colombia/Chile): MÍNIMO 4 piezas ⭐⭐ INELUDIBLE
     - Clarín, La Nación, Infobae (Argentina)
@@ -1318,13 +1340,35 @@ ANTES de seleccionar las 20 piezas internacionales, OBLIGATORIAMENTE asegúrate 
 🚫 NO empieces a generar el JSON hasta haber MENTALMENTE confirmado que vas a cubrir cada región MÍN.
 🚫 USA y UK están limitados a CAP MÁX (no MIN), no abuses de ellos. Si te falta espacio para LATAM/Asia/África, RECORTA USA/UK.
 
-CHECKLIST OBLIGATORIO antes de generar:
-□ ¿He buscado activamente en SCMP, Caixin o Korea Herald? (Asia)
-□ ¿He buscado en Clarín, Infobae, Folha o El Mercurio? (LATAM)
-□ ¿He buscado en Daily Maverick o Premium Times? (África)
-□ ¿He buscado en Haaretz, Al Jazeera o Times of Israel? (Oriente Medio)
-□ ¿He cubierto Le Monde/Le Figaro/Der Spiegel? (Europa Occ)
-□ ¿He cubierto Kyiv Independent? (Europa Este)
+⭐⭐⭐ PRESUPUESTO OBLIGATORIO DE BÚSQUEDAS (tienes 10 búsquedas disponibles) ⭐⭐⭐
+RESERVA EXPLÍCITAMENTE las siguientes búsquedas ANTES de hacer ninguna otra:
+
+  BLOQUE 1 · PROTEGIDO (reservado, no negociable): 3 búsquedas
+  1. site:dailymaverick.co.za OR site:premiumtimesng.com OR site:mg.co.za 2026
+     → garantiza min 1 ÁFRICA (sin esta búsqueda, África queda en cero)
+  2. site:clarin.com OR site:infobae.com OR site:lanacion.com.ar 2026
+     → garantiza piezas Argentina LATAM
+  3. site:folha.uol.com.br OR site:oglobo.globo.com OR site:elmercurio.com OR site:eltiempo.com 2026
+     → garantiza piezas Brasil/Chile/Colombia LATAM
+
+  BLOQUE 2 · OBLIGATORIO (no opcional): 3 búsquedas
+  4. site:scmp.com OR site:caixinglobal.com OR site:globaltimes.cn 2026  (China)
+  5. site:koreaherald.com OR site:hankyoreh.com OR site:japantimes.co.jp OR site:thehindu.com OR site:indianexpress.com 2026  (Asia este+India)
+  6. site:haaretz.com OR site:timesofisrael.com OR site:aljazeera.com 2026  (Oriente Medio)
+
+  BLOQUE 3 · FLEXIBLE (4 búsquedas restantes): USA, UK, Europa Occ, Económico Global, Ucrania
+  Distribúyelas según la actualidad del día.
+
+🔴 PROHIBIDO empezar por USA y "ya veremos si llegamos a África". Ejecuta los BLOQUES 1 y 2 PRIMERO.
+🔴 Si tras BLOQUE 1+2 (6 búsquedas usadas) ves que has cumplido los mínimos, puedes usar las 4 restantes para profundizar.
+
+CHECKLIST OBLIGATORIO antes de generar (verifica DESPUÉS de las búsquedas):
+□ ¿Tengo ≥1 pieza ÁFRICA? Si no, REJECT y vuelve a buscar
+□ ¿Tengo ≥4 piezas LATAM? Si no, REJECT y vuelve a buscar
+□ ¿Tengo ≥5 piezas Asia? Si no, REJECT y vuelve a buscar
+□ ¿Tengo ≥2 piezas Oriente Medio? Si no, REJECT y vuelve a buscar
+□ ¿He cubierto Le Monde/Le Figaro/Der Spiegel? (Europa Occ ≥2)
+□ ¿He cubierto Kyiv Independent? (Europa Este ≥1)
 
 Si la respuesta a alguna es NO, EJECUTA búsquedas adicionales antes de continuar.
 
@@ -1406,7 +1450,7 @@ Búsqueda recomendada: site:[dominio]/opinion ${today} para columnas firmadas, s
 OUTPUT: solo JSON, sin texto antes ni después:
 {"date":"DD/MM/YYYY","worldOpinion":[...],"worldNews":[...]}`;
     },
-    maxUses: 12,
+    maxUses: 10,
   },
   // spainNews y spainOpinion usan flujo Plan B (RSS pre-fetch + prompts inline)
   // No necesitan system/user aquí, solo label para validación de section válida
@@ -1865,11 +1909,15 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         briefing.extraNews = extraNewsFromOpinion;
 
         // Marcar con _isPaywall las piezas de fuentes paywall (para que el frontend muestre 🔒)
+        // Marcar con _isPressReader las piezas disponibles en PressReader (para badge 📚)
         const markPaywall = (arr) => {
           if (!Array.isArray(arr)) return;
           arr.forEach(item => {
             if (item && isPaywallSource(item.source)) {
               item._isPaywall = true;
+            }
+            if (item && isPressReaderAvailable(item.source)) {
+              item._isPressReader = true;
             }
           });
         };
@@ -2385,12 +2433,16 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         }
 
         // Marcar con _isPaywall las piezas de fuentes paywall
+        // Marcar con _isPressReader las piezas disponibles en PressReader
         // Marcar con _detectedLong las piezas que son largas (incluyendo las que el modelo seleccionó)
         // Enriquecer con imagen desde candidatos
         if (Array.isArray(briefing.spainNews)) {
           briefing.spainNews.forEach(item => {
             if (item && isPaywallSource(item.source)) {
               item._isPaywall = true;
+            }
+            if (item && isPressReaderAvailable(item.source)) {
+              item._isPressReader = true;
             }
             // Marcar como larga si no estaba ya marcada por enforcement
             if (item && !item._forcedLong) {
@@ -2519,6 +2571,26 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         if (summaryLen > 250) return true;
         return false;
       };
+
+      // ⭐ MARCADO PRESSREADER: marcar piezas cuyo medio está en PressReader
+      // El frontend mostrará badge 📚 cuando el usuario tenga PressReader activado.
+      let pressReaderMarkedCount = 0;
+      if (Array.isArray(briefing.worldNews)) {
+        briefing.worldNews.forEach(p => {
+          if (p && isPressReaderAvailable(p.source)) {
+            p._isPressReader = true;
+            pressReaderMarkedCount++;
+          }
+        });
+      }
+      if (Array.isArray(briefing.worldOpinion)) {
+        briefing.worldOpinion.forEach(p => {
+          if (p && isPressReaderAvailable(p.source)) {
+            p._isPressReader = true;
+            pressReaderMarkedCount++;
+          }
+        });
+      }
 
       const worldNewsArr = Array.isArray(briefing.worldNews) ? briefing.worldNews : [];
       const worldOpinionArr = Array.isArray(briefing.worldOpinion) ? briefing.worldOpinion : [];
