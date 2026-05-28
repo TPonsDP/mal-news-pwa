@@ -255,6 +255,9 @@ const SOURCE_BADGE_COLORS = {
   'Economist': '#E3120B', 'The Economist': '#E3120B',
   'Le Monde': '#003366',
   'Le Figaro': '#005DAA',
+  'Der Spiegel': '#B91C1C',        // rojo característico Spiegel
+  'La Repubblica': '#BE123C',      // rosa-rojo La Repubblica
+  'The Times': '#1E3A8A',          // azul navy Times establishment
   'Hindu': '#1F3864', 'The Hindu': '#1F3864',
   'Times of Israel': '#0F4C81',
   'Haaretz': '#103D6E',
@@ -285,6 +288,11 @@ const SOURCE_BADGE_COLORS = {
   'Infobae': '#3B82F6',
   'El Espectador': '#005D8F',
   'El Mercurio': '#0D2C54',
+  'El Faro': '#831843',            // vino oscuro · Pulitzer investigativo El Salvador
+  'Confidencial': '#0D9488',       // teal · Chamorro Nicaragua/exilio CR
+  'Animal Político': '#BE185D',    // magenta · investigativo independiente México
+  // 🇺🇸 USA conservador heterodoxo
+  'The Bulwark': '#4338CA',        // indigo · nunca-trumpista intelectual
   // Otros
   'UnHerd': '#0066CC',
   'The Spectator': '#990000',
