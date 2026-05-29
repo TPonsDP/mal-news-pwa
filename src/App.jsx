@@ -1973,6 +1973,37 @@ export default function App() {
               display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '14px',
               marginBottom: '14px', flexWrap: 'wrap',
             }}>
+              {/* Flecha izquierda · ir día atrás */}
+              <button
+                onClick={() => {
+                  const newDate = new Date(selectedDate + 'T12:00:00');
+                  newDate.setDate(newDate.getDate() - 1);
+                  setSelectedDate(newDate.toISOString().slice(0, 10));
+                }}
+                disabled={disabled}
+                title="Día anterior"
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  border: `1.5px solid ${disabled ? '#CBD5E0' : '#1A365D'}`,
+                  background: 'white',
+                  color: disabled ? '#CBD5E0' : '#1A365D',
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 2px 6px rgba(26,54,93,0.15)',
+                }}
+                onMouseOver={e => !disabled && (e.currentTarget.style.background = '#1A365D', e.currentTarget.style.color = 'white')}
+                onMouseOut={e => !disabled && (e.currentTarget.style.background = 'white', e.currentTarget.style.color = '#1A365D')}
+              >
+                ‹
+              </button>
+
               {/* Círculo con día y mes - clickable (abre date picker nativo) */}
               <label style={{
                 position: 'relative',
@@ -2097,6 +2128,38 @@ export default function App() {
                   }}
                 />
               </label>
+
+              {/* Flecha derecha · ir día adelante (deshabilitada si ya estamos en HOY) */}
+              <button
+                onClick={() => {
+                  const newDate = new Date(selectedDate + 'T12:00:00');
+                  newDate.setDate(newDate.getDate() + 1);
+                  const newIso = newDate.toISOString().slice(0, 10);
+                  if (newIso <= todayIso) setSelectedDate(newIso);
+                }}
+                disabled={disabled || selectedDate >= todayIso}
+                title={selectedDate >= todayIso ? 'Ya estás en HOY · no puedes ir al futuro' : 'Día siguiente'}
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  border: `1.5px solid ${(disabled || selectedDate >= todayIso) ? '#CBD5E0' : '#1A365D'}`,
+                  background: 'white',
+                  color: (disabled || selectedDate >= todayIso) ? '#CBD5E0' : '#1A365D',
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  cursor: (disabled || selectedDate >= todayIso) ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 2px 6px rgba(26,54,93,0.15)',
+                }}
+                onMouseOver={e => !(disabled || selectedDate >= todayIso) && (e.currentTarget.style.background = '#1A365D', e.currentTarget.style.color = 'white')}
+                onMouseOut={e => !(disabled || selectedDate >= todayIso) && (e.currentTarget.style.background = 'white', e.currentTarget.style.color = '#1A365D')}
+              >
+                ›
+              </button>
 
               {/* Botón volver a hoy - solo si fecha pasada */}
               {isPastDate && (
