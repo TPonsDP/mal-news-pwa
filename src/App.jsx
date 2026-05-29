@@ -9,6 +9,23 @@ import { useState, useEffect } from 'react';
 const CACHE_KEY = 'mal-news-briefing-v1';
 const PRESSREADER_KEY = 'mal-news-pressreader-enabled';
 
+// ============ MIS SUSCRIPCIONES DIRECTAS ============
+// Medios con acceso directo del usuario (suscripción propia).
+// Aparecen con badge verde "✓ ACCESO" en lugar de "🔒 PAGO" o "📚 PRESSREADER".
+// Prioridad de badges:  ACCESO  >  PRESSREADER  >  PAGO
+const USER_SUBSCRIPTIONS = new Set([
+  'El País', 'elpais.com',
+  'El Mundo', 'elmundo.es',
+  'ABC', 'abc.es',
+  'El Español', 'elespanol.com',
+  'El Confidencial', 'elconfidencial.com',
+]);
+
+function isUserSubscribed(sourceName) {
+  if (!sourceName) return false;
+  return USER_SUBSCRIPTIONS.has(sourceName) || USER_SUBSCRIPTIONS.has(String(sourceName).toLowerCase());
+}
+
 // ============ PRESSREADER · Acceso del usuario ============
 // El usuario puede activar este toggle si tiene PressReader (vía biblioteca o
 // suscripción €9.99/mes). Cuando está activo, los medios disponibles en
@@ -475,7 +492,18 @@ function MediaGroup({ source, items, sectionColor, type, groupIndex }) {
                 alignItems: 'center',
                 fontFamily: "'Helvetica Neue', Arial, sans-serif",
               }}>
-                {item._isPaywall && item._isPressReader && (typeof window !== 'undefined' && window.__pressReaderEnabled) ? (
+                {item._isPaywall && isUserSubscribed(item.source) ? (
+                  <span style={{
+                    fontSize: '9px',
+                    color: '#15803D',
+                    background: 'rgba(21,128,61,0.10)',
+                    padding: '1px 5px',
+                    borderRadius: '2px',
+                    fontWeight: '700',
+                  }}>
+                    ✓ ACCESO
+                  </span>
+                ) : item._isPaywall && item._isPressReader && (typeof window !== 'undefined' && window.__pressReaderEnabled) ? (
                   <span style={{
                     fontSize: '9px',
                     color: '#0891B2',
@@ -673,7 +701,17 @@ function NewsCard({ item, index, sectionColor, type, isLead }) {
               </span>
             )}
 
-            {item._isPaywall && item._isPressReader && (typeof window !== 'undefined' && window.__pressReaderEnabled) ? (
+            {item._isPaywall && isUserSubscribed(item.source) ? (
+              <span title="Acceso directo · suscripción propia" style={{
+                background: 'rgba(21,128,61,0.12)', color: '#15803D',
+                border: '1px solid rgba(21,128,61,0.30)',
+                fontSize: '9px', fontWeight: '700',
+                padding: '2px 5px', borderRadius: '3px',
+                fontFamily: "'Verdana', 'Geneva', sans-serif",
+              }}>
+                ✓
+              </span>
+            ) : item._isPaywall && item._isPressReader && (typeof window !== 'undefined' && window.__pressReaderEnabled) ? (
               <span title="Disponible en PressReader" style={{
                 background: 'rgba(8,145,178,0.12)', color: '#0891B2',
                 border: '1px solid rgba(8,145,178,0.30)',
