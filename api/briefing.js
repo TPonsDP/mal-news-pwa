@@ -356,17 +356,14 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Le Monde', url: 'https://www.lemonde.fr/rss/une.xml', tier: 'main' },
 
   // 🇩🇪 Der Spiegel International (versión inglés, gratis, calidad alta)
-  { source: 'Der Spiegel', url: 'https://www.spiegel.de/international/index.rss', tier: 'main' },
-  { source: 'Der Spiegel', url: 'https://news.google.com/rss/search?q=site:spiegel.de/international&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
+  { source: 'Der Spiegel', url: 'https://news.google.com/rss/search?q=site:spiegel.de/international+(opinion+OR+commentary+OR+editorial)&hl=en-US&gl=US&ceid=US:en', tier: 'gn-opinion' },
 
   // 🇮🇹 La Repubblica (centro-izq italiano, mayor diario)
-  { source: 'La Repubblica', url: 'https://www.repubblica.it/rss/rss2.0.xml', tier: 'main' },
-  { source: 'La Repubblica', url: 'https://www.repubblica.it/rss/esteri/rss2.0.xml', tier: 'esteri' },
-  { source: 'La Repubblica', url: 'https://news.google.com/rss/search?q=site:repubblica.it&hl=it-IT&gl=IT&ceid=IT:it', tier: 'gn-fallback' },
+  { source: 'La Repubblica', url: 'https://www.repubblica.it/rss/commenti/rss2.0.xml', tier: 'opinion' },
+  { source: 'La Repubblica', url: 'https://news.google.com/rss/search?q=site:repubblica.it/commenti&hl=it-IT&gl=IT&ceid=IT:it', tier: 'gn-opinion' },
 
   // 🇬🇧 The Times (UK conservador establishment, PressReader disponible)
-  { source: 'The Times', url: 'https://www.thetimes.co.uk/rss', tier: 'main' },
-  { source: 'The Times', url: 'https://news.google.com/rss/search?q=site:thetimes.co.uk&hl=en-GB&gl=GB&ceid=GB:en', tier: 'gn-fallback' },
+  { source: 'The Times', url: 'https://news.google.com/rss/search?q=site:thetimes.co.uk/article+(comment+OR+opinion)&hl=en-GB&gl=GB&ceid=GB:en', tier: 'gn-opinion' },
 
 
   // 🌐 MULTILATERAL OPINIÓN
@@ -479,10 +476,51 @@ async function fetchSpainNewsRss(allowedISODates, excludeUrls) {
 
 async function fetchInternationalOpinionRss(allowedISODates, excludeUrls) {
   // ⚠️ DEDUP CROSS-DAY DESACTIVADO PARA OPINIÓN INTERNACIONAL
-  // Misma razón que Spain Opinion: queremos columnas firmadas frescas aunque
-  // el columnista haya aparecido recientemente.
-  const result = await fetchFeedsAndFilter(INTERNATIONAL_OPINION_FEEDS, allowedISODates, 48, null, null);
+  // Aplica filtro anti-noticia (isOpinionRSSItemIntl) para que los feeds generales
+  // de Der Spiegel / La Repubblica / The Times no metan noticias en la sección.
+  const result = await fetchFeedsAndFilter(INTERNATIONAL_OPINION_FEEDS, allowedISODates, 48, isOpinionRSSItemIntl, null);
   return { candidates: result.items.slice(0, 60), diagnostic: result.diagnostic };
+}
+
+// Filtro de opinión para medios internacionales (patrones de URL/título distintos al español)
+function isOpinionRSSItemIntl(item) {
+  const url = String(item.url || '').toLowerCase();
+  const fromUrl = String(item._fromUrl || '').toLowerCase();
+  const title = String(item.title || '').trim();
+
+  // Fuentes que son 100% opinión/análisis por naturaleza → siempre pasan
+  const OPINION_ONLY_INTL = new Set([
+    'Project Syndicate', 'Foreign Affairs', 'Foreign Policy',
+    'The Bulwark', 'UnHerd', 'The Spectator', 'National Review',
+  ]);
+  if (OPINION_ONLY_INTL.has(item.source)) return true;
+
+  // URL contiene sección de opinión (multi-idioma)
+  const isOpinionPath = /\/(opinion|opinione|commenti|commento|comment|meinung|idees|idias|editorial|column|columnist|analysis|perspective|viewpoint|tribune)\b/i.test(url)
+    || /\/(opinion|commenti|comment|meinung)\b/i.test(fromUrl);
+  if (isOpinionPath) return true;
+
+  // Si el feed era de opinión (query Google News con opinion/comment/commenti)
+  if (/opinion|comment|commenti|meinung|editorial/i.test(fromUrl)) return true;
+
+  // Rechaza patrones claros de noticia en inglés/italiano/alemán
+  const NEWS_INTL = [
+    /^(breaking|live|video|watch|photos?|in pictures|gallery)\b/i,
+    /\b(dies|dead|killed|injured|arrested|wins|loses|defeats)\b/i,
+    /^(update|report):/i,
+    /\b\d+ (killed|dead|injured|wounded)\b/i,
+  ];
+  for (const p of NEWS_INTL) {
+    if (p.test(title)) return false;
+  }
+
+  // Por defecto: si tiene autor real, lo aceptamos como posible columna
+  const author = String(item.author || '').trim();
+  if (author && author.length > 2 && !/^(reuters|ap|afp|bloomberg news|staff|editorial)$/i.test(author)) {
+    return true;
+  }
+  // Sin autor y sin señal de opinión → fuera (probablemente noticia)
+  return false;
 }
 
 // ============ MAPA DE REGIONES INTERNACIONAL ============
@@ -865,6 +903,13 @@ const NEWS_TITLE_PATTERNS = [
   /^en sumario/i,
   /^boletín/i,
   /^claves del día/i,
+  // Patrones noticia adicionales (reportaje/breaking)
+  /^(última hora|directo|en directo|vídeo|video|fotos?|galería|en imágenes)\b/i,
+  /\b(detenido|detienen|arrestado|arrestan|herido|heridos|muertos?|fallecido)\b/i,
+  /^(los mossos|la ertzaintza|la policía|la guardia civil|bomberos)/i,
+  /\b(gana|pierde|empata|vence|cae|sube|baja) \d/i,
+  /^(resultados|clasificación|directo):/i,
+  /\b(se corona|campeón|campeona|medalla|título) /i,
 ];
 
 function isOpinionRSSItem(item) {
