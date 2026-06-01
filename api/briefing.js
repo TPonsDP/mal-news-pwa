@@ -70,7 +70,6 @@ const SPAIN_OPINION_FEEDS = [
   // El Español: eliminado de opinion (queda solo en spainNews)
 
   // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo) ============
-  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/rss/opinion.xml', tier: 'native' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
   { source: 'Artículo 14', url: 'https://news.google.com/rss/search?q=site:articulo14.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
@@ -151,7 +150,19 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
-async function fetchOneFeed(feed, timeoutMs = 6000) {
+async function fetchOneFeed(feed, timeoutMs = 10000) {
+  // Primer intento
+  const r1 = await fetchOneFeedAttempt(feed, timeoutMs);
+  if (r1.items.length > 0) return r1;
+  // Si falló (timeout/empty/error), reintenta UNA vez con 4s extra
+  if (r1.status === 'timeout' || r1.status === 'empty' || r1.status === 'fetch_error') {
+    const r2 = await fetchOneFeedAttempt(feed, timeoutMs + 4000);
+    if (r2.items.length > 0) return r2;
+  }
+  return r1;
+}
+
+async function fetchOneFeedAttempt(feed, timeoutMs) {
   const result = {
     source: feed.source,
     url: feed.url,
