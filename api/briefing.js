@@ -70,6 +70,7 @@ const SPAIN_OPINION_FEEDS = [
   // El Español: eliminado de opinion (queda solo en spainNews)
 
   // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo) ============
+  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/rss/opinion.xml', tier: 'native' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
   { source: 'Artículo 14', url: 'https://news.google.com/rss/search?q=site:articulo14.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
@@ -1801,7 +1802,10 @@ Si hay candidatas válidas de estos medios, INCLÚYELAS en este orden de prefere
 REGLAS DE SELECCIÓN (en orden de prioridad):
 1. Selecciona piezas con autor real cuando sea posible. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" "/elsubjetivo/" o similar, también CUENTAN como columna válida. EXCEPCIÓN: items con source "Agenda Pública" o "Artículo 14" pueden incluirse aunque no aparezca autor (Google News no expone el autor, pero los artículos originales son análisis firmados de calidad).
 2. HARD CAPS INVIOLABLES por medio (NO se pueden superar):
-   - Vozpópuli: MÁX 5 columnas ⭐⭐ (MÍN 3 si hay material)
+   - Vozpópuli: MÁX 5 columnas ⭐⭐⭐ MÍN 4 OBLIGATORIO si hay ≥5 candidatos en RSS (ver diagnóstico)
+     · Vozpópuli es el medio #1 del usuario · si el diagnóstico muestra ≥5 piezas en 48h, ES OBLIGATORIO incluir ≥4 columnas
+     · ACEPTA piezas SIN campo author si la URL contiene "/opinion/" o "/firmas/" o "/tribuna/" o "/blog/"
+     · Si Google News RSS devuelve URL redirect tipo news.google.com/articles/, ASUME que es columna de opinión (el feed solo trae /opinion/)
    - Artículo 14: MÁX 4 columnas ⭐
    - The Objective: MÁX 5 columnas ⭐⭐⭐ (MÍN 2)
    - Huffington Post: MÁX 2 columnas (izquierda alternativa, gratis)
@@ -1840,8 +1844,14 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
 
 CHEQUEO PRE-RESPUESTA OBLIGATORIO:
 Antes de devolver el JSON, RECUENTA cuántas columnas hay de cada medio prioritario.
+
+⭐ VERIFICACIÓN VOZPÓPULI (CRÍTICA):
+   - Si hubo ≥5 candidatos Vozpópuli en la lista RSS → DEBE haber ≥4 columnas Vozpópuli en el output
+   - Si hubo 3-4 candidatos Vozpópuli → DEBE haber ≥3 columnas Vozpópuli en el output
+   - Si hubo 1-2 candidatos Vozpópuli → DEBE haber ese número de columnas Vozpópuli
+   - SI VIOLAS ESTA REGLA, REHAZ EL OUTPUT desde cero
+
 Si The Objective < 3 y había ≥3 candidatos de The Objective en la lista → REHAZ la selección.
-Si Vozpópuli < 2 y había ≥2 candidatos suyos → REHAZ la selección.
 Este chequeo NO ES OPCIONAL.
 
 REGLA CLAVE: estos mínimos SOLO aplican si hay candidatos suficientes en los RSS. Si Vozpópuli ese día solo tiene 1 columna (o ninguna) en CANDIDATAS, no fuerzas un mínimo de 2.
