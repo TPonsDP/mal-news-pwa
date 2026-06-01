@@ -45,7 +45,7 @@ const SPAIN_OPINION_FEEDS = [
 
   // 📰 IZQUIERDA - voces alternativas (gratis)
   { source: 'Huffington Post', url: 'https://www.huffingtonpost.es/seccion/opinion/feed/', tier: 'main' },
-  { source: 'Huffington Post', url: 'https://www.huffingtonpost.es/feed/', tier: 'general' },
+  { source: 'Huffington Post', url: 'https://news.google.com/rss/search?q=site:huffingtonpost.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-main' },
   { source: 'Huffington Post', url: 'https://news.google.com/rss/search?q=site:huffingtonpost.es/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
   { source: 'Público', url: 'https://www.publico.es/opinion/rss', tier: 'main' },
   { source: 'Público', url: 'https://blogs.publico.es/feed/', tier: 'blogs' },
@@ -62,9 +62,7 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'Letras Libres', url: 'https://news.google.com/rss/search?q=site:letraslibres.com&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
 
   // El Debate - varias URLs alternativas (A)
-  { source: 'El Debate', url: 'https://www.eldebate.com/feed/', tier: 'main' },
   { source: 'El Debate', url: 'https://www.eldebate.com/opinion/feed/', tier: 'opinion' },
-  { source: 'El Debate', url: 'https://www.eldebate.com/rss/', tier: 'rss-root' },
   { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'google-news' },
 
   // El Español: eliminado de opinion (queda solo en spainNews)
@@ -102,15 +100,10 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'OK Diario', url: 'https://okdiario.com/feed/' },
   { source: 'OK Diario', url: 'https://news.google.com/rss/search?q=site:okdiario.com&hl=es-ES&gl=ES&ceid=ES:es' },
   // El Debate general (no solo Baleares)
-  { source: 'El Debate', url: 'https://www.eldebate.com/feed/' },
-  { source: 'El Debate', url: 'https://www.eldebate.com/rss/' },
   { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
   // 📰 IZQUIERDA alternativa (gratis) - mismos sesgos
-  { source: 'Huffington Post', url: 'https://www.huffingtonpost.es/feed/' },
   { source: 'Huffington Post', url: 'https://news.google.com/rss/search?q=site:huffingtonpost.es&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'Público', url: 'https://www.publico.es/rss' },
-  { source: 'Público', url: 'https://www.publico.es/rss/general' },
   { source: 'Público', url: 'https://news.google.com/rss/search?q=site:publico.es&hl=es-ES&gl=ES&ceid=ES:es' },
   // El Nacional.cat - catalán independentista, gratis
   { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/es/rss' },
@@ -120,21 +113,13 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/rss' },
 
   // Demócrata - WordPress feed + Google News fallback
-  { source: 'Demócrata', url: 'https://democrata.es/feed/' },
-  { source: 'Demócrata', url: 'https://democrata.es/rss/' },
-  { source: 'Demócrata', url: 'https://www.democrata.es/feed/' },
   { source: 'Demócrata', url: 'https://news.google.com/rss/search?q=site:democrata.es&hl=es-ES&gl=ES&ceid=ES:es' },
 
   // BALEARES regional
   { source: 'OK Diario Baleares', url: 'https://okdiario.com/baleares/feed/' },
   // elDiario.es Baleares - múltiples URLs
-  { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/illes-balears/rss/' },
-  { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/balears/rss/' },
-  { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/illes-balears/rss.xml' },
   { source: 'elDiario.es Baleares', url: 'https://news.google.com/rss/search?q=site:eldiario.es/illes-balears&hl=es-ES&gl=ES&ceid=ES:es' },
   // El Debate Baleares
-  { source: 'El Debate Baleares', url: 'https://www.eldebate.com/baleares/rss/' },
-  { source: 'El Debate Baleares', url: 'https://www.eldebate.com/baleares/feed/' },
   { source: 'El Debate Baleares', url: 'https://news.google.com/rss/search?q=site:eldebate.com/baleares&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Economía de Mallorca', url: 'https://www.economiademallorca.com/feed/' },
 
@@ -150,13 +135,14 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
-async function fetchOneFeed(feed, timeoutMs = 10000) {
+async function fetchOneFeed(feed, timeoutMs = 15000) {
   // Primer intento
   const r1 = await fetchOneFeedAttempt(feed, timeoutMs);
   if (r1.items.length > 0) return r1;
-  // Si falló (timeout/empty/error), reintenta UNA vez con 4s extra
+  // Si falló (timeout/empty/error), reintenta UNA vez con 5s extra
   if (r1.status === 'timeout' || r1.status === 'empty' || r1.status === 'fetch_error') {
-    const r2 = await fetchOneFeedAttempt(feed, timeoutMs + 4000);
+    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 800)); // jitter
+    const r2 = await fetchOneFeedAttempt(feed, timeoutMs + 5000);
     if (r2.items.length > 0) return r2;
   }
   return r1;
@@ -178,8 +164,11 @@ async function fetchOneFeedAttempt(feed, timeoutMs) {
     const res = await fetch(feed.url, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml, */*',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml, */*;q=0.8',
+        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
       },
       redirect: 'follow',
     });
