@@ -463,17 +463,25 @@ const INTERNATIONAL_OPINION_FEEDS = [
 ];
 
 async function fetchSpainOpinionRss(allowedISODates, excludeUrls) {
-  const result = await fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48, isOpinionRSSItem, excludeUrls);
+  // ⚠️ DEDUP CROSS-DAY DESACTIVADO PARA OPINIÓN
+  // Razón: el usuario quiere ver TODAS las columnas frescas aunque algunas hayan
+  // aparecido en briefings recientes (las columnas de opinión se leen aunque sean
+  // del mismo columnista días seguidos).
+  const result = await fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48, isOpinionRSSItem, null);
   return { candidates: result.items.slice(0, 120), diagnostic: result.diagnostic };
 }
 
 async function fetchSpainNewsRss(allowedISODates, excludeUrls) {
+  // Dedup cross-day SÍ activo para noticias (evita repetir titulares ya vistos)
   const result = await fetchFeedsAndFilter(SPAIN_NEWS_FEEDS, allowedISODates, 36, null, excludeUrls);
   return { candidates: result.items.slice(0, 80), diagnostic: result.diagnostic };
 }
 
 async function fetchInternationalOpinionRss(allowedISODates, excludeUrls) {
-  const result = await fetchFeedsAndFilter(INTERNATIONAL_OPINION_FEEDS, allowedISODates, 48, null, excludeUrls);
+  // ⚠️ DEDUP CROSS-DAY DESACTIVADO PARA OPINIÓN INTERNACIONAL
+  // Misma razón que Spain Opinion: queremos columnas firmadas frescas aunque
+  // el columnista haya aparecido recientemente.
+  const result = await fetchFeedsAndFilter(INTERNATIONAL_OPINION_FEEDS, allowedISODates, 48, null, null);
   return { candidates: result.items.slice(0, 60), diagnostic: result.diagnostic };
 }
 
