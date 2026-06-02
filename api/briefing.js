@@ -70,6 +70,15 @@ const SPAIN_OPINION_FEEDS = [
   // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo) ============
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
+  // VIP columnistas Vozpópuli (búsqueda por autor · garantiza que sus columnas aparezcan)
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Gorka+Maneiro%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Maneiro' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Manuel+Mar%C3%ADn%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:M.Marín' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Jes%C3%BAs+Cacho%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Cacho' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Rub%C3%A9n+Manso%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Manso' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Agust%C3%ADn+Valladolid%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Valladolid' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Mart%C3%ADnez+Gorriar%C3%A1n%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Gorriarán' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Pablo+Sebasti%C3%A1n%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:P.Sebastián' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Jos%C3%A9+Antonio+Montano%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Montano' },
   { source: 'Artículo 14', url: 'https://news.google.com/rss/search?q=site:articulo14.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Agenda Pública', url: 'https://news.google.com/rss/search?q=site:agendapublica.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
 
@@ -130,19 +139,19 @@ const SPAIN_NEWS_FEEDS = [
 
   // Google News RSS (fallback solo para medios sin RSS público fiable)
   { source: 'El Mundo', url: 'https://news.google.com/rss/search?q=site:elmundo.es&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/politica+OR+site:vozpopuli.com/economia+OR+site:vozpopuli.com/espana&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+-site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
-async function fetchOneFeed(feed, timeoutMs = 15000) {
+async function fetchOneFeed(feed, timeoutMs = 8000) {
   // Primer intento
   const r1 = await fetchOneFeedAttempt(feed, timeoutMs);
   if (r1.items.length > 0) return r1;
-  // Si falló (timeout/empty/error), reintenta UNA vez con 5s extra
-  if (r1.status === 'timeout' || r1.status === 'empty' || r1.status === 'fetch_error') {
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 800)); // jitter
-    const r2 = await fetchOneFeedAttempt(feed, timeoutMs + 5000);
+  // Reintento ÚNICO solo para errores de red/timeout (NO empty), mismo timeout.
+  // No alargamos el timeout en el retry para no disparar el tiempo total → evita 504.
+  if (r1.status === 'timeout' || r1.status === 'fetch_error') {
+    const r2 = await fetchOneFeedAttempt(feed, timeoutMs);
     if (r2.items.length > 0) return r2;
   }
   return r1;
@@ -1000,8 +1009,14 @@ function isOpinionRSSItem(item) {
 }
 
 async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opinionFilter = null, excludeUrls = null) {
-  // Para cada feed, fetchear y registrar resultado completo
-  const feedResults = await Promise.all(feedList.map(feed => fetchOneFeed(feed)));
+  // Fetch en batches de 25 para no saturar la red (evita timeouts masivos / 504)
+  const BATCH_SIZE = 25;
+  const feedResults = [];
+  for (let i = 0; i < feedList.length; i += BATCH_SIZE) {
+    const batch = feedList.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(batch.map(feed => fetchOneFeed(feed)));
+    feedResults.push(...batchResults);
+  }
 
   // Aplanar items, manteniendo trazabilidad de la URL origen
   const flat = feedResults.flatMap(r =>
