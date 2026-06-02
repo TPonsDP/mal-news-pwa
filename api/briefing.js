@@ -233,7 +233,7 @@ function parseFeedItems(xml, source) {
     if (title && link) {
       items.push({
         source,
-        title: cleanText(title),
+        title: cleanGoogleNewsTitle(cleanText(title), source),
         url: cleanText(link),
         author: cleanText(author || ''),
         pubDate: cleanText(pubDate || ''),
@@ -244,6 +244,23 @@ function parseFeedItems(xml, source) {
     }
   }
   return items;
+}
+
+// Google News añade " - Nombre del medio" al final de los títulos. Lo quitamos.
+function cleanGoogleNewsTitle(title, source) {
+  if (!title) return title;
+  let t = title;
+  // Quitar sufijo " - [cualquier cosa]" al final si parece nombre de medio (corto)
+  const dashIdx = t.lastIndexOf(' - ');
+  if (dashIdx > 20) {  // solo si hay título sustancial antes del guión
+    const suffix = t.slice(dashIdx + 3).trim();
+    // Si el sufijo es corto (nombre de medio) o coincide con la fuente, quitarlo
+    const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (suffix.length <= 30 || norm(suffix).includes(norm(source))) {
+      t = t.slice(0, dashIdx).trim();
+    }
+  }
+  return t;
 }
 
 // Extrae URL de imagen del item RSS probando varios formatos
@@ -317,6 +334,12 @@ function cleanText(s) {
   });
   // URL Google News trackers que aparecen como description (Público bug)
   result = result.replace(/https?:\/\/news\.google\.com\/rss\/articles\/[A-Za-z0-9_\-=]+\.\.\.?/g, '');
+  // SEGUNDO borrado de tags: Google News codifica el HTML (&lt;a&gt;), que tras
+  // decodificar las entidades arriba reaparece como <a href=...> de texto visible.
+  result = result.replace(/<[^>]+>/g, ' ');
+  // Limpiar restos de enlaces Google News que quedaron como texto
+  result = result.replace(/https?:\/\/news\.google\.com\/\S+/g, '');
+  result = result.replace(/href\s*=\s*["'][^"']*["']/gi, '');
   // Espacios múltiples
   return result.replace(/\s+/g, ' ').trim();
 }
@@ -1715,6 +1738,77 @@ function extractJson(raw) {
   }
 }
 
+// ============ RESÚMENES IA (Enfoque B: leer artículo + Haiku) ============
+// Descarga el texto principal de un artículo para poder resumirlo.
+async function fetchArticleText(url, timeoutMs = 6000) {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'es-ES,es;q=0.9',
+      },
+      redirect: 'follow',
+    });
+    clearTimeout(timer);
+    if (!res.ok) return '';
+    const html = await res.text();
+    // Extraer contenido de párrafos <p>
+    const paras = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
+      .map(m => cleanText(m[1]))
+      .filter(t => t.length > 40);  // descartar párrafos cortos (menús, pies)
+    const text = paras.join(' ');
+    return text.slice(0, 2500);  // primeros ~2500 chars (suficiente para resumir)
+  } catch (_) {
+    return '';
+  }
+}
+
+// Genera resúmenes (1-2 frases) para varios artículos en UNA llamada a Haiku.
+async function generateSummaries(articles, apiKey) {
+  // articles: [{ idx, title, source, author, text }]
+  if (!articles.length) return {};
+  const list = articles.map(a =>
+    `[${a.idx}] Medio: ${a.source}${a.author ? ' · Autor: ' + a.author : ''}\nTitular: ${a.title}\nTexto: ${a.text.slice(0, 1800)}`
+  ).join('\n\n---\n\n');
+
+  const prompt = `Eres un editor de prensa. Para cada columna de opinión numerada, escribe un resumen de 1-2 frases (máximo 220 caracteres) que capture la TESIS del autor y el tema concreto. No empieces con "El autor" ni "La columna". Ve directo al contenido. Devuelve SOLO un objeto JSON válido {"resúmenes": {"0": "...", "1": "..."}} sin texto adicional ni markdown.
+
+COLUMNAS:
+${list}`;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 25000);
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    clearTimeout(timer);
+    if (!resp.ok) return {};
+    const data = await resp.json();
+    const text = (data.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    return parsed['resúmenes'] || parsed['resumenes'] || {};
+  } catch (_) {
+    return {};
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -2195,9 +2289,13 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
             const toAdd = available.slice(0, needed);
 
             toAdd.forEach(c => {
+              // La descripción ya viene limpia de parseFeedItems. Si tras limpiar
+              // queda vacía o demasiado corta (típico de Google News), usar mensaje claro.
+              const cleanDesc = String(c.description || '').trim();
+              const goodDesc = cleanDesc.length >= 40 && !/^https?:/i.test(cleanDesc);
               items.push({
                 title: c.title,
-                summary: c.description ? c.description.slice(0, 220) : '(Resumen pendiente — pieza incluida por regla de mínimo obligatorio)',
+                summary: goodDesc ? cleanDesc.slice(0, 220) : `Columna de opinión${c.author ? ' de ' + c.author : ''} en ${c.source}. Pulsa para leer el texto completo.`,
                 author: c.author,
                 source: c.source,
                 url: c.url,
@@ -2212,6 +2310,36 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
 
         briefing.spainOpinion = items;
         // ============ FIN ENFORCEMENT ============
+
+        // ============ RESÚMENES IA (Enfoque B) para columnas forzadas/sin resumen ============
+        // Las columnas forzadas (y las que tienen resumen pobre) se enriquecen leyendo
+        // el artículo y resumiéndolo con Haiku. Coste ~$0.01/briefing.
+        try {
+          const needsSummary = items.filter(it =>
+            it._forced || !it.summary || it.summary.length < 40 || /pulsa para leer/i.test(it.summary)
+          ).slice(0, 8);  // máx 8 para acotar tiempo/coste
+
+          if (needsSummary.length > 0) {
+            // Descargar textos en paralelo (timeout corto)
+            const withText = await Promise.all(needsSummary.map(async (it, i) => {
+              const text = await fetchArticleText(it.url, 6000);
+              return { idx: i, ref: it, title: it.title, source: it.source, author: it.author, text };
+            }));
+            const valid = withText.filter(a => a.text && a.text.length > 100);
+            if (valid.length > 0) {
+              const summaries = await generateSummaries(valid, apiKey);
+              valid.forEach(a => {
+                const s = summaries[String(a.idx)];
+                if (s && s.trim().length > 20) {
+                  a.ref.summary = s.trim().slice(0, 240);
+                  a.ref._aiSummary = true;
+                }
+              });
+            }
+          }
+        } catch (_) { /* si falla el resumen IA, mantenemos el placeholder */ }
+        // ============ FIN RESÚMENES IA ============
+
 
         const selectedCount = items.length;
         const sourceCounts = candidates.reduce((acc, c) => {
