@@ -1023,7 +1023,15 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
 
   // Aplanar items, manteniendo trazabilidad de la URL origen
   const flat = feedResults.flatMap(r =>
-    r.items.map(item => ({ ...item, _fromUrl: r.url, _fromTier: r.tier }))
+    r.items.map(item => {
+      const enriched = { ...item, _fromUrl: r.url, _fromTier: r.tier };
+      // Si el feed es VIP de autor (vip:Nombre) y el item no trae autor, inyectarlo
+      if ((!enriched.author || !String(enriched.author).trim()) && String(r.tier || '').startsWith('vip:')) {
+        const vipName = r.tier.slice(4).trim();  // "vip:Maneiro" → "Maneiro"
+        if (vipName) enriched.author = vipName;
+      }
+      return enriched;
+    })
   );
 
   // Deduplicar por URL final del artículo
@@ -2022,11 +2030,30 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         // ============ FILTRO OPINIÓN ESTRICTO ============
         // Detecta si una pieza es realmente columna firmada (no noticia/editorial/sumario)
         const isOpinionLike = (item) => {
+          const url = String(item.url || '').toLowerCase();
+          const fromUrl = String(item._fromUrl || '').toLowerCase();
+          const sourceLow = String(item.source || '').toLowerCase();
+          const title = String(item.title || '').trim().toLowerCase();
+
+          // Rechazos por título (noticia/sumario) — aplican siempre
+          if (title.startsWith('sumario')) return false;
+          if (title.startsWith('en sumario')) return false;
+          if (title.startsWith('boletín')) return false;
+          if (title.includes('claves del día')) return false;
+
+          // ⭐ ACEPTACIÓN POR URL/FEED DE OPINIÓN (aunque NO haya autor):
+          // Google News RSS no expone <author>, pero si la URL o el feed es de
+          // sección opinión/columnas, ES una columna. Cubre Vozpópuli y similares.
+          const opinionPathRe = /\/(opinion|opinión|columnas|firmas|tribuna|blogs?)\b/i;
+          if (opinionPathRe.test(url) || opinionPathRe.test(fromUrl)) return true;
+          // Feeds VIP de autor (vip:Maneiro, etc.) → siempre opinión
+          if (String(item._fromTier || '').startsWith('vip:')) return true;
+
+          // A partir de aquí, modo estricto: requiere autor real
           if (!item.author) return false;
           const author = String(item.author).trim();
           if (!author) return false;
           const authorLow = author.toLowerCase();
-          const sourceLow = String(item.source || '').toLowerCase();
           if (authorLow === sourceLow) return false;                  // "THE OBJECTIVE" como autor
           if (authorLow.includes('redacción') || authorLow.includes('redaccion')) return false;
           if (authorLow === 'editorial' || authorLow === 'opinión' || authorLow === 'opinion') return false;
@@ -2037,11 +2064,6 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           const reporters = KNOWN_NEWS_REPORTERS_POST[item.source] || [];
           if (reporters.some(r => authorLow === r)) return false;
 
-          const title = String(item.title || '').trim().toLowerCase();
-          if (title.startsWith('sumario')) return false;
-          if (title.startsWith('en sumario')) return false;
-          if (title.startsWith('boletín')) return false;
-          if (title.includes('claves del día')) return false;
           return true;
         };
 
