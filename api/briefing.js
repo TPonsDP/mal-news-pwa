@@ -1717,9 +1717,20 @@ export default async function handler(req, res) {
       const [d, m, y] = parts;
       const ref = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
       const yest = new Date(ref.getTime() - 24 * 60 * 60 * 1000);
-      const tomorrow = new Date(ref.getTime() + 24 * 60 * 60 * 1000);
       const iso = (dt) => dt.toISOString().slice(0, 10);
-      return [iso(ref), iso(yest), iso(tomorrow)];
+
+      // ¿La fecha seleccionada es HOY (o futuro) respecto al servidor?
+      const nowIso = new Date().toISOString().slice(0, 10);
+      const refIso = iso(ref);
+      const isToday = refIso >= nowIso;
+
+      if (isToday) {
+        // HOY: incluimos mañana por casos de zona horaria (artículos nocturnos en UTC+1)
+        const tomorrow = new Date(ref.getTime() + 24 * 60 * 60 * 1000);
+        return [refIso, iso(yest), iso(tomorrow)];
+      }
+      // FECHA PASADA: solo el día seleccionado + el anterior (NUNCA el día siguiente)
+      return [refIso, iso(yest)];
     } catch (_) {
       return [];
     }
