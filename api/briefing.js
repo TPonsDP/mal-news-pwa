@@ -71,20 +71,19 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
   // VIP columnistas Vozpópuli (búsqueda por autor · garantiza que sus columnas aparezcan)
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Gorka+Maneiro%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Maneiro' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Manuel+Mar%C3%ADn%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:M.Marín' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Jes%C3%BAs+Cacho%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Cacho' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Rub%C3%A9n+Manso%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Manso' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Agust%C3%ADn+Valladolid%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Valladolid' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Mart%C3%ADnez+Gorriar%C3%A1n%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Gorriarán' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Pablo+Sebasti%C3%A1n%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:P.Sebastián' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Jos%C3%A9+Antonio+Montano%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Montano' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+%22Gorka+Maneiro%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Maneiro' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+%22Manuel+Mar%C3%ADn%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:M.Marín' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+%22Jes%C3%BAs+Cacho%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Cacho' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+%22Rub%C3%A9n+Manso%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Manso' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+%22Agust%C3%ADn+Valladolid%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Valladolid' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+%22Mart%C3%ADnez+Gorriar%C3%A1n%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Gorriarán' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+%22Pablo+Sebasti%C3%A1n%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:P.Sebastián' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+%22Jos%C3%A9+Antonio+Montano%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Montano' },
   { source: 'Artículo 14', url: 'https://news.google.com/rss/search?q=site:articulo14.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Agenda Pública', url: 'https://news.google.com/rss/search?q=site:agendapublica.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
 
   // Económico / regional con opinión incluida
-  { source: 'Economía de Mallorca', url: 'https://www.economiademallorca.com/feed/', tier: 'main' },
-  { source: 'Economía de Mallorca', url: 'https://news.google.com/rss/search?q=site:economiademallorca.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
+  { source: 'Economía de Mallorca', url: 'https://news.google.com/rss/search?q=site:economiademallorca.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'opinion' },
   { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/opinion/rss', tier: 'main' },
   { source: 'Crónica Global', url: 'https://news.google.com/rss/search?q=site:cronicaglobal.elespanol.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
 ];
@@ -451,18 +450,16 @@ const INTERNATIONAL_OPINION_FEEDS = [
 
   // 🌎 LATAM · CENTROAMÉRICA INVESTIGATIVO
   // Confidencial (Nicaragua exilio Costa Rica · Chamorro · Pulitzer)
-  { source: 'Confidencial', url: 'https://confidencial.digital/feed/', tier: 'main' },
-  { source: 'Confidencial', url: 'https://news.google.com/rss/search?q=site:confidencial.digital&hl=es-419&gl=NI&ceid=NI:es-419', tier: 'gn-fallback' },
+  { source: 'Confidencial', url: 'https://news.google.com/rss/search?q=site:confidencial.digital/opinion&hl=es-419&gl=NI&ceid=NI:es-419', tier: 'gn-opinion' },
+  { source: 'Confidencial', url: 'https://confidencial.digital/opinion/feed/', tier: 'opinion' },
 
   // 🌎 LATAM · MÉXICO investigativo
   // Animal Político (independiente, fact-checking, investigativo)
-  { source: 'Animal Político', url: 'https://animalpolitico.com/feed', tier: 'main' },
-  { source: 'Animal Político', url: 'https://news.google.com/rss/search?q=site:animalpolitico.com&hl=es-419&gl=MX&ceid=MX:es-419', tier: 'gn-fallback' },
+  { source: 'Animal Político', url: 'https://news.google.com/rss/search?q=site:animalpolitico.com/analisis+OR+site:animalpolitico.com/plumaje&hl=es-419&gl=MX&ceid=MX:es-419', tier: 'gn-opinion' },
 
   // 🌎 LATAM · EL SALVADOR investigativo
   // El Faro (Pulitzer, primer digital LATAM)
-  { source: 'El Faro', url: 'https://elfaro.net/rss', tier: 'main' },
-  { source: 'El Faro', url: 'https://news.google.com/rss/search?q=site:elfaro.net&hl=es-419&gl=SV&ceid=SV:es-419', tier: 'gn-fallback' },
+  { source: 'El Faro', url: 'https://news.google.com/rss/search?q=site:elfaro.net/columnas+OR+site:elfaro.net/opinion&hl=es-419&gl=SV&ceid=SV:es-419', tier: 'gn-opinion' },
   { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss/rss_actualidad.asp', tier: 'main' },
   { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss.asp', tier: 'general' },
   { source: 'El Mercurio', url: 'https://news.google.com/rss/search?q=site:emol.com&hl=es-419&gl=CL&ceid=CL:es-419', tier: 'gn-fallback' },
@@ -505,19 +502,23 @@ function isOpinionRSSItemIntl(item) {
   if (OPINION_ONLY_INTL.has(item.source)) return true;
 
   // URL contiene sección de opinión (multi-idioma)
-  const isOpinionPath = /\/(opinion|opinione|commenti|commento|comment|meinung|idees|idias|editorial|column|columnist|analysis|perspective|viewpoint|tribune)\b/i.test(url)
-    || /\/(opinion|commenti|comment|meinung)\b/i.test(fromUrl);
+  const isOpinionPath = /\/(opinion|opinione|commenti|commento|comment|meinung|idees|idias|editorial|column|columnist|columnas|columnas-y-blogs|plumaje|analisis|análisis|analysis|perspective|viewpoint|tribune|tribuna|firmas|blogs?)\b/i.test(url)
+    || /\/(opinion|commenti|comment|meinung|columnas|plumaje|analisis)\b/i.test(fromUrl);
   if (isOpinionPath) return true;
 
-  // Si el feed era de opinión (query Google News con opinion/comment/commenti)
-  if (/opinion|comment|commenti|meinung|editorial/i.test(fromUrl)) return true;
+  // Si el feed era de opinión (query Google News con opinion/comment/commenti/columnas/plumaje)
+  if (/opinion|comment|commenti|meinung|editorial|columnas|plumaje|analisis/i.test(fromUrl)) return true;
 
-  // Rechaza patrones claros de noticia en inglés/italiano/alemán
+  // Rechaza patrones claros de noticia en inglés/italiano/alemán/español
   const NEWS_INTL = [
     /^(breaking|live|video|watch|photos?|in pictures|gallery)\b/i,
     /\b(dies|dead|killed|injured|arrested|wins|loses|defeats)\b/i,
     /^(update|report):/i,
     /\b\d+ (killed|dead|injured|wounded)\b/i,
+    /^(última hora|directo|vídeo|video|en vivo|en directo)\b/i,
+    /\b(detenido|detienen|asesinado|asesinan|muerto|muertos|heridos?)\b/i,
+    /\b(arrestato|morto|uccis|ferit)\b/i,  // italiano noticia
+    /\b(getötet|festgenommen|verletzt)\b/i,  // alemán noticia
   ];
   for (const p of NEWS_INTL) {
     if (p.test(title)) return false;
@@ -928,6 +929,8 @@ function isOpinionRSSItem(item) {
     'Artículo 14',
     'Agenda Pública',
     'El Blog Salmón',
+    'Ethic',           // revista de pensamiento (ensayo/análisis firmado)
+    'Letras Libres',   // revista de ensayo/crítica
   ]);
   const url = String(item.url || '');
   const fromUrl = String(item._fromUrl || '').toLowerCase(); // URL del feed origen
@@ -2103,7 +2106,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         // Si el modelo no cumple los mínimos obligatorios, FORZAR añadiendo del pool de candidatos
         // SOLO se fuerzan piezas que pasen isOpinionLike (autor real, no sumarios, no editoriales)
         const REQUIRED_MIN = {
-          'Vozpópuli': 3,
+          'Vozpópuli': 4,
           'Artículo 14': 2,
           'The Objective': 2,
           'elDiario.es': 1,
