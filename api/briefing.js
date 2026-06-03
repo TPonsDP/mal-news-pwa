@@ -1039,13 +1039,33 @@ function isOpinionRSSItem(item) {
 }
 
 async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opinionFilter = null, excludeUrls = null) {
-  // Fetch en batches de 25 para no saturar la red (evita timeouts masivos / 504)
-  const BATCH_SIZE = 25;
+  // ⚠️ Google News throttlea si recibe muchas peticiones a la vez (devuelve 1 item o vacío).
+  // Estrategia: separar feeds nativos (sin límite) de los de Google News (con pausa).
+  const isGoogleNews = (feed) => String(feed.url || '').includes('news.google.com');
+  const nativeFeeds = feedList.filter(f => !isGoogleNews(f));
+  const gnewsFeeds = feedList.filter(f => isGoogleNews(f));
+
   const feedResults = [];
-  for (let i = 0; i < feedList.length; i += BATCH_SIZE) {
-    const batch = feedList.slice(i, i + BATCH_SIZE);
+
+  // 1) Feeds NATIVOS: en paralelo, batches de 25 (no se throttlean)
+  const NATIVE_BATCH = 25;
+  for (let i = 0; i < nativeFeeds.length; i += NATIVE_BATCH) {
+    const batch = nativeFeeds.slice(i, i + NATIVE_BATCH);
     const batchResults = await Promise.all(batch.map(feed => fetchOneFeed(feed)));
     feedResults.push(...batchResults);
+  }
+
+  // 2) Feeds GOOGLE NEWS: lotes pequeños (6) con pausa de 350ms entre lotes,
+  //    para repartir las peticiones en el tiempo y evitar el bloqueo por volumen.
+  const GNEWS_BATCH = 6;
+  const GNEWS_DELAY_MS = 350;
+  for (let i = 0; i < gnewsFeeds.length; i += GNEWS_BATCH) {
+    const batch = gnewsFeeds.slice(i, i + GNEWS_BATCH);
+    const batchResults = await Promise.all(batch.map(feed => fetchOneFeed(feed)));
+    feedResults.push(...batchResults);
+    if (i + GNEWS_BATCH < gnewsFeeds.length) {
+      await new Promise(r => setTimeout(r, GNEWS_DELAY_MS));
+    }
   }
 
   // Aplanar items, manteniendo trazabilidad de la URL origen
