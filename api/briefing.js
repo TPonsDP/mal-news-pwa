@@ -798,6 +798,8 @@ function classifyRegion(source) {
 const PAYWALL_SOURCES = new Set([
   // España
   'El País', 'El Mundo', 'ABC', 'El Español', 'Cinco Días',
+  'El Confidencial', 'elconfidencial.com',  // tu suscripción → mostrará ✓ ACCESO
+  'La Vanguardia',                           // PressReader → mostrará 📚
   // Internacional - paywall fuerte
   'New York Times', 'NYT', 'Washington Post', 'WaPo',
   'Wall Street Journal', 'WSJ',
@@ -837,7 +839,7 @@ const PRESSREADER_AVAILABLE_SOURCES = new Set([
   'Japan Times', 'The Japan Times',
   'The Business Times', 'Business Times Singapore',
   'South China Morning Post', 'SCMP',
-  // 🇪🇸 España (algunas ediciones)
+  // 🇪🇸 España (ediciones en PressReader)
   'El País', 'El Mundo', 'ABC', 'La Vanguardia',
   // 🌎 LATAM
   'El Mercurio',
@@ -974,6 +976,8 @@ function isOpinionRSSItem(item) {
     || fromUrl.includes('elsubjetivo')
     || fromUrl.includes('/category/opinion')
     || fromUrl.includes('googlenews+opinion')
+    || String(item._fromTier || '').startsWith('vip:')  // ⭐ feeds VIP de columnista (Vozpópuli)
+    || fromUrl.includes('vozpopuli.com')                 // ⭐ Vozpópuli en pipeline opinión = siempre opinión
     || /news\.google\.com.*site%3A[^&]*(?:\/opinion|articulo14|agendapublica|elblogsalmon)/i.test(fromUrl);
   const isOpinionOnlySource = OPINION_ONLY_SOURCES.has(item.source);
 
