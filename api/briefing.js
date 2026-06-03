@@ -49,43 +49,38 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'Huffington Post', url: 'https://news.google.com/rss/search?q=site:huffingtonpost.es/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
   { source: 'Público', url: 'https://www.publico.es/opinion/rss', tier: 'main' },
   { source: 'Público', url: 'https://blogs.publico.es/feed/', tier: 'blogs' },
-  { source: 'Público', url: 'https://news.google.com/rss/search?q=site:publico.es/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
 
   // 📰 ETHIC - revista intelectual / filosofía / sociedad (gratis)
   { source: 'Ethic', url: 'https://ethic.es/feed/', tier: 'main' },
   { source: 'Ethic', url: 'https://www.ethic.es/feed/', tier: 'alt' },
-  { source: 'Ethic', url: 'https://news.google.com/rss/search?q=site:ethic.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
 
   // 📰 LETRAS LIBRES - revista cultural intelectual (gratis)
   { source: 'Letras Libres', url: 'https://letraslibres.com/feed/', tier: 'main' },
   { source: 'Letras Libres', url: 'https://letraslibres.com/rss/', tier: 'alt' },
-  { source: 'Letras Libres', url: 'https://news.google.com/rss/search?q=site:letraslibres.com&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
 
   // El Debate - varias URLs alternativas (A)
   { source: 'El Debate', url: 'https://www.eldebate.com/opinion/feed/', tier: 'opinion' },
-  { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'google-news' },
 
   // El Español: eliminado de opinion (queda solo en spainNews)
 
   // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo) ============
+  // ⭐ RSS NATIVO Vozpópuli (vozpopuli.com NO bloquea IPs de datacenter como sí hace Google News)
+  // Candidatos de opinión — los que devuelvan items funcionan (ver diagnóstico por URL)
+  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/opinion/rss/', tier: 'native-opinion' },
+  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/rss/opinion/', tier: 'native-opinion2' },
+  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/opinion/feed/', tier: 'native-opinion3' },
+  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/rss/', tier: 'native-main' },
+  // Google News (fallback · puede estar bloqueado por IP de datacenter)
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
-  // VIP columnistas Vozpópuli (búsqueda por autor · garantiza que sus columnas aparezcan)
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Gorka+Maneiro%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Maneiro' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Manuel+Mar%C3%ADn%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:M.Marín' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Jes%C3%BAs+Cacho%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Cacho' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Rub%C3%A9n+Manso%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Manso' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Agust%C3%ADn+Valladolid%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Valladolid' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Mart%C3%ADnez+Gorriar%C3%A1n%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Gorriarán' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Pablo+Sebasti%C3%A1n%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:P.Sebastián' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+%22Jos%C3%A9+Antonio+Montano%22&hl=es-ES&gl=ES&ceid=ES:es', tier: 'vip:Montano' },
+  // NOTA: las 8 búsquedas VIP por columnista se quitaron — disparaban 8 peticiones extra
+  // a Google News (causa del bloqueo de IP). El RSS nativo de opinión ya trae a todos los
+  // columnistas; el enforcement fuerza las 4 columnas mínimas de Vozpópuli.
   { source: 'Artículo 14', url: 'https://news.google.com/rss/search?q=site:articulo14.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Agenda Pública', url: 'https://news.google.com/rss/search?q=site:agendapublica.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
 
   // Económico / regional con opinión incluida
-  { source: 'Economía de Mallorca', url: 'https://news.google.com/rss/search?q=site:economiademallorca.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'opinion' },
   { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/opinion/rss', tier: 'main' },
-  { source: 'Crónica Global', url: 'https://news.google.com/rss/search?q=site:cronicaglobal.elespanol.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
 ];
 
 // ============ FEEDS RSS PARA NOTICIAS ESPAÑA ============
@@ -98,7 +93,6 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abcPortada.xml' },
   { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_ultima.xml' },
   { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_espana.xml' },
-  { source: 'ABC', url: 'https://news.google.com/rss/search?q=site:abc.es&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada' },
   { source: 'The Objective', url: 'https://theobjective.com/feed/' },
   { source: 'La Gaceta', url: 'https://gaceta.es/feed/' },
@@ -106,18 +100,14 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'El Español', url: 'https://www.elespanol.com/rss' },
   // OK Diario general (no solo Baleares)
   { source: 'OK Diario', url: 'https://okdiario.com/feed/' },
-  { source: 'OK Diario', url: 'https://news.google.com/rss/search?q=site:okdiario.com&hl=es-ES&gl=ES&ceid=ES:es' },
   // El Debate general (no solo Baleares)
-  { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
   // 📰 IZQUIERDA alternativa (gratis) - mismos sesgos
   { source: 'Huffington Post', url: 'https://news.google.com/rss/search?q=site:huffingtonpost.es&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'Público', url: 'https://news.google.com/rss/search?q=site:publico.es&hl=es-ES&gl=ES&ceid=ES:es' },
   // El Nacional.cat - catalán independentista, gratis
   { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/es/rss' },
   { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/ca/rss' },
   { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/es/feed' },
-  { source: 'El Nacional.cat', url: 'https://news.google.com/rss/search?q=site:elnacional.cat&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/rss' },
 
   // Demócrata - WordPress feed + Google News fallback
@@ -134,10 +124,10 @@ const SPAIN_NEWS_FEEDS = [
   // ECONÓMICO nacional
   { source: 'Cinco Días', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/cincodias.elpais.com/portada' },
   { source: 'Cinco Días', url: 'https://cincodias.elpais.com/rss/cincodias/portada.xml' },
-  { source: 'Cinco Días', url: 'https://news.google.com/rss/search?q=site:cincodias.elpais.com&hl=es-ES&gl=ES&ceid=ES:es' },
 
   // Google News RSS (fallback solo para medios sin RSS público fiable)
-  { source: 'El Mundo', url: 'https://news.google.com/rss/search?q=site:elmundo.es&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/rss/', tier: 'native-main' },
+  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/politica/rss/', tier: 'native-politica' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/politica+OR+site:vozpopuli.com/economia+OR+site:vozpopuli.com/espana&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+-site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
@@ -363,21 +353,17 @@ const INTERNATIONAL_OPINION_FEEDS = [
 
   // 🇺🇸 USA conservadores alternativos (nunca-trumpistas / heterodoxos)
   { source: 'The Bulwark', url: 'https://www.thebulwark.com/feed/', tier: 'main' },
-  { source: 'The Bulwark', url: 'https://news.google.com/rss/search?q=site:thebulwark.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Politico', url: 'https://rss.politico.com/politics-news.xml', tier: 'main' },
   { source: 'The Hill', url: 'https://thehill.com/rss/syndicator/19110', tier: 'opinion' },
 
   // 🇬🇧 UK
   { source: 'The Guardian', url: 'https://www.theguardian.com/commentisfree/rss', tier: 'opinion' },
   { source: 'The Spectator', url: 'https://www.spectator.co.uk/feed', tier: 'main' },
-  { source: 'The Spectator', url: 'https://news.google.com/rss/search?q=site:spectator.co.uk+opinion&hl=en-GB&gl=GB&ceid=GB:en', tier: 'gn-fallback' },
   { source: 'UnHerd', url: 'https://unherd.com/feed/', tier: 'main' },
 
   // 💰 ECONÓMICO GLOBAL
   { source: 'Bloomberg', url: 'https://feeds.bloomberg.com/opinion/news.rss', tier: 'opinion' },
-  { source: 'Bloomberg', url: 'https://news.google.com/rss/search?q=site:bloomberg.com+opinion&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Reuters', url: 'https://www.reutersagency.com/feed/?best-topics=business-finance', tier: 'business' },
-  { source: 'Reuters', url: 'https://news.google.com/rss/search?q=site:reuters.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'MarketWatch', url: 'https://feeds.marketwatch.com/marketwatch/topstories/', tier: 'main' },
   { source: 'Quartz', url: 'https://qz.com/feed', tier: 'main' },
   { source: 'Forbes', url: 'https://www.forbes.com/business/feed/', tier: 'business' },
@@ -387,38 +373,30 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Le Monde', url: 'https://www.lemonde.fr/rss/une.xml', tier: 'main' },
 
   // 🇩🇪 Der Spiegel International (versión inglés, gratis, calidad alta)
-  { source: 'Der Spiegel', url: 'https://news.google.com/rss/search?q=site:spiegel.de/international+(opinion+OR+commentary+OR+editorial)&hl=en-US&gl=US&ceid=US:en', tier: 'gn-opinion' },
 
   // 🇮🇹 La Repubblica (centro-izq italiano, mayor diario)
   { source: 'La Repubblica', url: 'https://www.repubblica.it/rss/commenti/rss2.0.xml', tier: 'opinion' },
-  { source: 'La Repubblica', url: 'https://news.google.com/rss/search?q=site:repubblica.it/commenti&hl=it-IT&gl=IT&ceid=IT:it', tier: 'gn-opinion' },
 
   // 🇬🇧 The Times (UK conservador establishment, PressReader disponible)
-  { source: 'The Times', url: 'https://news.google.com/rss/search?q=site:thetimes.co.uk/article+(comment+OR+opinion)&hl=en-GB&gl=GB&ceid=GB:en', tier: 'gn-opinion' },
 
 
   // 🌐 MULTILATERAL OPINIÓN
   { source: 'Project Syndicate', url: 'https://www.project-syndicate.org/rss', tier: 'main' },
   { source: 'Project Syndicate', url: 'https://www.project-syndicate.org/rss/columnist', tier: 'columnist' },
-  { source: 'Project Syndicate', url: 'https://news.google.com/rss/search?q=site:project-syndicate.org&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Foreign Policy', url: 'https://foreignpolicy.com/feed/', tier: 'main' },
   { source: 'Foreign Affairs', url: 'https://www.foreignaffairs.com/rss.xml', tier: 'main' },
 
   // 🌍 EUROPA ESTE
   { source: 'Kyiv Independent', url: 'https://kyivindependent.com/feed', tier: 'main' },
   { source: 'Kyiv Independent', url: 'https://kyivindependent.com/rss/', tier: 'alt' },
-  { source: 'Kyiv Independent', url: 'https://news.google.com/rss/search?q=site:kyivindependent.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
 
   // 🇷🇺 RUSIA (independiente)
   { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/opinion', tier: 'opinion' },
   { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/news', tier: 'news' },
-  { source: 'The Moscow Times', url: 'https://news.google.com/rss/search?q=site:themoscowtimes.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
 
   // 🕌 ORIENTE MEDIO
   { source: 'Haaretz', url: 'https://www.haaretz.com/srv/htz---rss-opinion', tier: 'opinion' },
-  { source: 'Haaretz', url: 'https://news.google.com/rss/search?q=site:haaretz.com+opinion&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Times of Israel', url: 'https://www.timesofisrael.com/feed/', tier: 'main' },
-  { source: 'Times of Israel', url: 'https://news.google.com/rss/search?q=site:timesofisrael.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
 
   // 🇮🇳 INDIA
   { source: 'The Hindu', url: 'https://www.thehindu.com/opinion/feeder/default.rss', tier: 'opinion' },
@@ -429,63 +407,49 @@ const INTERNATIONAL_OPINION_FEEDS = [
 
   // 🇨🇳 CHINA
   { source: 'SCMP', url: 'https://www.scmp.com/rss/91/feed', tier: 'main' },
-  { source: 'SCMP', url: 'https://news.google.com/rss/search?q=site:scmp.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Caixin', url: 'https://www.caixinglobal.com/rss/', tier: 'main' },
-  { source: 'Caixin', url: 'https://news.google.com/rss/search?q=site:caixinglobal.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Global Times', url: 'https://www.globaltimes.cn/rss/outbrain.xml', tier: 'main' },
   { source: 'China Daily', url: 'http://www.chinadaily.com.cn/rss/world_rss.xml', tier: 'main' },
   { source: 'Sixth Tone', url: 'https://www.sixthtone.com/rss', tier: 'main' },
 
   // 🇰🇷 COREA DEL SUR
   { source: 'Korea Herald', url: 'https://www.koreaherald.com/common_prog/rssdispatch.php?ct=02', tier: 'main' },
-  { source: 'Korea Herald', url: 'https://news.google.com/rss/search?q=site:koreaherald.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Korea JoongAng Daily', url: 'https://koreajoongangdaily.joins.com/rss/all', tier: 'main' },
   { source: 'Hankyoreh', url: 'https://english.hani.co.kr/rss/', tier: 'main' },
 
   // 🇸🇬 SINGAPUR
   { source: 'Channel News Asia', url: 'https://www.channelnewsasia.com/rss', tier: 'main' },
-  { source: 'Channel News Asia', url: 'https://news.google.com/rss/search?q=site:channelnewsasia.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'The Business Times', url: 'https://www.businesstimes.com.sg/rss', tier: 'main' },
 
   // 🌏 SUDESTE ASIÁTICO
   { source: 'Jakarta Post', url: 'https://www.thejakartapost.com/feed', tier: 'main' },
-  { source: 'Jakarta Post', url: 'https://news.google.com/rss/search?q=site:thejakartapost.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Jakarta Globe', url: 'https://jakartaglobe.id/feed/', tier: 'main' },
   { source: 'Tempo', url: 'https://en.tempo.co/rss', tier: 'main' },
-  { source: 'Tempo', url: 'https://news.google.com/rss/search?q=site:en.tempo.co&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Bangkok Post', url: 'https://www.bangkokpost.com/rss/data/most-recent.xml', tier: 'main' },
 
   // 🌍 ÁFRICA
   { source: 'Daily Maverick', url: 'https://www.dailymaverick.co.za/feed/', tier: 'main' },
-  { source: 'Daily Maverick', url: 'https://news.google.com/rss/search?q=site:dailymaverick.co.za&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
   { source: 'Mail & Guardian', url: 'https://mg.co.za/feed/', tier: 'main' },
   { source: 'Premium Times', url: 'https://www.premiumtimesng.com/feed', tier: 'main' },
   { source: 'Africa Report', url: 'https://www.theafricareport.com/feed/', tier: 'main' },
-  { source: 'Africa Report', url: 'https://news.google.com/rss/search?q=site:theafricareport.com&hl=en-US&gl=US&ceid=US:en', tier: 'gn-fallback' },
 
   // 🌎 LATAM
   { source: 'Infobae', url: 'https://www.infobae.com/feeds/rss/', tier: 'main' },
-  { source: 'Infobae', url: 'https://news.google.com/rss/search?q=site:infobae.com&hl=es-419&gl=AR&ceid=AR:es-419', tier: 'gn-fallback' },
   { source: 'Clarín', url: 'https://www.clarin.com/rss/lo-ultimo/', tier: 'main' },
   { source: 'El Espectador', url: 'https://www.elespectador.com/arc/outboundfeeds/rss/category/opinion/', tier: 'opinion' },
   { source: 'El Espectador', url: 'https://www.elespectador.com/arc/outboundfeeds/rss/', tier: 'main' },
-  { source: 'El Espectador', url: 'https://news.google.com/rss/search?q=site:elespectador.com&hl=es-419&gl=CO&ceid=CO:es-419', tier: 'gn-fallback' },
 
   // 🌎 LATAM · CENTROAMÉRICA INVESTIGATIVO
   // Confidencial (Nicaragua exilio Costa Rica · Chamorro · Pulitzer)
-  { source: 'Confidencial', url: 'https://news.google.com/rss/search?q=site:confidencial.digital/opinion&hl=es-419&gl=NI&ceid=NI:es-419', tier: 'gn-opinion' },
   { source: 'Confidencial', url: 'https://confidencial.digital/opinion/feed/', tier: 'opinion' },
 
   // 🌎 LATAM · MÉXICO investigativo
   // Animal Político (independiente, fact-checking, investigativo)
-  { source: 'Animal Político', url: 'https://news.google.com/rss/search?q=site:animalpolitico.com/analisis+OR+site:animalpolitico.com/plumaje&hl=es-419&gl=MX&ceid=MX:es-419', tier: 'gn-opinion' },
 
   // 🌎 LATAM · EL SALVADOR investigativo
   // El Faro (Pulitzer, primer digital LATAM)
-  { source: 'El Faro', url: 'https://news.google.com/rss/search?q=site:elfaro.net/columnas+OR+site:elfaro.net/opinion&hl=es-419&gl=SV&ceid=SV:es-419', tier: 'gn-opinion' },
   { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss/rss_actualidad.asp', tier: 'main' },
   { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss.asp', tier: 'general' },
-  { source: 'El Mercurio', url: 'https://news.google.com/rss/search?q=site:emol.com&hl=es-419&gl=CL&ceid=CL:es-419', tier: 'gn-fallback' },
 ];
 
 async function fetchSpainOpinionRss(allowedISODates, excludeUrls) {
@@ -977,7 +941,6 @@ function isOpinionRSSItem(item) {
     || fromUrl.includes('/category/opinion')
     || fromUrl.includes('googlenews+opinion')
     || String(item._fromTier || '').startsWith('vip:')  // ⭐ feeds VIP de columnista (Vozpópuli)
-    || fromUrl.includes('vozpopuli.com')                 // ⭐ Vozpópuli en pipeline opinión = siempre opinión
     || /news\.google\.com.*site%3A[^&]*(?:\/opinion|articulo14|agendapublica|elblogsalmon)/i.test(fromUrl);
   const isOpinionOnlySource = OPINION_ONLY_SOURCES.has(item.source);
 
@@ -1404,7 +1367,7 @@ WORLDOPINION (PRIORITARIA, hasta 10 columnas firmadas):
 
 ⭐⭐⭐ MÍNIMOS OBLIGATORIOS REGIONALES ⭐⭐⭐
 - 🏛️ Project Syndicate: MÍNIMO 1 columna (análisis económico/político de élite · Stiglitz, Krugman, Roubini, Summers, Varoufakis · ⚠️ solo 3 lecturas gratis/mes con registro, por eso MÍN 1 para no agotar el cupo)
-- 🌎 LATAM: MÍNIMO 2 columnas (de El Faro, Confidencial, Animal Político, Infobae, El Espectador, Clarín, El Mercurio)
+- 🌎 LATAM: MÍNIMO 2 columnas (de Confidencial, Infobae, El Espectador, Clarín, El Mercurio)
 - 🇪🇺 Europa Occidental: MÍNIMO 2 columnas (de Le Monde, Le Figaro u otros europeos cuando los haya)
 - 🌏 Asia: MÍNIMO 2 columnas (de SCMP, Caixin, Hankyoreh, Korea Herald, JoongAng, Japan Times, CNA, Tempo, Jakarta Post, Bangkok Post, The Hindu, Indian Express)
 - TOTAL mínimos garantizados: 7 columnas
@@ -1513,7 +1476,6 @@ ANTES de seleccionar las 20 piezas internacionales, OBLIGATORIAMENTE asegúrate 
     - El Universal, Milenio, Reforma (México)
     - El Espectador, El Tiempo, Semana (Colombia)
     - El Mercurio, La Tercera (Chile)
-    - El Faro (El Salvador, Pulitzer, investigativo)
     - Confidencial (Nicaragua/Costa Rica, Chamorro, investigativo)
   · 🌍 África (Sudáfrica/Nigeria/Kenia/Egipto): MÍNIMO 1 pieza
     - Daily Maverick, Mail & Guardian, News24 (Sudáfrica)
@@ -1551,9 +1513,7 @@ RESERVA EXPLÍCITAMENTE las siguientes búsquedas ANTES de hacer ninguna otra:
   Estos aportan voces críticas con Trump desde la derecha, no solo desde la izquierda.
 
   💡 SUGERENCIAS para LATAM investigativo de calidad:
-  - El Faro (El Salvador, Pulitzer, investigativo Bukele/maras)
   - Confidencial (Nicaragua exilio CR, Chamorro, investigativo Ortega)
-  - Animal Político (México, fact-checking, investigativo)
 
 🔴 PROHIBIDO empezar por USA y "ya veremos si llegamos a África". Ejecuta los BLOQUES 1 y 2 PRIMERO.
 🔴 Si tras BLOQUE 1+2 (6 búsquedas usadas) ves que has cumplido los mínimos, puedes usar las 4 restantes para profundizar.
@@ -1563,7 +1523,7 @@ CHECKLIST OBLIGATORIO antes de generar (verifica DESPUÉS de las búsquedas):
 □ ¿Tengo ≥4 piezas LATAM? Si no, REJECT y vuelve a buscar
 □ ¿Tengo ≥5 piezas Asia? Si no, REJECT y vuelve a buscar
 □ ¿Tengo ≥2 piezas Oriente Medio? Si no, REJECT y vuelve a buscar
-□ ¿He cubierto Le Monde/Le Figaro/Der Spiegel? (Europa Occ ≥2)
+□ ¿He cubierto Le Monde/Le Figaro/La Repubblica? (Europa Occ ≥2)
 □ ¿He cubierto Kyiv Independent? (Europa Este ≥1)
 
 Si la respuesta a alguna es NO, EJECUTA búsquedas adicionales antes de continuar.
