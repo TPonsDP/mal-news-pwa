@@ -1379,11 +1379,11 @@ REGLAS ESTRICTAS DE FECHA:
 WORLDOPINION (PRIORITARIA, hasta 10 columnas firmadas):
 
 ⭐⭐⭐ MÍNIMOS OBLIGATORIOS REGIONALES ⭐⭐⭐
-- 🏛️ Project Syndicate: MÍNIMO 2 columnas (análisis económico/político de élite académica · gratis · Stiglitz, Krugman, Roubini, Larry Summers, Yanis Varoufakis, etc.)
+- 🏛️ Project Syndicate: MÍNIMO 1 columna (análisis económico/político de élite · Stiglitz, Krugman, Roubini, Summers, Varoufakis · ⚠️ solo 3 lecturas gratis/mes con registro, por eso MÍN 1 para no agotar el cupo)
 - 🌎 LATAM: MÍNIMO 2 columnas (de El Faro, Confidencial, Animal Político, Infobae, El Espectador, Clarín, El Mercurio)
 - 🇪🇺 Europa Occidental: MÍNIMO 2 columnas (de Le Monde, Le Figaro u otros europeos cuando los haya)
 - 🌏 Asia: MÍNIMO 2 columnas (de SCMP, Caixin, Hankyoreh, Korea Herald, JoongAng, Japan Times, CNA, Tempo, Jakarta Post, Bangkok Post, The Hindu, Indian Express)
-- TOTAL mínimos garantizados: 8 columnas
+- TOTAL mínimos garantizados: 7 columnas
 - 2 columnas restantes FLEXIBLES: USA, UK, OM, África, Rusia según actualidad
 
 HARD CAPS:
@@ -1395,7 +1395,7 @@ HARD CAPS:
 - Si una región no tiene columna fresca firmada, DÉJALA SIN cubrir (NO sustituyas con anglo extra)
 
 CHECKLIST OBLIGATORIO antes de generar worldOpinion:
-□ ¿Tengo ≥2 columnas de Project Syndicate?
+□ ¿Tengo ≥1 columna de Project Syndicate?
 □ ¿Tengo ≥2 columnas LATAM?
 □ ¿Tengo ≥2 columnas Europa Occ?
 □ ¿Tengo ≥2 columnas Asia?
@@ -2246,6 +2246,12 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         const enforcementLog = [];
         const skippedNonOpinion = [];
 
+        // 🔍 DIAGNÓSTICO VOZPÓPULI (temporal, para depurar)
+        const vozAll = candidates.filter(c => c.source === 'Vozpópuli');
+        const vozOpinion = vozAll.filter(isOpinionLike);
+        const vozInOutput = (items || []).filter(i => i.source === 'Vozpópuli').length;
+        const vozDiag = `🔍 Vozpópuli: ${vozAll.length} candidatos · ${vozOpinion.length} pasan filtro opinión · ${vozInOutput} en output del modelo (antes de forzar)`;
+
         const countPerSource = (arr) => arr.reduce((acc, x) => {
           acc[x.source] = (acc[x.source] || 0) + 1;
           return acc;
@@ -2370,6 +2376,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         if (enforcementLog.length > 0) {
           notes.push(`🔧 Se forzaron ${enforcementLog.length} columna(s) por cuotas mínimas: ${enforcementLog.slice(0, 5).join(' | ')}${enforcementLog.length > 5 ? '...' : ''}`);
         }
+        notes.push(vozDiag);
         if (notes.length > 0) briefing._note = notes.join(' || ');
       } else {
         // El modelo no devolvió JSON válido — devolvemos diagnóstico
