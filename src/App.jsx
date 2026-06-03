@@ -1453,9 +1453,15 @@ export default function App() {
     const merged = mergeBriefings();
     const html = buildHtml(merged, mode);
     const safeName = (todayShort || 'briefing').replace(/\//g, '-');
-    const fileName = mode === 'spain'
-      ? `mal-news-espana-${safeName}.html`
-      : `mal-news-internacional-${safeName}.html`;
+    const fileNames = {
+      spainNews: `mal-news-espana-noticias-${safeName}.html`,
+      spainOpinion: `mal-news-espana-opinion-${safeName}.html`,
+      worldNews: `mal-news-internacional-noticias-${safeName}.html`,
+      worldOpinion: `mal-news-internacional-opinion-${safeName}.html`,
+      spain: `mal-news-espana-${safeName}.html`,
+      international: `mal-news-internacional-${safeName}.html`,
+    };
+    const fileName = fileNames[mode] || `mal-news-${safeName}.html`;
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1710,7 +1716,31 @@ export default function App() {
     let headerTitle = 'MAL NEWS';
     let pageSubtitle = '';
 
-    if (mode === 'spain') {
+    if (mode === 'spainNews') {
+      total = (b.spainNews?.length || 0);
+      headerTitle = 'MAL NEWS · ESPAÑA';
+      pageSubtitle = 'Noticias nacionales';
+      sectionsHtml =
+        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimas 48h', false);
+    } else if (mode === 'spainOpinion') {
+      total = (b.spainOpinion?.length || 0);
+      headerTitle = 'MAL NEWS · OPINIÓN ESPAÑA';
+      pageSubtitle = 'Columnas de opinión nacional';
+      sectionsHtml =
+        section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true);
+    } else if (mode === 'worldNews') {
+      total = (b.worldNews?.length || 0);
+      headerTitle = 'MAL NEWS · INTERNACIONAL';
+      pageSubtitle = 'Cobertura global';
+      sectionsHtml =
+        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · publicadas en últimas 48h · incluye sentencias relevantes', false);
+    } else if (mode === 'worldOpinion') {
+      total = (b.worldOpinion?.length || 0);
+      headerTitle = 'MAL NEWS · OPINIÓN INTERNACIONAL';
+      pageSubtitle = 'Columnas de opinión global';
+      sectionsHtml =
+        section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true);
+    } else if (mode === 'spain') {
       total = (b.spainNews?.length || 0) + (b.spainOpinion?.length || 0);
       headerTitle = 'MAL NEWS · ESPAÑA';
       pageSubtitle = 'Noticias y opinión nacional';
@@ -1737,8 +1767,15 @@ export default function App() {
         section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true);
     }
 
-    // ID único por modo para aislar CSS cuando se pegan ambos HTMLs en el mismo email
-    const wrapperId = mode === 'spain' ? 'mal-news-esp' : mode === 'international' ? 'mal-news-intl' : 'mal-news-all';
+    // ID único por modo para aislar CSS cuando se pegan varios HTMLs en el mismo email
+    const wrapperId =
+      mode === 'spainNews' ? 'mal-news-esp-news'
+      : mode === 'spainOpinion' ? 'mal-news-esp-op'
+      : mode === 'worldNews' ? 'mal-news-intl-news'
+      : mode === 'worldOpinion' ? 'mal-news-intl-op'
+      : mode === 'spain' ? 'mal-news-esp'
+      : mode === 'international' ? 'mal-news-intl'
+      : 'mal-news-all';
     const W = `#${wrapperId}`;
 
     return `<!DOCTYPE html>
@@ -1800,8 +1837,8 @@ export default function App() {
     </div>
     ${sectionsHtml}
     ${(() => {
-      // Solo mostrar bloque de próximo briefing si el modo es spain o international
-      if (mode === 'all') return '';
+      // Solo mostrar bloque de próximo briefing en los modos combinados legacy
+      if (mode !== 'spain' && mode !== 'international') return '';
       const next = getNextRecommended(mode);
       const sectionLabel = mode === 'spain' ? 'ESPAÑA' : 'INTERNACIONAL';
       return `
@@ -2383,74 +2420,82 @@ export default function App() {
           </button>
         </div>
 
-        {/* Botones de exportación: email texto plano + vista HTML formateada + descargar HTML */}
+        {/* Exportación HTML · 4 secciones SEPARADAS (Ver / Descargar cada una) */}
         {hasAnyData && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
-            <button
-              className="mal-cta-secondary"
-              onClick={sendEmail}
-              style={{
-                border: `1px solid ${BRAND.navy}50`, borderRadius: '8px',
-                padding: '10px 16px', fontSize: '11px', fontWeight: '700',
-                letterSpacing: '0.05em', cursor: 'pointer',
-                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-                background: 'rgba(255,255,255,0.85)', color: BRAND.ink,
-              }}
-            >
-              {emailStatus === 'sent' ? '✓ Email preparado' : `📧 Email plano`}
-            </button>
-            <button
-              onClick={() => viewHtmlSingle('spain')}
-              style={{
-                border: `1px solid ${BRAND.orange}`, borderRadius: '8px',
-                padding: '10px 14px', fontSize: '11px', fontWeight: '700',
-                letterSpacing: '0.04em', cursor: 'pointer',
-                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-                background: 'rgba(255,255,255,0.85)', color: BRAND.orange,
-              }}
-              title="Abrir HTML España en nueva pestaña"
-            >
-              🇪🇸 Ver España
-            </button>
-            <button
-              onClick={() => viewHtmlSingle('international')}
-              style={{
-                border: `1px solid #0F766E`, borderRadius: '8px',
-                padding: '10px 14px', fontSize: '11px', fontWeight: '700',
-                letterSpacing: '0.04em', cursor: 'pointer',
-                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-                background: 'rgba(255,255,255,0.85)', color: '#0F766E',
-              }}
-              title="Abrir HTML Internacional en nueva pestaña"
-            >
-              🌍 Ver Internacional
-            </button>
-            <button
-              onClick={() => downloadHtmlSingle('spain')}
-              style={{
-                border: `1px solid ${BRAND.orange}`, borderRadius: '8px',
-                padding: '10px 14px', fontSize: '11px', fontWeight: '700',
-                letterSpacing: '0.04em', cursor: 'pointer',
-                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-                background: BRAND.orange, color: 'white',
-              }}
-              title="Descargar HTML España"
-            >
-              ⬇️ España
-            </button>
-            <button
-              onClick={() => downloadHtmlSingle('international')}
-              style={{
-                border: `1px solid #0F766E`, borderRadius: '8px',
-                padding: '10px 14px', fontSize: '11px', fontWeight: '700',
-                letterSpacing: '0.04em', cursor: 'pointer',
-                transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
-                background: '#0F766E', color: 'white',
-              }}
-              title="Descargar HTML Internacional"
-            >
-              ⬇️ Internacional
-            </button>
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+              <button
+                className="mal-cta-secondary"
+                onClick={sendEmail}
+                style={{
+                  border: `1px solid ${BRAND.navy}50`, borderRadius: '8px',
+                  padding: '10px 16px', fontSize: '11px', fontWeight: '700',
+                  letterSpacing: '0.05em', cursor: 'pointer',
+                  transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
+                  background: 'rgba(255,255,255,0.85)', color: BRAND.ink,
+                }}
+              >
+                {emailStatus === 'sent' ? '✓ Email preparado' : `📧 Email plano`}
+              </button>
+            </div>
+            {/* Una fila por sección: etiqueta + Ver + Descargar */}
+            {(() => {
+              const secciones = [
+                { mode: 'spainNews',     label: '🇪🇸 Noticias España',        color: '#C2410C', data: realSpainNewsCount },
+                { mode: 'spainOpinion',  label: '✍️ Opinión España',          color: '#65A30D', data: realSpainOpinionCount },
+                { mode: 'worldNews',     label: '🌍 Internacional',           color: '#0F766E', data: intlData?.worldNews?.length || 0 },
+                { mode: 'worldOpinion',  label: '✍️ Opinión Internacional',   color: '#0E7490', data: intlData?.worldOpinion?.length || 0 },
+              ];
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '440px', margin: '0 auto' }}>
+                  {secciones.map(s => {
+                    const disabled = s.data === 0;
+                    return (
+                      <div key={s.mode} style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        opacity: disabled ? 0.4 : 1,
+                      }}>
+                        <span style={{
+                          flex: 1, fontSize: '11px', fontWeight: '800', color: s.color,
+                          letterSpacing: '0.03em', fontFamily: "'Verdana', 'Geneva', sans-serif",
+                          textAlign: 'right', paddingRight: '4px',
+                        }}>
+                          {s.label} {s.data > 0 ? `(${s.data})` : ''}
+                        </span>
+                        <button
+                          onClick={() => !disabled && viewHtmlSingle(s.mode)}
+                          disabled={disabled}
+                          style={{
+                            border: `1px solid ${s.color}`, borderRadius: '8px',
+                            padding: '8px 14px', fontSize: '11px', fontWeight: '700',
+                            cursor: disabled ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
+                            background: 'rgba(255,255,255,0.9)', color: s.color, whiteSpace: 'nowrap',
+                          }}
+                          title={`Ver HTML de ${s.label} en nueva pestaña`}
+                        >
+                          👁️ Ver
+                        </button>
+                        <button
+                          onClick={() => !disabled && downloadHtmlSingle(s.mode)}
+                          disabled={disabled}
+                          style={{
+                            border: `1px solid ${s.color}`, borderRadius: '8px',
+                            padding: '8px 14px', fontSize: '11px', fontWeight: '700',
+                            cursor: disabled ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
+                            background: s.color, color: 'white', whiteSpace: 'nowrap',
+                          }}
+                          title={`Descargar HTML de ${s.label}`}
+                        >
+                          ⬇️ Bajar
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
 
