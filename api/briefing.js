@@ -59,17 +59,14 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'Letras Libres', url: 'https://letraslibres.com/rss/', tier: 'alt' },
 
   // El Debate - varias URLs alternativas (A)
-  { source: 'El Debate', url: 'https://www.eldebate.com/opinion/feed/', tier: 'opinion' },
+  { source: 'El Debate', url: 'https://www.eldebate.com/rss/home.xml', tier: 'opinion' },
 
   // El Español: eliminado de opinion (queda solo en spainNews)
 
   // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo) ============
   // ⭐ RSS NATIVO Vozpópuli (vozpopuli.com NO bloquea IPs de datacenter como sí hace Google News)
   // Candidatos de opinión — los que devuelvan items funcionan (ver diagnóstico por URL)
-  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/opinion/rss/', tier: 'native-opinion' },
-  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/rss/opinion/', tier: 'native-opinion2' },
-  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/opinion/feed/', tier: 'native-opinion3' },
-  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/rss/', tier: 'native-main' },
+  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/portada.xml', tier: 'native-opinion' },
   // Google News (fallback · puede estar bloqueado por IP de datacenter)
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
@@ -80,7 +77,7 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'Agenda Pública', url: 'https://news.google.com/rss/search?q=site:agendapublica.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
 
   // Económico / regional con opinión incluida
-  { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/opinion/rss', tier: 'main' },
+  { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/rss/', tier: 'main' },
 ];
 
 // ============ FEEDS RSS PARA NOTICIAS ESPAÑA ============
@@ -108,7 +105,7 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/es/rss' },
   { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/ca/rss' },
   { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/es/feed' },
-  { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/rss' },
+  { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/rss/' },
 
   // Demócrata - WordPress feed + Google News fallback
   { source: 'Demócrata', url: 'https://news.google.com/rss/search?q=site:democrata.es&hl=es-ES&gl=ES&ceid=ES:es' },
@@ -126,8 +123,7 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'Cinco Días', url: 'https://cincodias.elpais.com/rss/cincodias/portada.xml' },
 
   // Google News RSS (fallback solo para medios sin RSS público fiable)
-  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/rss/', tier: 'native-main' },
-  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/politica/rss/', tier: 'native-politica' },
+  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/portada.xml', tier: 'native-main' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/politica+OR+site:vozpopuli.com/economia+OR+site:vozpopuli.com/espana&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+-site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
