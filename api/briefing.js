@@ -63,11 +63,10 @@ const SPAIN_OPINION_FEEDS = [
 
   // El Español: eliminado de opinion (queda solo en spainNews)
 
-  // ============ GOOGLE NEWS RSS (fallback para los que no tienen autor en RSS directo) ============
-  // ⭐ RSS NATIVO Vozpópuli (vozpopuli.com NO bloquea IPs de datacenter como sí hace Google News)
-  // Candidatos de opinión — los que devuelvan items funcionan (ver diagnóstico por URL)
-  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/portada.xml', tier: 'native-opinion' },
-  // Google News (fallback · puede estar bloqueado por IP de datacenter)
+  // ============ GOOGLE NEWS RSS (fallback) ============
+  // NOTA: portada.xml de Vozpópuli devuelve HTTP 403 desde Vercel. Se omite y se confía
+  // en los fallback de Google News + filtro isOpinionLike ampliado (site:dominio/opinion).
+  // Google News (fallback)
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
   // NOTA: las 8 búsquedas VIP por columnista se quitaron — disparaban 8 peticiones extra
@@ -100,6 +99,8 @@ const SPAIN_NEWS_FEEDS = [
   // El Debate general (no solo Baleares)
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/' },
   // 📰 IZQUIERDA alternativa (gratis) - mismos sesgos
+  // Huffington Post España - RSS nativo (Google News bloqueado desde Vercel)
+  { source: 'Huffington Post', url: 'https://www.huffingtonpost.es/feed/' },
   { source: 'Huffington Post', url: 'https://news.google.com/rss/search?q=site:huffingtonpost.es&hl=es-ES&gl=ES&ceid=ES:es' },
   // El Nacional.cat - catalán independentista, gratis
   { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/es/rss' },
@@ -107,15 +108,16 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'El Nacional.cat', url: 'https://www.elnacional.cat/es/feed' },
   { source: 'Crónica Global', url: 'https://cronicaglobal.elespanol.com/rss/' },
 
-  // Demócrata - WordPress feed + Google News fallback
+  // Demócrata - WordPress nativo + fallback Google News
+  { source: 'Demócrata', url: 'https://democrata.es/feed/' },
   { source: 'Demócrata', url: 'https://news.google.com/rss/search?q=site:democrata.es&hl=es-ES&gl=ES&ceid=ES:es' },
 
   // BALEARES regional
   { source: 'OK Diario Baleares', url: 'https://okdiario.com/baleares/feed/' },
-  // elDiario.es Baleares - múltiples URLs
+  // elDiario.es Baleares - WordPress regional nativo + fallback Google News
+  { source: 'elDiario.es Baleares', url: 'https://www.eldiario.es/illes-balears/rss/' },
   { source: 'elDiario.es Baleares', url: 'https://news.google.com/rss/search?q=site:eldiario.es/illes-balears&hl=es-ES&gl=ES&ceid=ES:es' },
-  // El Debate Baleares
-  { source: 'El Debate Baleares', url: 'https://news.google.com/rss/search?q=site:eldebate.com/baleares&hl=es-ES&gl=ES&ceid=ES:es' },
+  // (El Debate Baleares eliminado: no hay feed regional nativo y Google News bloqueado)
   { source: 'Economía de Mallorca', url: 'https://www.economiademallorca.com/feed/' },
 
   // ECONÓMICO nacional
@@ -123,9 +125,11 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'Cinco Días', url: 'https://cincodias.elpais.com/rss/cincodias/portada.xml' },
 
   // Google News RSS (fallback solo para medios sin RSS público fiable)
-  { source: 'Vozpópuli', url: 'https://www.vozpopuli.com/portada.xml', tier: 'native-main' },
+  // NOTA: portada.xml de Vozpópuli devuelve 403 desde Vercel — se omite el RSS nativo.
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/politica+OR+site:vozpopuli.com/economia+OR+site:vozpopuli.com/espana&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+-site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
+  // Invertia - sección de El Español, RSS nativo + fallback Google News
+  { source: 'Invertia', url: 'https://www.elespanol.com/invertia/rss/' },
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
@@ -354,27 +358,25 @@ const INTERNATIONAL_OPINION_FEEDS = [
 
   // 🇬🇧 UK
   { source: 'The Guardian', url: 'https://www.theguardian.com/commentisfree/rss', tier: 'opinion' },
-  { source: 'The Spectator', url: 'https://www.spectator.co.uk/feed', tier: 'main' },
   { source: 'UnHerd', url: 'https://unherd.com/feed/', tier: 'main' },
+  // (The Spectator: feed muerto, queda solo en set PressReader → modelo lo cita vía web_search)
 
   // 💰 ECONÓMICO GLOBAL
-  { source: 'Bloomberg', url: 'https://feeds.bloomberg.com/opinion/news.rss', tier: 'opinion' },
-  { source: 'Reuters', url: 'https://www.reutersagency.com/feed/?best-topics=business-finance', tier: 'business' },
   { source: 'MarketWatch', url: 'https://feeds.marketwatch.com/marketwatch/topstories/', tier: 'main' },
-  { source: 'Quartz', url: 'https://qz.com/feed', tier: 'main' },
   { source: 'Forbes', url: 'https://www.forbes.com/business/feed/', tier: 'business' },
+  // (Bloomberg / Reuters / Quartz: feeds muertos; Bloomberg queda en set PressReader)
 
-  // 🇪🇺 EUROPA OCC.
+  // 🇫🇷 FRANCIA
   { source: 'Le Figaro', url: 'https://www.lefigaro.fr/rss/figaro_actualites.xml', tier: 'main' },
   { source: 'Le Monde', url: 'https://www.lemonde.fr/rss/une.xml', tier: 'main' },
 
-  // 🇩🇪 Der Spiegel International (versión inglés, gratis, calidad alta)
+  // 🇩🇪 ALEMANIA (nuevo · cubrir hueco UE)
+  { source: 'Der Spiegel International', url: 'https://www.spiegel.de/international/index.rss', tier: 'main' },
+  // (Süddeutsche Zeitung y Handelsblatt: sin feed RSS gratuito fiable, solo en set PressReader)
 
-  // 🇮🇹 La Repubblica (centro-izq italiano, mayor diario)
-  { source: 'La Repubblica', url: 'https://www.repubblica.it/rss/commenti/rss2.0.xml', tier: 'opinion' },
-
-  // 🇬🇧 The Times (UK conservador establishment, PressReader disponible)
-
+  // 🇮🇹 ITALIA (nuevo · recuperar tras quitar La Repubblica)
+  { source: 'Corriere della Sera', url: 'https://xml2.corriereobjects.it/rss/homepage.xml', tier: 'main' },
+  // (La Repubblica e Il Sole 24 Ore: solo en set PressReader)
 
   // 🌐 MULTILATERAL OPINIÓN
   { source: 'Project Syndicate', url: 'https://www.project-syndicate.org/rss', tier: 'main' },
@@ -382,17 +384,15 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Foreign Policy', url: 'https://foreignpolicy.com/feed/', tier: 'main' },
   { source: 'Foreign Affairs', url: 'https://www.foreignaffairs.com/rss.xml', tier: 'main' },
 
-  // 🌍 EUROPA ESTE
-  { source: 'Kyiv Independent', url: 'https://kyivindependent.com/feed', tier: 'main' },
-  { source: 'Kyiv Independent', url: 'https://kyivindependent.com/rss/', tier: 'alt' },
-
   // 🇷🇺 RUSIA (independiente)
   { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/opinion', tier: 'opinion' },
   { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/news', tier: 'news' },
+  // (Kyiv Independent: feed muerto y NO disponible en PressReader — hueco aceptado)
 
-  // 🕌 ORIENTE MEDIO
-  { source: 'Haaretz', url: 'https://www.haaretz.com/srv/htz---rss-opinion', tier: 'opinion' },
-  { source: 'Times of Israel', url: 'https://www.timesofisrael.com/feed/', tier: 'main' },
+  // 🕌 ORIENTE MEDIO (recuperar tras quitar Haaretz y Times of Israel muertos)
+  { source: 'The Jerusalem Post', url: 'https://www.jpost.com/rss/rssfeedsopinion.aspx', tier: 'opinion' },
+  { source: 'Arab News', url: 'https://www.arabnews.com/rss.xml', tier: 'main' },
+  // (Haaretz: solo en set PressReader, sin feed nativo accesible)
 
   // 🇮🇳 INDIA
   { source: 'The Hindu', url: 'https://www.thehindu.com/opinion/feeder/default.rss', tier: 'opinion' },
@@ -403,25 +403,21 @@ const INTERNATIONAL_OPINION_FEEDS = [
 
   // 🇨🇳 CHINA
   { source: 'SCMP', url: 'https://www.scmp.com/rss/91/feed', tier: 'main' },
-  { source: 'Caixin', url: 'https://www.caixinglobal.com/rss/', tier: 'main' },
-  { source: 'Global Times', url: 'https://www.globaltimes.cn/rss/outbrain.xml', tier: 'main' },
-  { source: 'China Daily', url: 'http://www.chinadaily.com.cn/rss/world_rss.xml', tier: 'main' },
   { source: 'Sixth Tone', url: 'https://www.sixthtone.com/rss', tier: 'main' },
+  // (Caixin, China Daily, Global Times: feeds muertos / viejos, eliminados)
 
   // 🇰🇷 COREA DEL SUR
-  { source: 'Korea Herald', url: 'https://www.koreaherald.com/common_prog/rssdispatch.php?ct=02', tier: 'main' },
-  { source: 'Korea JoongAng Daily', url: 'https://koreajoongangdaily.joins.com/rss/all', tier: 'main' },
   { source: 'Hankyoreh', url: 'https://english.hani.co.kr/rss/', tier: 'main' },
+  { source: 'The Korea Times', url: 'https://www.koreatimes.co.kr/www/rss/nation.xml', tier: 'main' },
+  // (Korea Herald, Korea JoongAng Daily: feeds muertos, eliminados)
 
-  // 🇸🇬 SINGAPUR
-  { source: 'Channel News Asia', url: 'https://www.channelnewsasia.com/rss', tier: 'main' },
-  { source: 'The Business Times', url: 'https://www.businesstimes.com.sg/rss', tier: 'main' },
+  // 🇸🇬 SINGAPUR (nuevo · recuperar)
+  { source: 'The Straits Times', url: 'https://www.straitstimes.com/news/world/rss.xml', tier: 'main' },
+  // (Channel News Asia, Business Times: feeds muertos; Business Times queda en set PressReader)
 
   // 🌏 SUDESTE ASIÁTICO
-  { source: 'Jakarta Post', url: 'https://www.thejakartapost.com/feed', tier: 'main' },
-  { source: 'Jakarta Globe', url: 'https://jakartaglobe.id/feed/', tier: 'main' },
-  { source: 'Tempo', url: 'https://en.tempo.co/rss', tier: 'main' },
   { source: 'Bangkok Post', url: 'https://www.bangkokpost.com/rss/data/most-recent.xml', tier: 'main' },
+  // (Jakarta Post, Jakarta Globe, Tempo: feeds muertos, eliminados)
 
   // 🌍 ÁFRICA
   { source: 'Daily Maverick', url: 'https://www.dailymaverick.co.za/feed/', tier: 'main' },
@@ -429,21 +425,17 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Premium Times', url: 'https://www.premiumtimesng.com/feed', tier: 'main' },
   { source: 'Africa Report', url: 'https://www.theafricareport.com/feed/', tier: 'main' },
 
-  // 🌎 LATAM
-  { source: 'Infobae', url: 'https://www.infobae.com/feeds/rss/', tier: 'main' },
+  // 🌎 LATAM (recuperar tras quitar Infobae, El Espectador)
   { source: 'Clarín', url: 'https://www.clarin.com/rss/lo-ultimo/', tier: 'main' },
-  { source: 'El Espectador', url: 'https://www.elespectador.com/arc/outboundfeeds/rss/category/opinion/', tier: 'opinion' },
-  { source: 'El Espectador', url: 'https://www.elespectador.com/arc/outboundfeeds/rss/', tier: 'main' },
+  { source: 'La Nación', url: 'https://servicios.lanacion.com.ar/herramientas/rss/category-id=261', tier: 'main' },
+  { source: 'Folha de S.Paulo', url: 'https://feeds.folha.uol.com.br/folha/mundo/rss091.xml', tier: 'main' },
+  // (O Globo: solo en set PressReader)
 
   // 🌎 LATAM · CENTROAMÉRICA INVESTIGATIVO
   // Confidencial (Nicaragua exilio Costa Rica · Chamorro · Pulitzer)
   { source: 'Confidencial', url: 'https://confidencial.digital/opinion/feed/', tier: 'opinion' },
 
-  // 🌎 LATAM · MÉXICO investigativo
-  // Animal Político (independiente, fact-checking, investigativo)
-
-  // 🌎 LATAM · EL SALVADOR investigativo
-  // El Faro (Pulitzer, primer digital LATAM)
+  // 🌎 LATAM · CHILE
   { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss/rss_actualidad.asp', tier: 'main' },
   { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss.asp', tier: 'general' },
 ];
@@ -787,22 +779,41 @@ const PRESSREADER_AVAILABLE_SOURCES = new Set([
   'The Spectator', 'Spectator',
   'The Times', 'Times UK',
   'The Telegraph', 'Telegraph',
-  // 🇺🇸 USA (los que SIGUEN en PressReader)
+  // 🇺🇸 USA
   'Bloomberg', 'Bloomberg.com', 'Bloomberg News',
   'Newsweek',
-  // 🇫🇷 Europa Occ
+  'Wall Street Journal', 'WSJ', 'The Wall Street Journal',
+  'The Atlantic', 'Atlantic',
+  'Foreign Policy', 'FP',
+  'Foreign Affairs',
+  // 🇫🇷 Francia
   'Le Monde',
   'Le Figaro',
   // 🇮🇹 Italia
   'La Repubblica',
+  'Corriere della Sera', 'Corriere',
+  'Il Sole 24 Ore', 'Il Sole',
+  // 🇩🇪 Alemania
+  'Süddeutsche Zeitung', 'SZ',
+  'Handelsblatt',
+  'Die Welt',
+  // 🕌 Oriente Medio
+  'Haaretz', 'Haaretz English',
+  'The Jerusalem Post', 'Jerusalem Post',
+  'Arab News',
   // 🌏 Asia
   'Japan Times', 'The Japan Times',
   'The Business Times', 'Business Times Singapore',
   'South China Morning Post', 'SCMP',
+  'The Straits Times', 'Straits Times',
+  'The Korea Times', 'Korea Times',
   // 🇪🇸 España (ediciones en PressReader)
   'El País', 'El Mundo', 'ABC', 'La Vanguardia',
   // 🌎 LATAM
   'El Mercurio',
+  'La Nación',
+  'O Globo',
+  'Folha de S.Paulo', 'Folha',
 ]);
 
 function isPressReaderAvailable(sourceName) {
@@ -2120,6 +2131,9 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           // sección opinión/columnas, ES una columna. Cubre Vozpópuli y similares.
           const opinionPathRe = /\/(opinion|opinión|columnas|firmas|tribuna|blogs?)\b/i;
           if (opinionPathRe.test(url) || opinionPathRe.test(fromUrl)) return true;
+          // ⭐ Google News: query "site:dominio.com/opinion" → todos los items son opinión
+          // (las URLs devueltas por GN no conservan /opinion/, hay que mirar el feed origen)
+          if (/site%3A[^&]*\/opinion/i.test(fromUrl) || /site:[^&\s]*\/opinion/i.test(fromUrl)) return true;
           // Feeds VIP de autor (vip:Maneiro, etc.) → siempre opinión
           if (String(item._fromTier || '').startsWith('vip:')) return true;
 
