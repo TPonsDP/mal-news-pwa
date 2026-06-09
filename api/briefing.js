@@ -231,7 +231,7 @@ function parseFeedItems(xml, source) {
       items.push({
         source,
         title: cleanGoogleNewsTitle(cleanText(title), source),
-        url: cleanText(link),
+        url: cleanUrl(link),
         author: cleanText(author || ''),
         pubDate: cleanText(pubDate || ''),
         publishedDate: rfcToISODate(pubDate),
@@ -339,6 +339,19 @@ function cleanText(s) {
   result = result.replace(/href\s*=\s*["'][^"']*["']/gi, '');
   // Espacios múltiples
   return result.replace(/\s+/g, ' ').trim();
+}
+
+// Limpieza específica para URLs de enlace (<link>). NO aplica las reglas
+// destructivas de cleanText (que borran news.google.com/...), porque el <link>
+// de cada item de Google News ES precisamente una URL news.google.com/rss/articles/...
+// Pasar el link por cleanText dejaba url='' en TODOS los items → el dedup por URL
+// los colapsaba a 1 ("1 en RSS"). Este era el bug de Vozpópuli.
+function cleanUrl(s) {
+  return String(s || '')
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .trim();
 }
 
 function rfcToISODate(dateStr) {
