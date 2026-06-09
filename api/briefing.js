@@ -343,8 +343,23 @@ function cleanText(s) {
 
 function rfcToISODate(dateStr) {
   if (!dateStr) return '';
+  const clean = cleanText(dateStr);
   try {
-    const d = new Date(cleanText(dateStr));
+    let d = new Date(clean);
+    // Fallback 1: formato ISO sin zona o con microsegundos raros → probar normalizado
+    if (isNaN(d.getTime())) {
+      // "2026-06-09 18:30:00" (espacio en vez de T) → ISO
+      const isoLike = clean.replace(' ', 'T');
+      d = new Date(isoLike);
+    }
+    // Fallback 2: formato "DD/MM/YYYY" o "DD-MM-YYYY HH:mm" (algunos feeds ES)
+    if (isNaN(d.getTime())) {
+      const m = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2}))?/);
+      if (m) {
+        const [, dd, mm, yyyy, hh = '12', mi = '00'] = m;
+        d = new Date(Date.UTC(+yyyy, +mm - 1, +dd, +hh, +mi));
+      }
+    }
     if (isNaN(d.getTime())) return '';
     return d.toISOString().slice(0, 10);
   } catch (_) { return ''; }
@@ -1066,13 +1081,31 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
     return true;
   });
 
-  // Filtrar por fechas aceptadas
+  // Filtrar por fechas aceptadas.
+  // FIX: el filtro por día-ISO exacto descartaba piezas válidas por desfase de zona
+  // horaria (toISOString convierte a UTC; una columna de las 23:30 de Madrid sale como
+  // día anterior en UTC). Si la pieza tiene timestamp dentro de la ventana maxHoursAgo,
+  // se acepta aunque su día-ISO no coincida exactamente con allowedISODates.
+  const cutoffMsPre = (maxHoursAgo && Number.isFinite(maxHoursAgo))
+    ? Date.now() - (maxHoursAgo * 60 * 60 * 1000)
+    : null;
+  const withinWindow = (it) => {
+    if (cutoffMsPre === null) return false;
+    if (!it.pubDate) return false;
+    try {
+      const ts = new Date(it.pubDate).getTime();
+      return !isNaN(ts) && ts >= cutoffMsPre;
+    } catch (_) { return false; }
+  };
   let inDate = dedup.filter(it => {
     if (!allowedISODates || allowedISODates.length === 0) return true;
-    return allowedISODates.includes(it.publishedDate);
+    // Acepta si el día-ISO está permitido O si el timestamp cae dentro de la ventana.
+    return allowedISODates.includes(it.publishedDate) || withinWindow(it);
   });
 
-  // Filtro adicional por timestamp si se especifica maxHoursAgo
+  // Filtro adicional por timestamp si se especifica maxHoursAgo.
+  // Solo descarta piezas cuyo timestamp es CLARAMENTE viejo; las de fecha-día válida
+  // sin pubDate parseable se mantienen (return true).
   if (maxHoursAgo && Number.isFinite(maxHoursAgo)) {
     const cutoffMs = Date.now() - (maxHoursAgo * 60 * 60 * 1000);
     inDate = inDate.filter(it => {
@@ -1167,7 +1200,17 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
       }
     }
 
-    const passedDate = uniqueItems.filter(it => allowedISODates.includes(it.publishedDate));
+    const passedDate = uniqueItems.filter(it => {
+      if (allowedISODates.includes(it.publishedDate)) return true;
+      // Mismo criterio que el filtro real: timestamp dentro de ventana cuenta como válido.
+      if (cutoffMs !== null && it.pubDate) {
+        try {
+          const ts = new Date(it.pubDate).getTime();
+          if (!isNaN(ts) && ts >= cutoffMs) return true;
+        } catch (_) {}
+      }
+      return false;
+    });
     let passedTimestamp = passedDate.length;
     if (cutoffMs !== null) {
       passedTimestamp = passedDate.filter(it => {
