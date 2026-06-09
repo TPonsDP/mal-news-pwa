@@ -69,6 +69,10 @@ const SPAIN_OPINION_FEEDS = [
   // Google News (fallback)
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'main' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
+  // Red de seguridad: ventana 2d recoge columnas que Google News indexa con retraso
+  // (Google a veces tarda 12-36h en indexar piezas de opinión). Sin queries por columnista
+  // para no disparar peticiones (causa previa del bloqueo de IP).
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/opinion+when:2d&hl=es-ES&gl=ES&ceid=ES:es', tier: 'recent' },
   // NOTA: las 8 búsquedas VIP por columnista se quitaron — disparaban 8 peticiones extra
   // a Google News (causa del bloqueo de IP). El RSS nativo de opinión ya trae a todos los
   // columnistas; el enforcement fuerza las 4 columnas mínimas de Vozpópuli.
@@ -126,8 +130,11 @@ const SPAIN_NEWS_FEEDS = [
 
   // Google News RSS (fallback solo para medios sin RSS público fiable)
   // NOTA: portada.xml de Vozpópuli devuelve 403 desde Vercel — se omite el RSS nativo.
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com/politica+OR+site:vozpopuli.com/economia+OR+site:vozpopuli.com/espana&hl=es-ES&gl=ES&ceid=ES:es' },
+  // Las queries con OR de site: rinden mal en Google News; se usan queries simples
+  // por sección + ventana 2d como red de seguridad ante indexado lento.
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+-site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
   { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+-site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+-site:vozpopuli.com/opinion+when:2d&hl=es-ES&gl=ES&ceid=ES:es' },
   // Invertia - sección de El Español, RSS nativo + fallback Google News
   { source: 'Invertia', url: 'https://www.elespanol.com/invertia/rss/' },
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
