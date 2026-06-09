@@ -1808,17 +1808,53 @@ async function fetchArticleText(url, timeoutMs = 6000) {
       redirect: 'follow',
     });
     clearTimeout(timer);
-    if (!res.ok) return '';
+    if (!res.ok) return { text: '', author: '' };
     const html = await res.text();
     // Extraer contenido de párrafos <p>
     const paras = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
       .map(m => cleanText(m[1]))
       .filter(t => t.length > 40);  // descartar párrafos cortos (menús, pies)
     const text = paras.join(' ');
-    return text.slice(0, 2500);  // primeros ~2500 chars (suficiente para resumir)
+    return { text: text.slice(0, 2500), author: extractAuthorFromHtml(html) };
   } catch (_) {
-    return '';
+    return { text: '', author: '' };
   }
+}
+
+// Extrae la firma del autor del HTML del artículo. Prueba, en orden, las
+// fuentes más fiables: meta tags estándar, JSON-LD, y atributos comunes de byline.
+// Devuelve '' si no encuentra nada plausible (no inventa).
+function extractAuthorFromHtml(html) {
+  if (!html) return '';
+  const candidates = [];
+  // 1) <meta name="author" content="..."> y variantes (property, itemprop)
+  const metaRes = [
+    /<meta[^>]+name=["']author["'][^>]*content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]*name=["']author["']/i,
+    /<meta[^>]+property=["']article:author["'][^>]*content=["']([^"']+)["']/i,
+    /<meta[^>]+itemprop=["']author["'][^>]*content=["']([^"']+)["']/i,
+  ];
+  for (const re of metaRes) {
+    const m = html.match(re);
+    if (m && m[1]) candidates.push(m[1]);
+  }
+  // 2) JSON-LD: "author":{"name":"..."} o "author":"..."
+  const ldName = html.match(/"author"\s*:\s*\{[^}]*?"name"\s*:\s*"([^"]+)"/i);
+  if (ldName && ldName[1]) candidates.push(ldName[1]);
+  const ldStr = html.match(/"author"\s*:\s*"([^"]+)"/i);
+  if (ldStr && ldStr[1]) candidates.push(ldStr[1]);
+  // 3) rel="author" o class de byline habituales
+  const relAuthor = html.match(/rel=["']author["'][^>]*>([^<]{2,60})</i);
+  if (relAuthor && relAuthor[1]) candidates.push(relAuthor[1]);
+  // Limpieza y validación: descartar nombres de medio, vacíos o sospechosos
+  const BAD = /(vozp[oó]puli|redacci[oó]n|editorial|agencias?|^ep$|^efe$|reuters|^ap$|afp|bloomberg)/i;
+  for (const raw of candidates) {
+    const a = cleanText(String(raw)).replace(/\s+/g, ' ').trim();
+    if (a.length >= 3 && a.length <= 60 && !BAD.test(a) && /[a-záéíóúñ]/i.test(a)) {
+      return a;
+    }
+  }
+  return '';
 }
 
 // Genera resúmenes (1-2 frases) para varios artículos en UNA llamada a Haiku.
@@ -2385,7 +2421,12 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           if (needsSummary.length > 0) {
             // Descargar textos en paralelo (timeout corto)
             const withText = await Promise.all(needsSummary.map(async (it, i) => {
-              const text = await fetchArticleText(it.url, 6000);
+              const { text, author } = await fetchArticleText(it.url, 6000);
+              // Si la columna no traía firma (caso Google News) y el artículo sí
+              // expone autor en su HTML, la recuperamos aquí.
+              if (author && (!it.author || !String(it.author).trim())) {
+                it.author = author;
+              }
               return { idx: i, ref: it, title: it.title, source: it.source, author: it.author, text };
             }));
             const valid = withText.filter(a => a.text && a.text.length > 100);
