@@ -1113,38 +1113,51 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
   });
 
   // Filtrar por fechas aceptadas.
-  // FIX: el filtro por día-ISO exacto descartaba piezas válidas por desfase de zona
+  // FIX 1: el filtro por día-ISO exacto descartaba piezas válidas por desfase de zona
   // horaria (toISOString convierte a UTC; una columna de las 23:30 de Madrid sale como
-  // día anterior en UTC). Si la pieza tiene timestamp dentro de la ventana maxHoursAgo,
-  // se acepta aunque su día-ISO no coincida exactamente con allowedISODates.
-  const cutoffMsPre = (maxHoursAgo && Number.isFinite(maxHoursAgo))
-    ? Date.now() - (maxHoursAgo * 60 * 60 * 1000)
-    : null;
+  // día anterior/siguiente en UTC). Para rescatarlas usamos una ventana por timestamp.
+  // FIX 2: esa ventana NO puede ser "últimas 48h desde ahora", porque al pedir un día
+  // pasado (p.ej. 9/06 estando en 10/06) colaba piezas del 10 (están a <48h de ahora
+  // pero su día no está permitido). La ventana se acota al RANGO de días permitidos
+  // [inicio del día más antiguo − margen, fin del día más reciente + margen].
+  const TZ_MARGIN_MS = 3 * 60 * 60 * 1000; // 3h: cubre UTC+1/+2 y horario de verano
+  let allowedLoMs = null, allowedHiMs = null;
+  if (allowedISODates && allowedISODates.length > 0) {
+    const dayMs = allowedISODates
+      .map(d => new Date(d + 'T00:00:00Z').getTime())
+      .filter(t => !isNaN(t));
+    if (dayMs.length) {
+      allowedLoMs = Math.min(...dayMs) - TZ_MARGIN_MS;
+      // fin del día más reciente = inicio + 24h
+      allowedHiMs = Math.max(...dayMs) + 24 * 60 * 60 * 1000 + TZ_MARGIN_MS;
+    }
+  }
   const withinWindow = (it) => {
-    if (cutoffMsPre === null) return false;
-    if (!it.pubDate) return false;
+    if (allowedLoMs === null || !it.pubDate) return false;
     try {
       const ts = parsePubDateMs(it.pubDate);
-      return !isNaN(ts) && ts >= cutoffMsPre;
+      return !isNaN(ts) && ts >= allowedLoMs && ts <= allowedHiMs;
     } catch (_) { return false; }
   };
   let inDate = dedup.filter(it => {
     if (!allowedISODates || allowedISODates.length === 0) return true;
-    // Acepta si el día-ISO está permitido O si el timestamp cae dentro de la ventana.
+    // Acepta si el día-ISO está permitido O si el timestamp cae en el rango de días
+    // permitidos (rescata bordes de medianoche, pero NO días fuera de la lista).
     return allowedISODates.includes(it.publishedDate) || withinWindow(it);
   });
 
   // Filtro adicional por timestamp si se especifica maxHoursAgo.
-  // Solo descarta piezas cuyo timestamp es CLARAMENTE viejo; las de fecha-día válida
-  // sin pubDate parseable se mantienen (return true).
-  if (maxHoursAgo && Number.isFinite(maxHoursAgo)) {
-    const cutoffMs = Date.now() - (maxHoursAgo * 60 * 60 * 1000);
+  // Acota por arriba (no más nuevas que el rango permitido) y por abajo (no más viejas
+  // que maxHoursAgo respecto al día más reciente permitido).
+  if (maxHoursAgo && Number.isFinite(maxHoursAgo) && allowedHiMs !== null) {
+    const lowerBound = allowedHiMs - (maxHoursAgo * 60 * 60 * 1000) - 24 * 60 * 60 * 1000;
     inDate = inDate.filter(it => {
       if (!it.pubDate) return true;
       try {
         const ts = parsePubDateMs(it.pubDate);
         if (isNaN(ts)) return true;
-        return ts >= cutoffMs;
+        // Rechaza si es más nueva que el rango permitido o demasiado vieja.
+        return ts <= allowedHiMs && ts >= lowerBound;
       } catch (_) { return true; }
     });
   }
@@ -1205,10 +1218,11 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
   });
 
   // ============ DIAGNÓSTICO AVANZADO (E) ============
-  // Agrupar resultados por source y mostrar URLs individuales
-  const cutoffMs = maxHoursAgo && Number.isFinite(maxHoursAgo)
-    ? Date.now() - (maxHoursAgo * 60 * 60 * 1000)
-    : null;
+  // Agrupar resultados por source y mostrar URLs individuales.
+  // Usa el mismo rango acotado por días permitidos que el filtro real (allowedLoMs/HiMs),
+  // no "48h desde ahora", para que el contador "en 48h" sea coherente al pedir días pasados.
+  const diagLoMs = allowedLoMs;
+  const diagHiMs = allowedHiMs;
 
   // Agrupar feedResults por source
   const grouped = {};
@@ -1233,23 +1247,24 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
 
     const passedDate = uniqueItems.filter(it => {
       if (allowedISODates.includes(it.publishedDate)) return true;
-      // Mismo criterio que el filtro real: timestamp dentro de ventana cuenta como válido.
-      if (cutoffMs !== null && it.pubDate) {
+      // Mismo criterio que el filtro real: timestamp dentro del rango de días permitidos.
+      if (diagLoMs !== null && it.pubDate) {
         try {
           const ts = parsePubDateMs(it.pubDate);
-          if (!isNaN(ts) && ts >= cutoffMs) return true;
+          if (!isNaN(ts) && ts >= diagLoMs && ts <= diagHiMs) return true;
         } catch (_) {}
       }
       return false;
     });
     let passedTimestamp = passedDate.length;
-    if (cutoffMs !== null) {
+    if (diagHiMs !== null) {
+      const lowerBound = diagHiMs - (maxHoursAgo * 60 * 60 * 1000) - 24 * 60 * 60 * 1000;
       passedTimestamp = passedDate.filter(it => {
         if (!it.pubDate) return true;
         try {
           const ts = parsePubDateMs(it.pubDate);
           if (isNaN(ts)) return true;
-          return ts >= cutoffMs;
+          return ts <= diagHiMs && ts >= lowerBound;
         } catch (_) { return true; }
       }).length;
     }
