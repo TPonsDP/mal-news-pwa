@@ -354,28 +354,46 @@ function cleanUrl(s) {
     .trim();
 }
 
+// Parsea un <pubDate> de cualquier formato común a milisegundos (timestamp).
+// Devuelve NaN si no consigue una fecha plausible. Es la ÚNICA fuente de verdad
+// para fechas: el filtro de 48h y el cálculo de antigüedad la usan, así evitamos
+// que `new Date(pubDate)` crudo produzca fechas absurdas (ej. "hace 97031h").
+function parsePubDateMs(dateStr) {
+  if (!dateStr) return NaN;
+  const clean = cleanText(String(dateStr)).trim();
+  if (!clean) return NaN;
+  // 1) Intento directo (cubre RFC-822 con GMT/+0200 e ISO 8601 estándar)
+  let t = new Date(clean).getTime();
+  if (!isNaN(t)) return t;
+  // 2) RFC-822 con zona horaria por abreviatura no reconocida por Node (EST, BST, CET, PDT...)
+  //    Estrategia: quitar la abreviatura alfabética final y reintentar como UTC.
+  const noTz = clean.replace(/\s+[A-Z]{2,5}$/, ' GMT');
+  t = new Date(noTz).getTime();
+  if (!isNaN(t)) return t;
+  // 3) Fecha sin hora "Thu, 27 Apr 2006" → añadir hora media
+  const rfcNoTime = clean.match(/^[A-Za-z]{3},?\s+(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+  if (rfcNoTime) {
+    t = new Date(`${clean} 12:00:00 GMT`).getTime();
+    if (!isNaN(t)) return t;
+  }
+  // 4) "YYYY-MM-DD HH:mm:ss" (espacio en vez de T)
+  t = new Date(clean.replace(' ', 'T')).getTime();
+  if (!isNaN(t)) return t;
+  // 5) "DD/MM/YYYY" o "DD-MM-YYYY HH:mm" (feeds ES/LATAM)
+  const dmy = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2}))?/);
+  if (dmy) {
+    const [, dd, mm, yyyy, hh = '12', mi = '00'] = dmy;
+    t = Date.UTC(+yyyy, +mm - 1, +dd, +hh, +mi);
+    if (!isNaN(t)) return t;
+  }
+  return NaN;
+}
+
 function rfcToISODate(dateStr) {
-  if (!dateStr) return '';
-  const clean = cleanText(dateStr);
-  try {
-    let d = new Date(clean);
-    // Fallback 1: formato ISO sin zona o con microsegundos raros → probar normalizado
-    if (isNaN(d.getTime())) {
-      // "2026-06-09 18:30:00" (espacio en vez de T) → ISO
-      const isoLike = clean.replace(' ', 'T');
-      d = new Date(isoLike);
-    }
-    // Fallback 2: formato "DD/MM/YYYY" o "DD-MM-YYYY HH:mm" (algunos feeds ES)
-    if (isNaN(d.getTime())) {
-      const m = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2}))?/);
-      if (m) {
-        const [, dd, mm, yyyy, hh = '12', mi = '00'] = m;
-        d = new Date(Date.UTC(+yyyy, +mm - 1, +dd, +hh, +mi));
-      }
-    }
-    if (isNaN(d.getTime())) return '';
-    return d.toISOString().slice(0, 10);
-  } catch (_) { return ''; }
+  const t = parsePubDateMs(dateStr);
+  if (isNaN(t)) return '';
+  try { return new Date(t).toISOString().slice(0, 10); }
+  catch (_) { return ''; }
 }
 
 // ============ FEEDS RSS PARA OPINIÓN INTERNACIONAL ============
@@ -1106,7 +1124,7 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
     if (cutoffMsPre === null) return false;
     if (!it.pubDate) return false;
     try {
-      const ts = new Date(it.pubDate).getTime();
+      const ts = parsePubDateMs(it.pubDate);
       return !isNaN(ts) && ts >= cutoffMsPre;
     } catch (_) { return false; }
   };
@@ -1124,7 +1142,7 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
     inDate = inDate.filter(it => {
       if (!it.pubDate) return true;
       try {
-        const ts = new Date(it.pubDate).getTime();
+        const ts = parsePubDateMs(it.pubDate);
         if (isNaN(ts)) return true;
         return ts >= cutoffMs;
       } catch (_) { return true; }
@@ -1218,7 +1236,7 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
       // Mismo criterio que el filtro real: timestamp dentro de ventana cuenta como válido.
       if (cutoffMs !== null && it.pubDate) {
         try {
-          const ts = new Date(it.pubDate).getTime();
+          const ts = parsePubDateMs(it.pubDate);
           if (!isNaN(ts) && ts >= cutoffMs) return true;
         } catch (_) {}
       }
@@ -1229,7 +1247,7 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
       passedTimestamp = passedDate.filter(it => {
         if (!it.pubDate) return true;
         try {
-          const ts = new Date(it.pubDate).getTime();
+          const ts = parsePubDateMs(it.pubDate);
           if (isNaN(ts)) return true;
           return ts >= cutoffMs;
         } catch (_) { return true; }
@@ -1239,7 +1257,7 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
     const latestTs = uniqueItems.reduce((max, it) => {
       if (!it.pubDate) return max;
       try {
-        const t = new Date(it.pubDate).getTime();
+        const t = parsePubDateMs(it.pubDate);
         return (!isNaN(t) && t > max) ? t : max;
       } catch (_) { return max; }
     }, 0);
@@ -1808,53 +1826,17 @@ async function fetchArticleText(url, timeoutMs = 6000) {
       redirect: 'follow',
     });
     clearTimeout(timer);
-    if (!res.ok) return { text: '', author: '' };
+    if (!res.ok) return '';
     const html = await res.text();
     // Extraer contenido de párrafos <p>
     const paras = [...html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)]
       .map(m => cleanText(m[1]))
       .filter(t => t.length > 40);  // descartar párrafos cortos (menús, pies)
     const text = paras.join(' ');
-    return { text: text.slice(0, 2500), author: extractAuthorFromHtml(html) };
+    return text.slice(0, 2500);  // primeros ~2500 chars (suficiente para resumir)
   } catch (_) {
-    return { text: '', author: '' };
+    return '';
   }
-}
-
-// Extrae la firma del autor del HTML del artículo. Prueba, en orden, las
-// fuentes más fiables: meta tags estándar, JSON-LD, y atributos comunes de byline.
-// Devuelve '' si no encuentra nada plausible (no inventa).
-function extractAuthorFromHtml(html) {
-  if (!html) return '';
-  const candidates = [];
-  // 1) <meta name="author" content="..."> y variantes (property, itemprop)
-  const metaRes = [
-    /<meta[^>]+name=["']author["'][^>]*content=["']([^"']+)["']/i,
-    /<meta[^>]+content=["']([^"']+)["'][^>]*name=["']author["']/i,
-    /<meta[^>]+property=["']article:author["'][^>]*content=["']([^"']+)["']/i,
-    /<meta[^>]+itemprop=["']author["'][^>]*content=["']([^"']+)["']/i,
-  ];
-  for (const re of metaRes) {
-    const m = html.match(re);
-    if (m && m[1]) candidates.push(m[1]);
-  }
-  // 2) JSON-LD: "author":{"name":"..."} o "author":"..."
-  const ldName = html.match(/"author"\s*:\s*\{[^}]*?"name"\s*:\s*"([^"]+)"/i);
-  if (ldName && ldName[1]) candidates.push(ldName[1]);
-  const ldStr = html.match(/"author"\s*:\s*"([^"]+)"/i);
-  if (ldStr && ldStr[1]) candidates.push(ldStr[1]);
-  // 3) rel="author" o class de byline habituales
-  const relAuthor = html.match(/rel=["']author["'][^>]*>([^<]{2,60})</i);
-  if (relAuthor && relAuthor[1]) candidates.push(relAuthor[1]);
-  // Limpieza y validación: descartar nombres de medio, vacíos o sospechosos
-  const BAD = /(vozp[oó]puli|redacci[oó]n|editorial|agencias?|^ep$|^efe$|reuters|^ap$|afp|bloomberg)/i;
-  for (const raw of candidates) {
-    const a = cleanText(String(raw)).replace(/\s+/g, ' ').trim();
-    if (a.length >= 3 && a.length <= 60 && !BAD.test(a) && /[a-záéíóúñ]/i.test(a)) {
-      return a;
-    }
-  }
-  return '';
 }
 
 // Genera resúmenes (1-2 frases) para varios artículos en UNA llamada a Haiku.
@@ -2421,12 +2403,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           if (needsSummary.length > 0) {
             // Descargar textos en paralelo (timeout corto)
             const withText = await Promise.all(needsSummary.map(async (it, i) => {
-              const { text, author } = await fetchArticleText(it.url, 6000);
-              // Si la columna no traía firma (caso Google News) y el artículo sí
-              // expone autor en su HTML, la recuperamos aquí.
-              if (author && (!it.author || !String(it.author).trim())) {
-                it.author = author;
-              }
+              const text = await fetchArticleText(it.url, 6000);
               return { idx: i, ref: it, title: it.title, source: it.source, author: it.author, text };
             }));
             const valid = withText.filter(a => a.text && a.text.length > 100);
