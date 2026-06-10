@@ -403,6 +403,8 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Washington Post', url: 'https://feeds.washingtonpost.com/rss/opinions', tier: 'main' },
   { source: 'The Atlantic', url: 'https://www.theatlantic.com/feed/all/', tier: 'main' },
   { source: 'National Review', url: 'https://www.nationalreview.com/feed/', tier: 'main' },
+  { source: 'WSJ', url: 'https://feeds.content.dowjones.io/public/rss/RSSOpinion', tier: 'opinion' },
+  { source: 'WSJ', url: 'https://news.google.com/rss/search?q=site:wsj.com/opinion&hl=en-US&gl=US&ceid=US:en', tier: 'gn-opinion' },
 
   // 🇺🇸 USA conservadores alternativos (nunca-trumpistas / heterodoxos)
   { source: 'The Bulwark', url: 'https://www.thebulwark.com/feed/', tier: 'main' },
@@ -430,6 +432,24 @@ const INTERNATIONAL_OPINION_FEEDS = [
   // 🇮🇹 ITALIA (nuevo · recuperar tras quitar La Repubblica)
   { source: 'Corriere della Sera', url: 'https://xml2.corriereobjects.it/rss/homepage.xml', tier: 'main' },
   // (La Repubblica e Il Sole 24 Ore: solo en set PressReader)
+  // NOTA: Politico Europe es medio de NOTICIAS (no opinión) → no va en este array de
+  // opinión (el filtro isOpinionRSSItemIntl lo descartaría). Se usa en worldNews,
+  // que el modelo genera vía web_search (ver lista de fuentes y búsquedas más abajo).
+
+  // 🇩🇰🇸🇪 NÓRDICOS (refuerzo Europa Occ · vía Google News, feeds nativos de pago)
+  { source: 'Politiken', url: 'https://news.google.com/rss/search?q=site:politiken.dk&hl=da&gl=DK&ceid=DK:da', tier: 'gn-main' },
+  { source: 'Jyllands-Posten', url: 'https://news.google.com/rss/search?q=site:jyllands-posten.dk&hl=da&gl=DK&ceid=DK:da', tier: 'gn-main' },
+  { source: 'Svenska Dagbladet', url: 'https://news.google.com/rss/search?q=site:svd.se&hl=sv&gl=SE&ceid=SE:sv', tier: 'gn-main' },
+  { source: 'Aftonbladet', url: 'https://news.google.com/rss/search?q=site:aftonbladet.se&hl=sv&gl=SE&ceid=SE:sv', tier: 'gn-main' },
+
+  // 💰 ECONÓMICO EUROPA (refuerzo Económico Global)
+  { source: 'Børsen', url: 'https://news.google.com/rss/search?q=site:borsen.dk&hl=da&gl=DK&ceid=DK:da', tier: 'gn-main' },
+  { source: 'Les Echos', url: 'https://news.google.com/rss/search?q=site:lesechos.fr&hl=fr&gl=FR&ceid=FR:fr', tier: 'gn-main' },
+  { source: 'Handelsblatt', url: 'https://news.google.com/rss/search?q=site:handelsblatt.com&hl=de&gl=DE&ceid=DE:de', tier: 'gn-main' },
+  { source: 'Il Sole 24 Ore', url: 'https://news.google.com/rss/search?q=site:ilsole24ore.com&hl=it&gl=IT&ceid=IT:it', tier: 'gn-main' },
+  { source: 'El Economista', url: 'https://news.google.com/rss/search?q=site:eleconomista.com.mx&hl=es-419&gl=MX&ceid=MX:es', tier: 'gn-main' },
+  { source: 'Business Day', url: 'https://news.google.com/rss/search?q=site:businesslive.co.za&hl=en&gl=ZA&ceid=ZA:en', tier: 'gn-main' },
+  { source: 'The Edge Singapore', url: 'https://news.google.com/rss/search?q=site:theedgesingapore.com&hl=en&gl=SG&ceid=SG:en', tier: 'gn-main' },
 
   // 🌐 MULTILATERAL OPINIÓN
   { source: 'Project Syndicate', url: 'https://www.project-syndicate.org/rss', tier: 'main' },
@@ -437,19 +457,44 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Foreign Policy', url: 'https://foreignpolicy.com/feed/', tier: 'main' },
   { source: 'Foreign Affairs', url: 'https://www.foreignaffairs.com/rss.xml', tier: 'main' },
 
+  // 📊 ANÁLISIS ECONÓMICO (think tanks · complemento a Project Syndicate)
+  { source: 'Bruegel', url: 'https://www.bruegel.org/rss.xml', tier: 'opinion' },
+  { source: 'PIIE', url: 'https://www.piie.com/rss/update.xml', tier: 'opinion' },
+  { source: 'VoxEU', url: 'https://cepr.org/voxeu/columns/feed', tier: 'opinion' },
+
   // 🇷🇺 RUSIA (independiente)
   { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/opinion', tier: 'opinion' },
   { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/news', tier: 'news' },
   // (Kyiv Independent: feed muerto y NO disponible en PressReader — hueco aceptado)
 
+  // 🌍 EUROPA ESTE / CENTRAL (cerrar hueco · vía Google News, ceid por país)
+  { source: 'Gazeta Wyborcza', url: 'https://news.google.com/rss/search?q=site:wyborcza.pl&hl=pl&gl=PL&ceid=PL:pl', tier: 'gn-main' },
+  { source: 'Romania Libera', url: 'https://news.google.com/rss/search?q=site:romanialibera.ro&hl=ro&gl=RO&ceid=RO:ro', tier: 'gn-main' },
+  { source: 'Hospodárske noviny', url: 'https://news.google.com/rss/search?q=site:hnonline.sk&hl=sk&gl=SK&ceid=SK:sk', tier: 'gn-main' },
+  { source: 'Blic', url: 'https://news.google.com/rss/search?q=site:blic.rs&hl=sr&gl=RS&ceid=RS:sr', tier: 'gn-main' },
+  // Kyiv Independent (Ucrania, inglés) recuperado vía Google News — el nativo estaba muerto.
+  { source: 'Kyiv Independent', url: 'https://news.google.com/rss/search?q=site:kyivindependent.com&hl=en&gl=US&ceid=US:en', tier: 'gn-main' },
+  { source: 'Pravda', url: 'https://news.google.com/rss/search?q=site:pravda.sk&hl=sk&gl=SK&ceid=SK:sk', tier: 'gn-main' },
+  { source: 'Večernji list', url: 'https://news.google.com/rss/search?q=site:vecernji.hr&hl=hr&gl=HR&ceid=HR:hr', tier: 'gn-main' },
+  { source: 'Lietuvos Rytas', url: 'https://news.google.com/rss/search?q=site:lrytas.lt&hl=lt&gl=LT&ceid=LT:lt', tier: 'gn-main' },
+  { source: 'Dnevnik', url: 'https://news.google.com/rss/search?q=site:dnevnik.si&hl=sl&gl=SI&ceid=SI:sl', tier: 'gn-main' },
+
   // 🕌 ORIENTE MEDIO (recuperar tras quitar Haaretz y Times of Israel muertos)
   { source: 'The Jerusalem Post', url: 'https://www.jpost.com/rss/rssfeedsopinion.aspx', tier: 'opinion' },
   { source: 'Arab News', url: 'https://www.arabnews.com/rss.xml', tier: 'main' },
+  { source: 'Times of Israel', url: 'https://news.google.com/rss/search?q=site:timesofisrael.com&hl=en&gl=US&ceid=US:en', tier: 'gn-main' },
+  { source: 'Gulf News', url: 'https://news.google.com/rss/search?q=site:gulfnews.com&hl=en&gl=AE&ceid=AE:en', tier: 'gn-main' },
+  { source: 'Khaleej Times', url: 'https://news.google.com/rss/search?q=site:khaleejtimes.com&hl=en&gl=AE&ceid=AE:en', tier: 'gn-main' },
+  { source: 'Times of Oman', url: 'https://news.google.com/rss/search?q=site:timesofoman.com&hl=en&gl=OM&ceid=OM:en', tier: 'gn-main' },
   // (Haaretz: solo en set PressReader, sin feed nativo accesible)
 
-  // 🇮🇳 INDIA
+  // 🇮🇳 INDIA (refuerzo · antes solo The Hindu + Indian Express, ambos solo opinión)
   { source: 'The Hindu', url: 'https://www.thehindu.com/opinion/feeder/default.rss', tier: 'opinion' },
   { source: 'Indian Express', url: 'https://indianexpress.com/section/opinion/feed/', tier: 'opinion' },
+  { source: 'Times of India', url: 'https://news.google.com/rss/search?q=site:timesofindia.indiatimes.com&hl=en-IN&gl=IN&ceid=IN:en', tier: 'gn-main' },
+  { source: 'Hindustan Times', url: 'https://news.google.com/rss/search?q=site:hindustantimes.com&hl=en-IN&gl=IN&ceid=IN:en', tier: 'gn-main' },
+  { source: 'Mint', url: 'https://news.google.com/rss/search?q=site:livemint.com&hl=en-IN&gl=IN&ceid=IN:en', tier: 'gn-main' },
+  { source: 'The Hindu BusinessLine', url: 'https://news.google.com/rss/search?q=site:thehindubusinessline.com&hl=en-IN&gl=IN&ceid=IN:en', tier: 'gn-main' },
 
   // 🌏 ASIA ESTE
   { source: 'Japan Times', url: 'https://www.japantimes.co.jp/feed/', tier: 'main' },
@@ -457,20 +502,28 @@ const INTERNATIONAL_OPINION_FEEDS = [
   // 🇨🇳 CHINA
   { source: 'SCMP', url: 'https://www.scmp.com/rss/91/feed', tier: 'main' },
   { source: 'Sixth Tone', url: 'https://www.sixthtone.com/rss', tier: 'main' },
-  // (Caixin, China Daily, Global Times: feeds muertos / viejos, eliminados)
+  { source: 'Global Times', url: 'https://news.google.com/rss/search?q=site:globaltimes.cn&hl=en&gl=US&ceid=US:en', tier: 'gn-main' },
+  { source: 'China Daily', url: 'https://news.google.com/rss/search?q=site:chinadaily.com.cn&hl=en&gl=US&ceid=US:en', tier: 'gn-main' },
+  // (Caixin: feed muerto)
 
   // 🇰🇷 COREA DEL SUR
   { source: 'Hankyoreh', url: 'https://english.hani.co.kr/rss/', tier: 'main' },
   { source: 'The Korea Times', url: 'https://www.koreatimes.co.kr/www/rss/nation.xml', tier: 'main' },
-  // (Korea Herald, Korea JoongAng Daily: feeds muertos, eliminados)
+  { source: 'Korea Herald', url: 'https://news.google.com/rss/search?q=site:koreaherald.com&hl=en&gl=KR&ceid=KR:en', tier: 'gn-main' },
+  // (Korea JoongAng Daily: feed muerto)
 
   // 🇸🇬 SINGAPUR (nuevo · recuperar)
   { source: 'The Straits Times', url: 'https://www.straitstimes.com/news/world/rss.xml', tier: 'main' },
   // (Channel News Asia, Business Times: feeds muertos; Business Times queda en set PressReader)
 
-  // 🌏 SUDESTE ASIÁTICO
+  // 🌏 SUDESTE ASIÁTICO (refuerzo vía Google News · países sin feed nativo vivo)
   { source: 'Bangkok Post', url: 'https://www.bangkokpost.com/rss/data/most-recent.xml', tier: 'main' },
-  // (Jakarta Post, Jakarta Globe, Tempo: feeds muertos, eliminados)
+  { source: 'Jakarta Post', url: 'https://news.google.com/rss/search?q=site:thejakartapost.com&hl=en&gl=ID&ceid=ID:en', tier: 'gn-main' },
+  { source: 'Philippine Daily Inquirer', url: 'https://news.google.com/rss/search?q=site:inquirer.net&hl=en&gl=PH&ceid=PH:en', tier: 'gn-main' },
+  { source: 'Vietnam News', url: 'https://news.google.com/rss/search?q=site:vietnamnews.vn&hl=en&gl=VN&ceid=VN:en', tier: 'gn-main' },
+  { source: 'New Straits Times', url: 'https://news.google.com/rss/search?q=site:nst.com.my&hl=en&gl=MY&ceid=MY:en', tier: 'gn-main' },
+  { source: 'The Star Malaysia', url: 'https://news.google.com/rss/search?q=site:thestar.com.my&hl=en&gl=MY&ceid=MY:en', tier: 'gn-main' },
+  // (Jakarta Globe, Tempo: feeds muertos, eliminados)
 
   // 🌍 ÁFRICA
   { source: 'Daily Maverick', url: 'https://www.dailymaverick.co.za/feed/', tier: 'main' },
@@ -484,6 +537,21 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Folha de S.Paulo', url: 'https://feeds.folha.uol.com.br/folha/mundo/rss091.xml', tier: 'main' },
   // (O Globo: solo en set PressReader)
 
+  // 🌎 LATAM · COLOMBIA (elecciones presidenciales 21/06/2026 → cobertura reforzada)
+  // Vía Google News con ceid=CO para edición local; sortea 403/404 de feeds nativos.
+  { source: 'El Espectador', url: 'https://news.google.com/rss/search?q=site:elespectador.com&hl=es-419&gl=CO&ceid=CO:es', tier: 'gn-main' },
+  { source: 'El Tiempo', url: 'https://news.google.com/rss/search?q=site:eltiempo.com&hl=es-419&gl=CO&ceid=CO:es', tier: 'gn-main' },
+  { source: 'El Tiempo', url: 'https://www.eltiempo.com/rss/colombia.xml', tier: 'native' },
+  { source: 'El Heraldo', url: 'https://news.google.com/rss/search?q=site:elheraldo.co&hl=es-419&gl=CO&ceid=CO:es', tier: 'gn-main' },
+
+  // 🌎 LATAM · MÉXICO
+  { source: 'El Universal', url: 'https://news.google.com/rss/search?q=site:eluniversal.com.mx&hl=es-419&gl=MX&ceid=MX:es', tier: 'gn-main' },
+  { source: 'Milenio', url: 'https://news.google.com/rss/search?q=site:milenio.com&hl=es-419&gl=MX&ceid=MX:es', tier: 'gn-main' },
+
+  // 🌎 LATAM · ARGENTINA (refuerzo vía GN, complementa el nativo de Clarín/La Nación)
+  { source: 'Infobae', url: 'https://news.google.com/rss/search?q=site:infobae.com&hl=es-419&gl=AR&ceid=AR:es', tier: 'gn-main' },
+  { source: 'Infobae', url: 'https://news.google.com/rss/search?q=site:infobae.com/opinion&hl=es-419&gl=AR&ceid=AR:es', tier: 'gn-opinion' },
+
   // 🌎 LATAM · CENTROAMÉRICA INVESTIGATIVO
   // Confidencial (Nicaragua exilio Costa Rica · Chamorro · Pulitzer)
   { source: 'Confidencial', url: 'https://confidencial.digital/opinion/feed/', tier: 'opinion' },
@@ -491,6 +559,7 @@ const INTERNATIONAL_OPINION_FEEDS = [
   // 🌎 LATAM · CHILE
   { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss/rss_actualidad.asp', tier: 'main' },
   { source: 'El Mercurio', url: 'https://www.emol.com/sindicacion/rss.asp', tier: 'general' },
+  { source: 'La Tercera', url: 'https://news.google.com/rss/search?q=site:latercera.com&hl=es-419&gl=CL&ceid=CL:es', tier: 'gn-main' },
 ];
 
 async function fetchSpainOpinionRss(allowedISODates, excludeUrls) {
@@ -526,6 +595,7 @@ function isOpinionRSSItemIntl(item) {
   const OPINION_ONLY_INTL = new Set([
     'Project Syndicate', 'Foreign Affairs', 'Foreign Policy',
     'The Bulwark', 'UnHerd', 'The Spectator', 'National Review',
+    'Bruegel', 'PIIE', 'VoxEU',
   ]);
   if (OPINION_ONLY_INTL.has(item.source)) return true;
 
@@ -610,15 +680,27 @@ const SOURCE_TO_REGION = {
   'Nikkei Asia': 'Económico Global', 'Nikkei': 'Económico Global', 'Nikkei.com': 'Económico Global',
   'CNBC': 'Económico Global',
   'Business Insider': 'Económico Global',
+  'Børsen': 'Económico Global',
+  'Les Echos': 'Económico Global', 'Les Échos': 'Económico Global',
+  'Handelsblatt': 'Económico Global',
+  'Il Sole 24 Ore': 'Económico Global', 'Sole 24 Ore': 'Económico Global',
+  'El Economista': 'Económico Global',
+  'Business Day': 'Económico Global',
+  'The Edge Singapore': 'Económico Global', 'The Edge': 'Económico Global',
 
   // Europa Occidental
   'Le Figaro': 'Europa Occ', 'Figaro': 'Europa Occ',
   'Le Monde': 'Europa Occ',
+  'Politico Europe': 'Europa Occ',  // Bruselas / instituciones UE
   'Le Point': 'Europa Occ',
   'Liberation': 'Europa Occ', 'Libération': 'Europa Occ',
   'L\'Express': 'Europa Occ',
   'France 24': 'Europa Occ', 'France24': 'Europa Occ',
   'RFI': 'Europa Occ',
+  'Politiken': 'Europa Occ',
+  'Jyllands-Posten': 'Europa Occ',
+  'Svenska Dagbladet': 'Europa Occ', 'SvD': 'Europa Occ',
+  'Aftonbladet': 'Europa Occ',
   'Die Zeit': 'Europa Occ', 'Zeit': 'Europa Occ',
   'Der Spiegel': 'Europa Occ', 'Spiegel': 'Europa Occ',
   'Frankfurter Allgemeine': 'Europa Occ', 'FAZ': 'Europa Occ',
@@ -628,24 +710,36 @@ const SOURCE_TO_REGION = {
   'Corriere della Sera': 'Europa Occ', 'Corriere': 'Europa Occ',
   'Il Foglio': 'Europa Occ',
   'La Stampa': 'Europa Occ',
-  'Il Sole 24 Ore': 'Europa Occ',
   'NRC': 'Europa Occ',
   'De Volkskrant': 'Europa Occ',
 
   // Europa Este
   'Kyiv Independent': 'Europa Este',
-  'Politico Europe': 'Europa Este',
   'Notes from Poland': 'Europa Este',
   'Gazeta Wyborcza': 'Europa Este',
   'Euractiv': 'Europa Este', 'EURACTIV': 'Europa Este',
   'Hungary Today': 'Europa Este',
   'Visegrad Insight': 'Europa Este',
+  'Romania Libera': 'Europa Este',
+  'Ziarul Financiar': 'Europa Este',
+  'Hospodárske noviny': 'Europa Este',
+  'Blic': 'Europa Este',
+  'Glas Slavonije': 'Europa Este',
+  'Pravda': 'Europa Este',  // Eslovaquia
+  'Večernji list': 'Europa Este', 'Vecernji list': 'Europa Este',  // Croacia
+  'Lietuvos Rytas': 'Europa Este',  // Lituania
+  'Dnevnik': 'Europa Este',  // Eslovenia
 
   // Oriente Medio
   'Haaretz': 'Oriente Medio',
   'Times of Israel': 'Oriente Medio', 'The Times of Israel': 'Oriente Medio',
   'Al Jazeera': 'Oriente Medio', 'Al Jazeera English': 'Oriente Medio', 'Al-Jazeera': 'Oriente Medio',
   'Jerusalem Post': 'Oriente Medio', 'The Jerusalem Post': 'Oriente Medio',
+  'Arab News': 'Oriente Medio',
+  'Gulf News': 'Oriente Medio',
+  'Khaleej Times': 'Oriente Medio',
+  'Times of Oman': 'Oriente Medio',
+  'Kuwait Times': 'Oriente Medio',
   'Al-Monitor': 'Oriente Medio', 'Al Monitor': 'Oriente Medio',
   'Middle East Eye': 'Oriente Medio', 'MEE': 'Oriente Medio',
   'The National': 'Oriente Medio',  // UAE
@@ -658,8 +752,7 @@ const SOURCE_TO_REGION = {
   'Times of India': 'Asia', 'The Times of India': 'Asia',
   'Hindustan Times': 'Asia',
   'Scroll.in': 'Asia',
-  'Mint': 'Asia',
-  'Japan Times': 'Asia', 'The Japan Times': 'Asia',
+  'Mint': 'Asia',  'The Hindu BusinessLine': 'Asia', 'BusinessLine': 'Asia',  'Japan Times': 'Asia', 'The Japan Times': 'Asia',
   'South China Morning Post': 'Asia', 'SCMP': 'Asia',
   'Korea Herald': 'Asia', 'The Korea Herald': 'Asia',
   'Korea Times': 'Asia', 'The Korea Times': 'Asia',
@@ -688,6 +781,8 @@ const SOURCE_TO_REGION = {
   'Channel 8': 'Asia',
   'Taiwan News': 'Asia',
   'The Star': 'Asia',  // Malaysia
+  'The Star Malaysia': 'Asia',
+  'New Straits Times': 'Asia',
   'Free Malaysia Today': 'Asia',
 
   // LATAM
@@ -709,6 +804,7 @@ const SOURCE_TO_REGION = {
   'Animal Político': 'LATAM', 'Animal Politico': 'LATAM',
   'El Comercio': 'LATAM',  // Perú
   'El Tiempo': 'LATAM',  // Colombia
+  'El Heraldo': 'LATAM',  // Colombia (Barranquilla)
   'Semana': 'LATAM',
   'La República': 'LATAM',
   'La Prensa': 'LATAM',
@@ -757,6 +853,9 @@ const SOURCE_TO_REGION = {
   'World Bank': 'Multilateral',
   'Council on Foreign Relations': 'Multilateral', 'CFR': 'Multilateral',
   'Brookings': 'Multilateral',
+  'Bruegel': 'Multilateral',
+  'PIIE': 'Multilateral', 'Peterson Institute': 'Multilateral',
+  'VoxEU': 'Multilateral', 'CEPR': 'Multilateral',
   'Carnegie Endowment': 'Multilateral',
   'CSIS': 'Multilateral',
   'Chatham House': 'Multilateral',
@@ -1469,11 +1568,11 @@ REGLAS ESTRICTAS DE FECHA:
 WORLDOPINION (PRIORITARIA, hasta 10 columnas firmadas):
 
 ⭐⭐⭐ MÍNIMOS OBLIGATORIOS REGIONALES ⭐⭐⭐
-- 🏛️ Project Syndicate: MÍNIMO 1 columna (análisis económico/político de élite · Stiglitz, Krugman, Roubini, Summers, Varoufakis · ⚠️ solo 3 lecturas gratis/mes con registro, por eso MÍN 1 para no agotar el cupo)
+- 🏛️ Project Syndicate: MÍNIMO 2 columnas (análisis económico/político de élite · Stiglitz, Krugman, Roubini, Summers, Varoufakis · ⚠️ NOTA cupo: solo 3 lecturas gratis/mes con registro — mostrar 2 titulares/día NO gasta cupo; el cupo se gasta solo al ABRIR el artículo en project-syndicate.org, así que el lector elige cuáles abrir)
 - 🌎 LATAM: MÍNIMO 2 columnas (de Confidencial, Infobae, El Espectador, Clarín, El Mercurio)
 - 🇪🇺 Europa Occidental: MÍNIMO 2 columnas (de Le Monde, Le Figaro u otros europeos cuando los haya)
 - 🌏 Asia: MÍNIMO 2 columnas (de SCMP, Caixin, Hankyoreh, Korea Herald, JoongAng, Japan Times, CNA, Tempo, Jakarta Post, Bangkok Post, The Hindu, Indian Express)
-- TOTAL mínimos garantizados: 7 columnas
+- TOTAL mínimos garantizados: 8 columnas
 - 2 columnas restantes FLEXIBLES: USA, UK, OM, África, Rusia según actualidad
 
 HARD CAPS:
@@ -1485,7 +1584,7 @@ HARD CAPS:
 - Si una región no tiene columna fresca firmada, DÉJALA SIN cubrir (NO sustituyas con anglo extra)
 
 CHECKLIST OBLIGATORIO antes de generar worldOpinion:
-□ ¿Tengo ≥1 columna de Project Syndicate?
+□ ¿Tengo ≥2 columnas de Project Syndicate?
 □ ¿Tengo ≥2 columnas LATAM?
 □ ¿Tengo ≥2 columnas Europa Occ?
 □ ¿Tengo ≥2 columnas Asia?
@@ -1516,7 +1615,7 @@ Para un mismo evento o tema global (ej: "Trump aranceles", "guerra Ucrania", "el
 - MÁXIMO 3 piezas del mismo tema, vengan del medio que vengan.
 - Si hay 5+ medios cubriendo lo mismo, elige las 3 que aporten ÁNGULO DIFERENTE:
   · 1 ángulo USA (NYT/WaPo/Bloomberg/Politico)
-  · 1 ángulo regional afectado (Le Monde si tema europeo, SCMP si China, Haaretz si Israel)
+  · 1 ángulo regional afectado (Le Monde si tema europeo, Politico Europe si tema UE/Bruselas, SCMP si China, Haaretz si Israel)
   · 1 análisis (Foreign Affairs / Project Syndicate / Atlantic / Economist)
 - Prefiere DIVERSIDAD TEMÁTICA sobre repetición: mejor 20 temas distintos con 1 pieza cada uno que 6 temas con 3 piezas cada uno.
 - Esto es especialmente crítico para Trump/USA donde 10 medios escriben sobre lo mismo: limita a 3 con ángulos distintos.
@@ -1609,6 +1708,11 @@ RESERVA EXPLÍCITAMENTE las siguientes búsquedas ANTES de hacer ninguna otra:
 
   BLOQUE 3 · FLEXIBLE (4 búsquedas restantes): USA, UK, Europa Occ, Económico Global, Ucrania
   Distribúyelas según la actualidad del día.
+
+  💡 SUGERENCIA para Europa Occ / instituciones UE (Bruselas):
+  - site:politico.eu OR site:euractiv.com 2026  → Politico Europe es la referencia para
+    Comisión/Parlamento/Consejo europeos. Úsalo cuando la actualidad UE lo justifique
+    (cumbres, legislación europea, política comunitaria).
 
   💡 SUGERENCIAS para columnas USA conservadoras heterodoxas:
   - The Bulwark (nunca-trumpista, intelectual)
