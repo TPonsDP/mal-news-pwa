@@ -86,35 +86,37 @@ const RECIPIENT = 'tonipons91@gmail.com';
 const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Anthropic Tier 2
 
 const BRAND = {
-  // ============ PALETA: Oxford Blue + Smoke Gray + 3 gradientes (teal · lima-dorado · naranja) ============
-  oxford: '#1A365D',           // Marca principal (Azul Oxford) - solo logo
-  bgGray: '#F0F4F8',           // Fondo (Gris Humo)
-  bgGrayDeep: '#E2E8F0',       // Variante para gradientes sutiles del fondo
-  cardWhite: '#FFFFFF',        // Tarjetas blancas
-  shadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-  shadowLg: '0 8px 24px rgba(0, 0, 0, 0.12)',
-  // Gradientes oficiales por bucket
-  intlGrad: 'linear-gradient(90deg, #0F766E, #5EEAD4)',
-  opinionGrad: 'linear-gradient(90deg, #65A30D, #FACC15)',
-  newsGrad: 'linear-gradient(90deg, #C2410C, #FA6900)',
+  // ============ PALETA: RISOGRAPH VIBRANT (marfil + 4 tintas saturadas por sección) ============
+  oxford: '#1A3FE6',           // Marca principal (Azul cobalto Riso) - solo logo
+  bgGray: '#F4ECD4',           // Fondo (Marfil Riso)
+  bgGrayDeep: '#ECE2C4',       // Variante para gradientes sutiles del fondo
+  cardWhite: '#FFFCF2',        // Tarjetas marfil claro
+  shadow: '4px 4px 0 rgba(22, 20, 15, 0.18)',
+  shadowLg: '6px 6px 0 rgba(22, 20, 15, 0.22)',
+  // Gradientes oficiales por bucket (Riso: tinta sólida → deep, sin blend modes)
+  intlGrad: 'linear-gradient(90deg, #00A896, #007F70)',       // Noticias Internacional: teal
+  opinionGrad: 'linear-gradient(90deg, #FF2D7A, #E50E5C)',     // Opinión España: rosa flúor
+  newsGrad: 'linear-gradient(90deg, #FF6B00, #D45500)',        // Noticias España: naranja
+  worldOpinionGrad: 'linear-gradient(90deg, #7C3AED, #5B1FC0)',// Opinión Internacional: violeta
   // Colores sólidos para bordes/badges (start de cada gradiente)
-  intlColor: '#0F766E',
-  opinionColor: '#65A30D',
-  newsColor: '#C2410C',
+  intlColor: '#00A896',        // teal
+  opinionColor: '#FF2D7A',     // rosa flúor
+  newsColor: '#FF6B00',        // naranja
+  worldOpinionColor: '#7C3AED',// violeta
 
   // ============ ALIASES PARA RETROCOMPATIBILIDAD ============
-  navy: '#1A365D',
-  navyDeep: '#102844',
-  card: '#FFFFFF',
-  cardSubtle: 'rgba(255,255,255,0.95)',
-  ink: '#1A365D',
-  inkSoft: 'rgba(26, 54, 93, 0.65)',
-  orange: '#FA6900',           // Naranja Ciudadanos vivo (usado en decoraciones y botón HOY)
-  limeLight: '#F0F4F8',        // bgGray alias usado en gradientes decorativos
-  limeDark: '#E2E8F0',         // bgGrayDeep alias
+  navy: '#1A3FE6',
+  navyDeep: '#0028C2',
+  card: '#FFFCF2',
+  cardSubtle: 'rgba(255,252,242,0.95)',
+  ink: '#16140F',
+  inkSoft: 'rgba(22, 20, 15, 0.65)',
+  orange: '#FF6B00',           // Naranja Riso vivo (usado en decoraciones y botón HOY)
+  limeLight: '#F4ECD4',        // bgGray alias usado en gradientes decorativos
+  limeDark: '#ECE2C4',         // bgGrayDeep alias
   // Lean badges (IZQ/DER indicador ideológico en algunas tarjetas)
-  leftBlue: '#3B82F6',
-  rightRed: '#EF4444',
+  leftBlue: '#1A3FE6',
+  rightRed: '#FF2D7A',
 };
 
 function DiagonalHeader({ dateObj }) {
@@ -1642,10 +1644,10 @@ export default function App() {
 
     // Mapeo de colores y gradientes por sección (debe coincidir con SECTION_COLORS/SECTION_GRADIENTS de la PWA)
     const SECTION_STYLES = {
-      worldOpinion: { color: '#0F766E', gradient: 'linear-gradient(90deg, #0F766E, #5EEAD4)' },
-      worldNews:    { color: '#0F766E', gradient: 'linear-gradient(90deg, #0F766E, #5EEAD4)' },
-      spainOpinion: { color: '#65A30D', gradient: 'linear-gradient(90deg, #65A30D, #FACC15)' },
-      spainNews:    { color: '#C2410C', gradient: 'linear-gradient(90deg, #C2410C, #FA6900)' },
+      worldOpinion: { color: '#7C3AED', gradient: 'linear-gradient(90deg, #7C3AED, #5B1FC0)' },
+      worldNews:    { color: '#00A896', gradient: 'linear-gradient(90deg, #00A896, #007F70)' },
+      spainOpinion: { color: '#FF2D7A', gradient: 'linear-gradient(90deg, #FF2D7A, #E50E5C)' },
+      spainNews:    { color: '#FF6B00', gradient: 'linear-gradient(90deg, #FF6B00, #D45500)' },
     };
 
     const getDay = (iso) => {
@@ -1661,30 +1663,30 @@ export default function App() {
       const readTime = calculateReadTime(item);
       const summaryStyle = isOpinion ? 'font-style:italic;' : '';
       const link = item.url
-        ? `<a href="${escape(item.url)}" style="color:${color};text-decoration:none;border-bottom:1px dotted ${color};font-weight:700;font-size:10.5px;white-space:nowrap;">leer &rarr;</a>`
+        ? `<a href="${escape(item.url)}" style="color:${color};text-decoration:none;border-bottom:2px dotted ${color};font-weight:700;font-size:11px;white-space:nowrap;font-family:'Space Mono',monospace;">leer &rarr;</a>`
         : '';
       const sourceBadge = item.source
-        ? `<span style="background:${sourceColor};color:white;font-size:9px;font-weight:800;letter-spacing:0.08em;padding:3px 8px;border-radius:4px;text-transform:uppercase;">${escape(item.source)}</span>`
+        ? `<span style="background:${sourceColor};color:#FFFCF2;font-size:9px;font-weight:700;letter-spacing:0.08em;padding:3px 8px;border-radius:0;text-transform:uppercase;font-family:'Space Mono',monospace;">${escape(item.source)}</span>`
         : '';
       const dateBadgeHtml = dateBadge
-        ? `<span style="background:rgba(26,54,93,0.08);color:rgba(26,54,93,0.75);font-size:9px;font-weight:700;letter-spacing:0.08em;padding:3px 8px;border-radius:4px;">${escape(dateBadge)}</span>`
+        ? `<span style="background:#16140F;color:#FFFCF2;font-size:9px;font-weight:700;letter-spacing:0.08em;padding:3px 8px;border-radius:0;font-family:'Space Mono',monospace;">${escape(dateBadge)}</span>`
         : '';
-      const readBadge = `<span style="background:rgba(250,105,0,0.10);color:#C2410C;font-size:9px;font-weight:700;letter-spacing:0.04em;padding:3px 8px;border-radius:4px;">${readTime} min</span>`;
+      const readBadge = `<span style="background:transparent;border:1px solid #16140F;color:#16140F;font-size:9px;font-weight:700;letter-spacing:0.04em;padding:2px 7px;border-radius:0;font-family:'Space Mono',monospace;">${readTime} min</span>`;
       const footerText = isOpinion && item.author
-        ? `<span style="font-weight:700;font-style:italic;opacity:0.8;">&mdash; ${escape(item.author)}</span>`
+        ? `<span style="font-weight:700;font-style:italic;opacity:0.85;">&mdash; ${escape(item.author)}</span>`
         : !isOpinion && item.region
-        ? `<span style="font-weight:700;font-style:italic;opacity:0.8;">${escape(item.region)}</span>`
+        ? `<span style="font-weight:700;font-style:italic;opacity:0.85;">${escape(item.region)}</span>`
         : '<span></span>';
       return `
-        <div style="background:#FFFFFF;border-left:4px solid ${color};border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:Verdana,Geneva,sans-serif;">
+        <div style="background:#FFFCF2;border:2px solid #16140F;border-radius:0;padding:14px 16px;margin-bottom:14px;box-shadow:4px 4px 0 ${color};font-family:'Crimson Pro',Georgia,serif;">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
             ${sourceBadge}
             ${dateBadgeHtml}
             ${readBadge}
           </div>
-          <div style="font-size:${isOpinion ? '14px' : '13px'};font-weight:700;color:#1A365D;line-height:1.3;margin-bottom:5px;">${escape(item.title)}</div>
-          <div style="font-size:11.5px;color:rgba(26,54,93,0.72);line-height:1.5;${summaryStyle}margin-bottom:6px;">${escape(item.summary)}</div>
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;color:#1A365D;">
+          <div style="font-size:${isOpinion ? '17px' : '16px'};font-weight:700;color:#16140F;line-height:1.3;margin-bottom:5px;">${escape(item.title)}</div>
+          <div style="font-size:13.5px;color:rgba(22,20,15,0.78);line-height:1.5;${summaryStyle}margin-bottom:6px;">${escape(item.summary)}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:#16140F;">
             ${footerText}
             ${link}
           </div>
@@ -1698,13 +1700,13 @@ export default function App() {
       const itemsHtml = items.map(i => card(i, color, isOpinion)).join('');
       return `
         <div style="margin-bottom:28px;">
-          <div style="background:${gradient};color:white;padding:16px 20px;border-radius:12px 12px 0 0;box-shadow:0 4px 12px rgba(0,0,0,0.08);font-family:Verdana,Geneva,sans-serif;">
-            <div style="font-size:15px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;">
+          <div style="background:${color};color:#FFFCF2;padding:16px 20px;border:3px solid #16140F;border-radius:0;box-shadow:5px 5px 0 #16140F;font-family:'Space Mono',monospace;">
+            <div style="font-size:15px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">
               ${icon} ${escape(title)} &middot; ${items.length} ${itemLabel}
             </div>
-            <div style="font-size:11px;opacity:0.92;margin-top:6px;">${escape(descriptor)}</div>
+            <div style="font-size:11px;opacity:0.95;margin-top:6px;font-weight:400;">${escape(descriptor)}</div>
           </div>
-          <div style="background:rgba(255,255,255,0.55);padding:10px 10px 4px;border-radius:0 0 12px 12px;">
+          <div style="padding:18px 4px 4px;">
             ${itemsHtml}
           </div>
         </div>`;
@@ -1784,42 +1786,45 @@ export default function App() {
 <meta charset="UTF-8">
 <title>${escape(headerTitle)} - ${escape(b.date || todayShort)}</title>
 <style>
-  ${W} { margin:0; padding:24px; background:#F0F4F8; font-family:Verdana,Geneva,sans-serif; color:#1A365D; box-sizing:border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap');
+  ${W} { margin:0; padding:24px; background:#F4ECD4; font-family:'Crimson Pro',Georgia,serif; color:#16140F; box-sizing:border-box; }
+  ${W} * { box-sizing:border-box; }
   ${W} .container { max-width:820px; margin:0 auto; }
-  ${W} .header { text-align:center; margin-bottom:28px; padding:24px; background:#FFFFFF; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,0.08); }
-  ${W} .logo { font-size:28px; font-weight:800; color:#1A365D; letter-spacing:2px; margin:0; }
-  ${W} .subtitle { font-size:13px; font-style:italic; color:rgba(26,54,93,0.7); margin:6px 0 0; }
-  ${W} .date { font-size:12px; letter-spacing:0.3em; color:#1A365D; opacity:0.7; text-transform:uppercase; font-weight:800; margin:10px 0 0; }
-  ${W} .total { font-size:11px; color:#0EA5E9; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
-  ${W} .footer { text-align:center; margin-top:32px; padding:18px; font-size:10px; color:rgba(26,54,93,0.55); letter-spacing:0.15em; font-style:italic; border-top:1px solid rgba(26,54,93,0.12); }
-  ${W} .next-briefing { background:#FAFBFC; border-radius:14px; padding:20px 22px; margin:32px 0 0; box-shadow:0 4px 16px rgba(0,0,0,0.05); border:1px solid rgba(26,54,93,0.08); }
-  ${W} .next-briefing-label { text-align:center; font-size:10px; font-weight:800; letter-spacing:0.18em; color:#1A365D; margin-bottom:14px; opacity:0.75; }
-  ${W} .schedule-card { display:flex; gap:14px; align-items:center; padding:14px 16px; border-radius:10px; margin-bottom:10px; }
-  ${W} .spain-card { background:linear-gradient(135deg, rgba(101,163,13,0.10), rgba(250,204,21,0.15)); border-left:4px solid #C2410C; }
-  ${W} .intl-card { background:linear-gradient(135deg, rgba(15,118,110,0.10), rgba(94,234,212,0.15)); border-left:4px solid #0F766E; }
+  ${W} .header { text-align:center; margin-bottom:28px; padding:24px; background:#FFFCF2; border:3px solid #16140F; border-radius:0; box-shadow:6px 6px 0 #1A3FE6; }
+  ${W} .logo { font-family:'Space Mono',monospace; font-size:28px; font-weight:700; color:#16140F; letter-spacing:2px; margin:0; text-transform:uppercase; }
+  ${W} .subtitle { font-size:14px; font-style:italic; color:#E50E5C; margin:6px 0 0; }
+  ${W} .date { font-family:'Space Mono',monospace; font-size:12px; letter-spacing:0.3em; color:#0028C2; text-transform:uppercase; font-weight:700; margin:10px 0 0; }
+  ${W} .total { font-family:'Space Mono',monospace; font-size:11px; color:#16140F; background:#FF2D7A; display:inline-block; padding:3px 10px; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
+  ${W} .footer { text-align:center; margin-top:32px; padding:18px; font-family:'Space Mono',monospace; font-size:10px; color:rgba(22,20,15,0.6); letter-spacing:0.15em; border-top:3px double #1A3FE6; }
+  ${W} .next-briefing { background:#FFFCF2; border:3px solid #16140F; border-radius:0; padding:20px 22px; margin:32px 0 0; box-shadow:6px 6px 0 #00A896; }
+  ${W} .next-briefing-label { text-align:center; font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.18em; color:#16140F; margin-bottom:14px; }
+  ${W} .schedule-card { display:flex; gap:14px; align-items:center; padding:14px 16px; border-radius:0; margin-bottom:10px; background:#FFFCF2; }
+  ${W} .spain-card { border:2px solid #16140F; box-shadow:4px 4px 0 #FF6B00; }
+  ${W} .intl-card { border:2px solid #16140F; box-shadow:4px 4px 0 #00A896; }
   ${W} .card-icon { font-size:32px; flex-shrink:0; }
   ${W} .card-body { flex:1; }
-  ${W} .card-title { font-size:10px; font-weight:800; letter-spacing:0.16em; color:#1A365D; margin-bottom:3px; opacity:0.7; }
-  ${W} .spain-card .card-title { color:#C2410C; opacity:1; }
-  ${W} .intl-card .card-title { color:#0F766E; opacity:1; }
-  ${W} .card-time { font-family:Georgia,serif; font-style:italic; font-size:17px; font-weight:700; color:#1A365D; margin-bottom:3px; line-height:1.2; }
-  ${W} .card-reason { font-size:10.5px; font-style:italic; color:rgba(26,54,93,0.65); line-height:1.3; }
-  ${W} .next-briefing-schedule { border-top:1px dashed rgba(26,54,93,0.12); padding-top:14px; margin-top:8px; }
-  ${W} .schedule-title { font-size:10px; font-weight:800; letter-spacing:0.12em; color:#1A365D; margin-bottom:10px; opacity:0.7; text-align:center; }
+  ${W} .card-title { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.16em; color:#16140F; margin-bottom:3px; }
+  ${W} .spain-card .card-title { color:#D45500; }
+  ${W} .intl-card .card-title { color:#007F70; }
+  ${W} .card-time { font-style:italic; font-size:18px; font-weight:700; color:#16140F; margin-bottom:3px; line-height:1.2; }
+  ${W} .card-reason { font-size:12px; font-style:italic; color:rgba(22,20,15,0.7); line-height:1.3; }
+  ${W} .next-briefing-schedule { border-top:2px dashed rgba(22,20,15,0.2); padding-top:14px; margin-top:8px; }
+  ${W} .schedule-title { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.12em; color:#16140F; margin-bottom:10px; text-align:center; }
   ${W} .schedule-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  ${W} .schedule-col-title { font-size:9px; font-weight:800; letter-spacing:0.14em; padding:4px 0; margin-bottom:4px; text-align:center; border-radius:4px; }
-  ${W} .spain-title { background:linear-gradient(90deg, rgba(101,163,13,0.12), rgba(250,204,21,0.15)); color:#C2410C; }
-  ${W} .intl-title { background:linear-gradient(90deg, rgba(15,118,110,0.12), rgba(94,234,212,0.15)); color:#0F766E; }
-  ${W} .schedule-row { display:flex; justify-content:space-between; font-size:11px; color:#1A365D; padding:3px 6px; border-bottom:1px dashed rgba(26,54,93,0.06); }
+  ${W} .schedule-col-title { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; letter-spacing:0.14em; padding:5px 0; margin-bottom:4px; text-align:center; border-radius:0; color:#FFFCF2; }
+  ${W} .spain-title { background:#FF6B00; }
+  ${W} .intl-title { background:#00A896; }
+  ${W} .schedule-row { display:flex; justify-content:space-between; font-size:12px; color:#16140F; padding:3px 6px; border-bottom:1px dashed rgba(22,20,15,0.12); }
   ${W} .schedule-row:last-child { border-bottom:none; }
-  ${W} .copy-hint { background:#FFFFFF; border:1px solid rgba(26,54,93,0.15); border-radius:10px; padding:14px 18px; margin-bottom:20px; font-size:12px; color:#1A365D; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.05); }
-  ${W} .next-brief { margin-top:36px; padding:22px 26px; background:linear-gradient(135deg, #FFFFFF, #FAFBFC); border:1px solid rgba(250,105,0,0.25); border-left:4px solid #FA6900; border-radius:14px; box-shadow:0 8px 24px rgba(250,105,0,0.10); }
-  ${W} .next-brief-label { font-size:9px; font-weight:800; letter-spacing:0.22em; color:#FA6900; text-transform:uppercase; margin-bottom:8px; }
-  ${W} .next-brief-day { font-family:Georgia,serif; font-size:20px; font-style:italic; color:#1A365D; font-weight:700; margin-bottom:4px; }
-  ${W} .next-brief-time { font-size:32px; font-weight:900; color:#FA6900; letter-spacing:0.02em; margin-bottom:8px; line-height:1; }
-  ${W} .next-brief-reason { font-size:11px; color:rgba(26,54,93,0.7); font-style:italic; line-height:1.5; }
-  ${W} .next-brief-table { margin-top:16px; padding-top:14px; border-top:1px dashed rgba(250,105,0,0.25); font-size:10px; color:rgba(26,54,93,0.65); line-height:1.7; }
-  ${W} .next-brief-table strong { color:#1A365D; font-weight:700; letter-spacing:0.05em; }
+  ${W} .copy-hint { background:#1A3FE6; border:3px solid #16140F; border-radius:0; padding:14px 18px; margin-bottom:20px; font-size:13px; color:#FFFCF2; text-align:center; box-shadow:4px 4px 0 #FF2D7A; }
+  ${W} .copy-hint strong { color:#FFFCF2; }
+  ${W} .next-brief { margin-top:36px; padding:22px 26px; background:#FFFCF2; border:3px solid #16140F; border-radius:0; box-shadow:6px 6px 0 #FF6B00; }
+  ${W} .next-brief-label { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; letter-spacing:0.22em; color:#D45500; text-transform:uppercase; margin-bottom:8px; }
+  ${W} .next-brief-day { font-style:italic; font-size:22px; color:#16140F; font-weight:700; margin-bottom:4px; }
+  ${W} .next-brief-time { font-family:'Space Mono',monospace; font-size:32px; font-weight:700; color:#FF6B00; letter-spacing:0.02em; margin-bottom:8px; line-height:1; }
+  ${W} .next-brief-reason { font-size:13px; color:rgba(22,20,15,0.7); font-style:italic; line-height:1.5; }
+  ${W} .next-brief-table { margin-top:16px; padding-top:14px; border-top:2px dashed rgba(255,107,0,0.4); font-family:'Space Mono',monospace; font-size:10px; color:rgba(22,20,15,0.65); line-height:1.7; }
+  ${W} .next-brief-table strong { color:#16140F; font-weight:700; letter-spacing:0.05em; }
   @media print { ${W} .copy-hint { display:none; } ${W} { background:white; } }
 </style>
 </head>
@@ -1944,16 +1949,16 @@ export default function App() {
 
   // ============ COLORES POR SECCIÓN (paleta actual: teal + lima-dorado + naranja) ============
   const SECTION_COLORS = {
-    worldOpinion: BRAND.intlColor,    // Teal
-    worldNews:    BRAND.intlColor,
-    spainOpinion: BRAND.opinionColor, // Lima
-    spainNews:    BRAND.newsColor,    // Naranja
+    worldOpinion: BRAND.worldOpinionColor, // Violeta
+    worldNews:    BRAND.intlColor,         // Teal
+    spainOpinion: BRAND.opinionColor,      // Rosa flúor
+    spainNews:    BRAND.newsColor,         // Naranja
   };
   const SECTION_GRADIENTS = {
-    worldOpinion: BRAND.intlGrad,     // teal oscuro → mint
-    worldNews:    BRAND.intlGrad,
-    spainOpinion: BRAND.opinionGrad,  // lima oscuro → dorado
-    spainNews:    BRAND.newsGrad,     // rojo → naranja
+    worldOpinion: BRAND.worldOpinionGrad,  // violeta → violeta profundo
+    worldNews:    BRAND.intlGrad,          // teal → teal profundo
+    spainOpinion: BRAND.opinionGrad,       // rosa → rosa profundo
+    spainNews:    BRAND.newsGrad,          // naranja → naranja profundo
   };
 
   const intlSections = intlData ? [
