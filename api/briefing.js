@@ -37,6 +37,9 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml', tier: 'main' },
   { source: 'elDiario.es', url: 'https://www.eldiario.es/rss/', tier: 'main' },
   { source: 'El Mundo', url: 'https://www.elmundo.es/rss/opinion.xml', tier: 'main' },
+  // 🟡 LA VANGUARDIA (Barcelona · centro/centro-derecha catalanista · nativo + GN opinión)
+  { source: 'La Vanguardia', url: 'https://www.lavanguardia.com/rss/opinion.xml', tier: 'main' },
+  { source: 'La Vanguardia', url: 'https://news.google.com/rss/search?q=site:lavanguardia.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-opinion' },
   { source: 'OK Diario', url: 'https://www.okdiario.com/opinion/feed/', tier: 'main' },
   { source: 'OK Diario', url: 'https://okdiario.com/autor/graciano-palomo/feed/', tier: 'vip:G.Palomo' },
   { source: 'El Blog Salmón', url: 'https://www.elblogsalmon.com/feed', tier: 'main' },
@@ -88,16 +91,12 @@ const SPAIN_OPINION_FEEDS = [
 // Cubre eventos del día: política, economía, sociedad, sucesos.
 const SPAIN_NEWS_FEEDS = [
   // RSS oficiales directos (los que tengan)
-  // ABC - múltiples URLs y Google News fallback
-  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_PortadaCompleta.xml' },
-  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abcPortada.xml' },
-  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_ultima.xml' },
-  { source: 'ABC', url: 'https://www.abc.es/rss/feeds/abc_espana.xml' },
+  // ABC: retirado de noticiasEspaña (a petición · derecha queda con La Gaceta, OK Diario, El Debate, Demócrata)
   { source: 'El País', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada' },
   { source: 'The Objective', url: 'https://theobjective.com/feed/' },
   { source: 'La Gaceta', url: 'https://gaceta.es/feed/' },
   { source: 'Libertad Digital', url: 'https://www.libertaddigital.com/rss.xml' },
-  { source: 'El Español', url: 'https://www.elespanol.com/rss' },
+  // El Español: retirado de noticiasEspaña (queda Crónica Global e Invertia del mismo grupo)
   // OK Diario general (no solo Baleares)
   { source: 'OK Diario', url: 'https://okdiario.com/feed/' },
   // El Debate general (no solo Baleares)
@@ -127,6 +126,8 @@ const SPAIN_NEWS_FEEDS = [
   // ECONÓMICO nacional
   { source: 'Cinco Días', url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/cincodias.elpais.com/portada' },
   { source: 'Cinco Días', url: 'https://cincodias.elpais.com/rss/cincodias/portada.xml' },
+  { source: 'El Economista (ES)', url: 'https://www.eleconomista.es/rss/rss-category.php?category=portada' },
+  { source: 'El Economista (ES)', url: 'https://news.google.com/rss/search?q=site:eleconomista.es&hl=es-ES&gl=ES&ceid=ES:es' },
 
   // Google News RSS (fallback solo para medios sin RSS público fiable)
   // NOTA: portada.xml de Vozpópuli devuelve 403 desde Vercel — se omite el RSS nativo.
@@ -425,6 +426,10 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Le Figaro', url: 'https://www.lefigaro.fr/rss/figaro_actualites.xml', tier: 'main' },
   { source: 'Le Monde', url: 'https://www.lemonde.fr/rss/une.xml', tier: 'main' },
 
+  // 🇪🇺 OPINIÓN / ANÁLISIS UE (opinión real Europa Occ · feeds confirmados, inglés)
+  { source: 'EUobserver', url: 'https://euobserver.com/rss.xml', tier: 'opinion' },
+  { source: 'Voxeurop', url: 'https://voxeurop.eu/en/feed/', tier: 'opinion' },
+
   // 🇩🇪 ALEMANIA (nuevo · cubrir hueco UE)
   { source: 'Der Spiegel International', url: 'https://www.spiegel.de/international/index.rss', tier: 'main' },
   // (Süddeutsche Zeitung y Handelsblatt: sin feed RSS gratuito fiable, solo en set PressReader)
@@ -474,6 +479,8 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Blic', url: 'https://news.google.com/rss/search?q=site:blic.rs&hl=sr&gl=RS&ceid=RS:sr', tier: 'gn-main' },
   // Kyiv Independent (Ucrania, inglés) recuperado vía Google News — el nativo estaba muerto.
   { source: 'Kyiv Independent', url: 'https://news.google.com/rss/search?q=site:kyivindependent.com&hl=en&gl=US&ceid=US:en', tier: 'gn-main' },
+  // OPINIÓN Europa Este (TENTATIVO · depende de que GN indexe la subsección /opinion)
+  { source: 'Kyiv Independent Opinion', url: 'https://news.google.com/rss/search?q=site:kyivindependent.com/opinion&hl=en&gl=US&ceid=US:en', tier: 'gn-opinion' },
   { source: 'Pravda', url: 'https://news.google.com/rss/search?q=site:pravda.sk&hl=sk&gl=SK&ceid=SK:sk', tier: 'gn-main' },
   { source: 'Večernji list', url: 'https://news.google.com/rss/search?q=site:vecernji.hr&hl=hr&gl=HR&ceid=HR:hr', tier: 'gn-main' },
   { source: 'Lietuvos Rytas', url: 'https://news.google.com/rss/search?q=site:lrytas.lt&hl=lt&gl=LT&ceid=LT:lt', tier: 'gn-main' },
@@ -486,6 +493,9 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Gulf News', url: 'https://news.google.com/rss/search?q=site:gulfnews.com&hl=en&gl=AE&ceid=AE:en', tier: 'gn-main' },
   { source: 'Khaleej Times', url: 'https://news.google.com/rss/search?q=site:khaleejtimes.com&hl=en&gl=AE&ceid=AE:en', tier: 'gn-main' },
   { source: 'Times of Oman', url: 'https://news.google.com/rss/search?q=site:timesofoman.com&hl=en&gl=OM&ceid=OM:en', tier: 'gn-main' },
+  // OPINIÓN real Oriente Medio (feeds /opinion confirmados)
+  { source: 'Al Jazeera Opinion', url: 'https://news.google.com/rss/search?q=site:aljazeera.com/opinion&hl=en&gl=US&ceid=US:en', tier: 'gn-opinion' },
+  { source: 'Al-Monitor', url: 'https://www.al-monitor.com/rss', tier: 'opinion' },
   // (Haaretz: solo en set PressReader, sin feed nativo accesible)
 
   // 🇮🇳 INDIA (refuerzo · antes solo The Hindu + Indian Express, ambos solo opinión)
@@ -530,6 +540,8 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Mail & Guardian', url: 'https://mg.co.za/feed/', tier: 'main' },
   { source: 'Premium Times', url: 'https://www.premiumtimesng.com/feed', tier: 'main' },
   { source: 'Africa Report', url: 'https://www.theafricareport.com/feed/', tier: 'main' },
+  // OPINIÓN África (TENTATIVO · GN restringido a la sección Opinionista de Daily Maverick)
+  { source: 'Daily Maverick Opinionista', url: 'https://news.google.com/rss/search?q=site:dailymaverick.co.za/opinionista&hl=en&gl=ZA&ceid=ZA:en', tier: 'gn-opinion' },
 
   // 🌎 LATAM (recuperar tras quitar Infobae, El Espectador)
   { source: 'Clarín', url: 'https://www.clarin.com/rss/lo-ultimo/', tier: 'main' },
@@ -596,6 +608,7 @@ function isOpinionRSSItemIntl(item) {
     'Project Syndicate', 'Foreign Affairs', 'Foreign Policy',
     'The Bulwark', 'UnHerd', 'The Spectator', 'National Review',
     'Bruegel', 'PIIE', 'VoxEU',
+    'Al-Monitor', 'EUobserver', 'Voxeurop',
   ]);
   if (OPINION_ONLY_INTL.has(item.source)) return true;
 
@@ -691,6 +704,8 @@ const SOURCE_TO_REGION = {
   // Europa Occidental
   'Le Figaro': 'Europa Occ', 'Figaro': 'Europa Occ',
   'Le Monde': 'Europa Occ',
+  'EUobserver': 'Europa Occ', 'Voxeurop': 'Europa Occ',
+  'Der Spiegel International': 'Europa Occ', 'Der Spiegel': 'Europa Occ',
   'Politico Europe': 'Europa Occ',  // Bruselas / instituciones UE
   'Le Point': 'Europa Occ',
   'Liberation': 'Europa Occ', 'Libération': 'Europa Occ',
@@ -714,7 +729,7 @@ const SOURCE_TO_REGION = {
   'De Volkskrant': 'Europa Occ',
 
   // Europa Este
-  'Kyiv Independent': 'Europa Este',
+  'Kyiv Independent': 'Europa Este', 'Kyiv Independent Opinion': 'Europa Este',
   'Notes from Poland': 'Europa Este',
   'Gazeta Wyborcza': 'Europa Este',
   'Euractiv': 'Europa Este', 'EURACTIV': 'Europa Este',
@@ -741,6 +756,7 @@ const SOURCE_TO_REGION = {
   'Times of Oman': 'Oriente Medio',
   'Kuwait Times': 'Oriente Medio',
   'Al-Monitor': 'Oriente Medio', 'Al Monitor': 'Oriente Medio',
+  'Al Jazeera Opinion': 'Oriente Medio', 'Al Jazeera': 'Oriente Medio',
   'Middle East Eye': 'Oriente Medio', 'MEE': 'Oriente Medio',
   'The National': 'Oriente Medio',  // UAE
   'Asharq Al-Awsat': 'Oriente Medio',
@@ -759,7 +775,6 @@ const SOURCE_TO_REGION = {
   'Asahi Shimbun': 'Asia', 'Asahi': 'Asia',
   'Yomiuri Shimbun': 'Asia', 'Yomiuri': 'Asia',
   'Mainichi': 'Asia',
-  'Caixin': 'Asia', 'Caixin Global': 'Asia',
   'Global Times': 'Asia',
   'China Daily': 'Asia',
   'Sixth Tone': 'Asia',
@@ -812,7 +827,7 @@ const SOURCE_TO_REGION = {
   'Confidencial': 'LATAM',  // Nicaragua (exilio Costa Rica), Chamorro, investigativo
 
   // África
-  'Daily Maverick': 'África', 'The Daily Maverick': 'África',
+  'Daily Maverick': 'África', 'The Daily Maverick': 'África', 'Daily Maverick Opinionista': 'África',
   'Mail & Guardian': 'África', 'Mail and Guardian': 'África',
   'Premium Times': 'África',
   'Africa Report': 'África', 'The Africa Report': 'África',
@@ -911,7 +926,7 @@ const PAYWALL_SOURCES = new Set([
   'The Economist', 'Foreign Affairs', 'Foreign Policy',
   'The Spectator', 'Le Monde', 'Le Figaro',
   'Haaretz', 'Japan Times', 'Clarín', 'El Mercurio', 'The New Yorker',
-  'South China Morning Post', 'SCMP', 'Caixin', 'Caixin Global',
+  'South China Morning Post', 'SCMP',
   'The Business Times', 'Business Times Singapore',
 ]);
 
@@ -1462,14 +1477,6 @@ THE OBJECTIVE (búsqueda web theobjective.com "[columnista]" [fecha]):
 
 
 
-EL ESPAÑOL (búsqueda web):
-- Cristian Campos
-- Pedro J. Ramírez — domingos
-- Bernard-Henri Lévy (en pausa desde 15/02/2026)
-- Lorena G. Maldonado — domingos/lunes + miércoles ocasional
-- Lorenzo Bernaldo de Quirós — domingos, economía liberal
-- José Ramón Pin Arboledas — variable, IESE, RRHH/management/economía → elespanol.com/autor/jose-ramon-pin-arboledas/
-
 LIBERTAD DIGITAL:
 - Federico Jiménez Losantos — domingos (su columna escrita)
 
@@ -1571,7 +1578,7 @@ WORLDOPINION (PRIORITARIA, hasta 10 columnas firmadas):
 - 🏛️ Project Syndicate: MÍNIMO 2 columnas (análisis económico/político de élite · Stiglitz, Krugman, Roubini, Summers, Varoufakis · ⚠️ NOTA cupo: solo 3 lecturas gratis/mes con registro — mostrar 2 titulares/día NO gasta cupo; el cupo se gasta solo al ABRIR el artículo en project-syndicate.org, así que el lector elige cuáles abrir)
 - 🌎 LATAM: MÍNIMO 2 columnas (de Confidencial, Infobae, El Espectador, Clarín, El Mercurio)
 - 🇪🇺 Europa Occidental: MÍNIMO 2 columnas (de Le Monde, Le Figaro u otros europeos cuando los haya)
-- 🌏 Asia: MÍNIMO 2 columnas (de SCMP, Caixin, Hankyoreh, Korea Herald, JoongAng, Japan Times, CNA, Tempo, Jakarta Post, Bangkok Post, The Hindu, Indian Express)
+- 🌏 Asia: MÍNIMO 2 columnas (de SCMP, Hankyoreh, Korea Herald, JoongAng, Japan Times, CNA, Tempo, Jakarta Post, Bangkok Post, The Hindu, Indian Express)
 - TOTAL mínimos garantizados: 8 columnas
 - 2 columnas restantes FLEXIBLES: USA, UK, OM, África, Rusia según actualidad
 
@@ -1597,7 +1604,7 @@ WORLDNEWS (hasta 20 piezas: noticias + reportajes + análisis):
 
 ⭐⭐⭐ PRIORIDAD FUENTES GRATIS sobre paywall (CRÍTICO) ⭐⭐⭐
 - 🔓 GRATIS internacional: Politico, The Hill, Project Syndicate, Reuters, MarketWatch, Quartz, The Guardian, UnHerd, Kyiv Independent, Moscow Times, Times of Israel, The Hindu, Indian Express, Jakarta Post, Bangkok Post, Premium Times, El Espectador, Infobae, Mail&Guardian, National Review, Global Times, China Daily, Sixth Tone, Korea Herald, Korea Times, Hankyoreh, Channel News Asia, TODAYonline, Jakarta Globe, Tempo
-- 🔒 PAYWALL: NYT, WaPo, WSJ, The Atlantic, Bloomberg, FT, The Economist, Foreign Affairs, Foreign Policy, The Spectator, Le Monde, Le Figaro, Haaretz, Japan Times, Clarín, El Mercurio, New Yorker, SCMP, Caixin, The Business Times Singapore
+- 🔒 PAYWALL: NYT, WaPo, WSJ, The Atlantic, Bloomberg, FT, The Economist, Foreign Affairs, Foreign Policy, The Spectator, Le Monde, Le Figaro, Haaretz, Japan Times, Clarín, El Mercurio, New Yorker, SCMP, The Business Times Singapore
 - Si el mismo tema está en una fuente gratis y una de pago, ELIGE LA GRATIS.
 - Solo usa pago si cubre un ángulo único no disponible en gratis ese día.
 - Las de pago aparecen marcadas con 🔒 cuando son necesarias.
@@ -1636,7 +1643,6 @@ ESTRATEGIA DE BÚSQUEDA DE PIEZAS LARGAS (ejecuta estas búsquedas adicionales p
 - site:theguardian.com "long read" 2026
 - site:project-syndicate.org 2026
 - site:scmp.com 2026 (China perspectiva HK)
-- site:caixinglobal.com 2026 (China negocios)
 - site:globaltimes.cn 2026 (China narrativa oficial)
 - site:chinadaily.com.cn 2026 (China voz oficial)
 - site:sixthtone.com 2026 (China cultura/sociedad)
@@ -1665,7 +1671,7 @@ ANTES de seleccionar las 20 piezas internacionales, OBLIGATORIAMENTE asegúrate 
   · 🌍 Europa Este (Ucrania/Polonia): MÍNIMO 1 pieza
   · 🕌 Oriente Medio (Israel/Mundo árabe/Irán): MÍNIMO 2 piezas
   · 🌏 ASIA (India + China + Japón + Corea + SE Asia): MÍNIMO 5 piezas ⭐⭐ INELUDIBLE
-    - China: SCMP, Caixin, Global Times, China Daily, Sixth Tone
+    - China: SCMP, Global Times, China Daily, Sixth Tone
     - Japón: Japan Times, Asahi, Yomiuri, Nikkei Asia
     - Corea del Sur: Korea Herald, Korea Times, Korea JoongAng Daily, Hankyoreh
     - India: The Hindu, Indian Express, Times of India, Hindustan Times, Scroll.in
@@ -1702,7 +1708,7 @@ RESERVA EXPLÍCITAMENTE las siguientes búsquedas ANTES de hacer ninguna otra:
      → garantiza piezas Brasil/Chile/Colombia LATAM
 
   BLOQUE 2 · OBLIGATORIO (no opcional): 3 búsquedas
-  4. site:scmp.com OR site:caixinglobal.com OR site:globaltimes.cn 2026  (China)
+  4. site:scmp.com OR site:globaltimes.cn OR site:chinadaily.com.cn 2026  (China)
   5. site:koreaherald.com OR site:hankyoreh.com OR site:japantimes.co.jp OR site:thehindu.com OR site:indianexpress.com 2026  (Asia este+India)
   6. site:haaretz.com OR site:timesofisrael.com OR site:aljazeera.com 2026  (Oriente Medio)
 
@@ -2137,9 +2143,6 @@ VOZPÓPULI ⭐:
 THE OBJECTIVE ⭐:
 - Guadalupe Sánchez, Antonio Caño, Manuel Arias Maldonado, Álvaro Nieto, Javier Benegas (viernes), Ketty Garat, Iván Vélez, Esperanza Aguirre, Jorge San Miguel, Pablo de Lora (sábados), Manuel Fernández Ordóñez, Victoria Carvajal (sábados), Maite Rico (martes "Sujétame el vermú"), Pablo Cambronero, Juan Luis Cebrián
 
-EL ESPAÑOL:
-- Cristian Campos, Pedro J. Ramírez (domingos), Lorena G. Maldonado, Lorenzo Bernaldo de Quirós (domingos), José Ramón Pin Arboledas
-
 LIBERTAD DIGITAL:
 - Federico Jiménez Losantos (domingos, columna escrita)
 
@@ -2151,6 +2154,9 @@ EL PAÍS:
 
 EL MUNDO:
 - Arcadi Espada, Pedro G. Cuartango, Jorge Bustos
+
+LA VANGUARDIA:
+- Enric Juliana (análisis político), Pilar Rahola
 
 EL DEBATE:
 - Francisco Rosell (director), Juan Carlos Girauta, Antonio R. Naranjo
@@ -2191,6 +2197,7 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - elDiario.es: MÁX 2 columnas
    - El País: MÁX 3 columnas
    - El Mundo: MÁX 2 columnas
+   - La Vanguardia: MÁX 2 columnas (Barcelona · centro/cd catalanista)
    - OK Diario: MÁX 2 columnas
    - El Debate: MÁX 2 columnas
    - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo · MÍN 1)
@@ -2209,6 +2216,7 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
 - Si aparece ≥1 item de "La Gaceta", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "Agenda Pública" o "El País", DEBES incluir mínimo 1 de cada uno.
 - Si aparece ≥1 item de "El Mundo", DEBES incluir mínimo 1.
+- Si aparece ≥1 item de "La Vanguardia", DEBES incluir mínimo 1 (perspectiva catalana/Barcelona).
 - Si aparece ≥1 item de "OK Diario", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "El Debate", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "El Blog Salmón", DEBES incluir mínimo 1.
@@ -2688,7 +2696,7 @@ REGLAS DE SELECCIÓN:
    - Solo selecciona una de pago si cubre un tema/ángulo único que ninguna gratis trata ese día.
    - Esto NO elimina las de pago: aparecen marcadas con 🔒 si son necesarias.
 1. Devuelve las piezas que haya. Si solo hay 8 frescas y relevantes, devuelve 8. No fuerces el cupo.
-2. Selecciona HASTA 25 piezas (puedes devolver menos si la lista es corta).
+2. Selecciona HASTA 28 piezas (puedes devolver menos si la lista es corta).
 3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, leyes aprobadas, decisiones judiciales con relevancia institucional.
 4. DESCARTA OBLIGATORIAMENTE:
    - 🚫 SUCESOS: asesinatos, accidentes, violaciones, homicidios, atracos, incendios sin contexto político (SALVO si tienen impacto político/sistémico claro tipo violencia policial, mafia conocida, crimen de Estado).
@@ -2698,30 +2706,23 @@ REGLAS DE SELECCIÓN:
    - 🚫 Catástrofes naturales sin matiz político importante.
 5. IDEAL si hay corpus suficiente: MÁX 4 piezas mismo medio, MÍN 7 medios distintos.
 6. ACEPTABLE si corpus limitado: hasta 4 piezas mismo medio, mín 4 medios distintos.
-7. MEDIOS PRIORITARIOS — MÍNIMOS OBLIGATORIOS (condicionales si hay material en CANDIDATAS):
-   GENERALISTAS NÚCLEO (mín 2-4 cada uno si hay material):
-   · Vozpópuli ⭐⭐: MÍN 4 (MÁX 6) — fuente principal
-   · El País: MÍN 2 (paywall, ángulo centro-izquierda)
-   · elDiario.es: MÍN 2 (izquierda, gratis)
-   · Libertad Digital: MÍN 2 (derecha clásica)
-   · The Objective ⭐: MÍN 3 (análisis centro, MÁX 4)
+7. ⭐⭐ MÍNIMOS POR BLOQUE DE SESGO (condicionales: solo si hay material fresco en CANDIDATAS) ⭐⭐
+   El objetivo es PLURALIDAD con simetría izquierda/derecha. Clasifica cada pieza por el medio que la firma:
 
-   COMPLEMENTARIOS (mín 1 cada uno si hay ≥1 item):
-   · ABC, La Gaceta, OK Diario, El Debate, Huffington Post, Público, Crónica Global, El Nacional.cat: MÍN 1
+   🔴 IZQUIERDA — MÍN 5 piezas (medios: El País, elDiario.es, Huffington Post, El Nacional.cat)
+   ⚪ CENTRO — MÍN 10 piezas (medios: The Objective, Vozpópuli, Libertad Digital, Crónica Global) · de las cuales VOZPÓPULI MÍN 5 (es la fuente principal del usuario)
+   🔵 DERECHA — MÍN 4 piezas (medios: La Gaceta, OK Diario, El Debate, Demócrata)
+   🏝️ BALEARES — MÍN 3 piezas (medios: OK Diario Baleares, elDiario.es Baleares, Economía de Mallorca)
+   💰 ECONÓMICO — MÍN 4 piezas (medios: Cinco Días, Invertia, El Economista (ES) · Economía de Mallorca puede contar aquí o en Baleares, no en ambos)
 
-   ⭐ ECONÓMICO OBLIGATORIO: Invertia + Economía de Mallorca + Cinco Días cuentan como bloque económico.
-     Si entre los tres aparecen ≥3 items, DEBES incluir mínimo 3 piezas económicas.
-     Si hay menos material, inclúyelo todo.
+   REGLAS de los bloques:
+   - Los mínimos son CONDICIONALES: si un bloque no tiene suficientes piezas frescas en CANDIDATAS, incluye las que haya. NUNCA inventes ni fuerces piezas viejas o irrelevantes para cuadrar un mínimo.
+   - Simetría izq/der es DELIBERADA: izquierda (5) ligeramente por encima de derecha (4). No escores más el briefing.
+   - HARD CAP: máximo 4 piezas del mismo medio individual, EXCEPTO Vozpópuli que puede llegar a 6 (es fuente principal, mín 5).
+   - Dentro de cada bloque, reparte entre los medios disponibles; del centro, 5 piezas van a Vozpópuli y el resto (≥5) se reparte entre The Objective, Libertad Digital y Crónica Global.
+   - Suma de mínimos: ~26 piezas. Si el tope de 25 finales queda corto para todos los mínimos, prioriza en este orden: Vozpópuli 5 → Centro resto → Izquierda → Derecha → Económico → Baleares.
 
-   ⭐ REGIONALES BALEARES OBLIGATORIO: si aparece ≥2 items totales entre "OK Diario Baleares",
-     "elDiario.es Baleares" y "El Debate Baleares", DEBES incluir mínimo 2 piezas baleares
-     (hasta 3 máximo). Si solo hay 1, incluir esa 1.
-
-   ⭐⭐ DEMÓCRATA INELUDIBLE: si aparece ≥2 items de "Demócrata", DEBES incluir mínimo 2 piezas suyas.
-       Si solo hay 1, incluir esa 1.
-
-   Suma de mínimos posibles: ~25 piezas obligatorias.
-   El modelo debe respetar los mínimos OBLIGATORIOS (⭐⭐) y luego priorizar lo demás según relevancia.
+   ⭐⭐ DEMÓCRATA: si aparecen ≥2 items de Demócrata, incluye mínimo 2 (cuenta dentro del bloque derecha).
 
 8. Equilibrio temático: política, economía, sociedad, justicia/corrupción de relevancia política, internacional con foco España, cultura/ciencia/tecnología.
 
@@ -2736,20 +2737,20 @@ Para un mismo evento o tema (ej: "Sánchez recula con el IVA", "sentencia caso �
 - Prefiere DIVERSIDAD TEMÁTICA sobre repetición: mejor 25 temas distintos que 8 temas con 3 piezas cada uno.
 
 CHEQUEO PRE-RESPUESTA:
-- Antes del JSON, mentalmente agrupa las 25 piezas por TEMA.
+- Antes del JSON, mentalmente agrupa las ~28 piezas por TEMA.
 - Si algún tema tiene más de 3 piezas → recorta a 3 con ángulos diversos.
-- Si tras recortar quedas en menos de 25, busca temas distintos no cubiertos.
+- Si tras recortar quedas en menos de 28, busca temas distintos no cubiertos.
 9. Mejor pocas piezas relevantes y frescas que muchas mediocres o forzadas.
 
 CHEQUEO PRE-RESPUESTA OBLIGATORIO:
-Antes de devolver el JSON, RECUENTA cuántas noticias hay de cada medio prioritario y verifica los mínimos:
-- ¿Tienes 4 de Vozpópuli si aparecían ≥4? (⭐⭐ INELUDIBLE)
-- ¿Tienes 3 de The Objective si aparecían ≥3? (⭐⭐ INELUDIBLE)
-- ¿Tienes 2 de El País, elDiario.es, LD si aparecían?
-- ¿Tienes 2 de Demócrata si aparecían ≥2? (⭐⭐ INELUDIBLE)
-- ¿Tienes 3 económicas (Invertia + Eco Mallorca + Cinco Días) si aparecían ≥3? (⭐ OBLIGATORIO)
-- ¿Tienes 2 baleares (OK Bal + eDS Bal + El Debate Bal) si aparecía material?
-Si faltan mínimos y hay items disponibles en CANDIDATAS, reemplaza piezas "rellenas" por las que faltan.
+Antes de devolver el JSON, RECUENTA las piezas por BLOQUE DE SESGO y verifica los mínimos (condicionales a material en CANDIDATAS):
+- 🔴 ¿Tienes ≥5 de IZQUIERDA (El País, elDiario.es, HuffPost, El Nacional.cat)?
+- ⚪ ¿Tienes ≥10 de CENTRO, de las cuales ≥5 de Vozpópuli (+ The Objective, Libertad Digital, Crónica Global)?
+- 🔵 ¿Tienes ≥4 de DERECHA (La Gaceta, OK Diario, El Debate, Demócrata)?
+- 🏝️ ¿Tienes ≥3 de BALEARES (OK Bal, elDiario Bal, Economía de Mallorca)?
+- 💰 ¿Tienes ≥4 ECONÓMICAS (Cinco Días, Invertia, El Economista ES)?
+- ¿Respetas el HARD CAP de máx 4 piezas por medio (Vozpópuli hasta 6)?
+Si falta algún mínimo y HAY items disponibles en CANDIDATAS de ese bloque, reemplaza piezas de relleno por las que faltan. Si NO hay material fresco de un bloque, déjalo corto — no inventes.
 
 Para cada pieza seleccionada, escribe un "summary" propio de 1-2 frases CORTAS (máx 200 caracteres). No copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO. NO te excedas para no truncar el JSON.
 
