@@ -53,6 +53,14 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'Público', url: 'https://www.publico.es/opinion/rss', tier: 'main' },
   { source: 'Público', url: 'https://blogs.publico.es/feed/', tier: 'blogs' },
 
+  // 📰 CTXT - Revista Contexto (izquierda · análisis/opinión de formato largo · semanal · feed nativo + GN)
+  { source: 'CTXT', url: 'https://ctxt.es/es/rss/', tier: 'main' },
+  { source: 'CTXT', url: 'https://news.google.com/rss/search?q=site:ctxt.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
+
+  // 📰 EL SALTO (izquierda alternativa · movimientos sociales/clima/laboral · gratuito · diario · nativo + GN)
+  { source: 'El Salto', url: 'https://www.elsaltodiario.com/general/feed', tier: 'main' },
+  { source: 'El Salto', url: 'https://news.google.com/rss/search?q=site:elsaltodiario.com/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-opinion' },
+
   // 📰 ETHIC - revista intelectual / filosofía / sociedad (gratis)
   { source: 'Ethic', url: 'https://ethic.es/feed/', tier: 'main' },
   { source: 'Ethic', url: 'https://www.ethic.es/feed/', tier: 'alt' },
@@ -514,6 +522,10 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Sixth Tone', url: 'https://www.sixthtone.com/rss', tier: 'main' },
   { source: 'Global Times', url: 'https://news.google.com/rss/search?q=site:globaltimes.cn&hl=en&gl=US&ceid=US:en', tier: 'gn-main' },
   { source: 'China Daily', url: 'https://news.google.com/rss/search?q=site:chinadaily.com.cn&hl=en&gl=US&ceid=US:en', tier: 'gn-main' },
+  // ⚠️ The Epoch Times (vinculado a Falun Gong · línea anti-PCCh · historial de desinformación
+  //    documentado — incluido a petición del usuario como contrapunto anti-Pekín). General + opinión.
+  { source: 'The Epoch Times', url: 'https://www.theepochtimes.com/c-china/feed', tier: 'main' },
+  { source: 'The Epoch Times', url: 'https://news.google.com/rss/search?q=site:theepochtimes.com/opinion&hl=en&gl=US&ceid=US:en', tier: 'gn-opinion' },
   // (Caixin: feed muerto)
 
   // 🇰🇷 COREA DEL SUR
@@ -609,6 +621,7 @@ function isOpinionRSSItemIntl(item) {
     'The Bulwark', 'UnHerd', 'The Spectator', 'National Review',
     'Bruegel', 'PIIE', 'VoxEU',
     'Al-Monitor', 'EUobserver', 'Voxeurop',
+    'The Epoch Times',
   ]);
   if (OPINION_ONLY_INTL.has(item.source)) return true;
 
@@ -777,6 +790,7 @@ const SOURCE_TO_REGION = {
   'Mainichi': 'Asia',
   'Global Times': 'Asia',
   'China Daily': 'Asia',
+  'The Epoch Times': 'Asia', 'Epoch Times': 'Asia',  // sede EEUU pero foco China (contrapunto anti-PCCh)
   'Sixth Tone': 'Asia',
   'Xinhua': 'Asia', 'Xinhua News': 'Asia',
   'People\'s Daily': 'Asia',
@@ -1111,6 +1125,8 @@ function isOpinionRSSItem(item) {
     || fromUrl.includes('articulo14.es')      // Artículo 14 = 100% opinión
     || fromUrl.includes('agendapublica')       // Agenda Pública = 100% opinión
     || fromUrl.includes('elblogsalmon')        // El Blog Salmón = 100% opinión/análisis
+    || fromUrl.includes('ctxt.es')              // CTXT = 100% opinión/análisis (izquierda)
+    || fromUrl.includes('elsaltodiario')        // El Salto = izquierda alternativa (análisis/opinión)
     || fromUrl.includes('elsubjetivo')
     || fromUrl.includes('/category/opinion')
     || fromUrl.includes('googlenews+opinion')
@@ -1560,16 +1576,16 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas spainNews ni spai
 ${COLUMNISTS_GUIDE}`,
     user: (today, todayFull, requestTime, allowedDates) => {
       const dateList = (allowedDates && allowedDates.length === 2)
-        ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (fecha de referencia / HOY)\n- ${allowedDates[1]} (día anterior)\n\nCualquier pieza con publishedDate distinto a estas dos fechas se RECHAZA. Sin "casi", sin "del fin de semana", sin "anteayer". Ventana máxima: 48h.\n\nPRIORIDAD DE FRESCURA EN OPINIÓN: dentro de las 48h, prefiere columnas de las últimas 24-36h. Las piezas de ayer son aceptables pero las de HOY siempre superiores.`
+        ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (DÍA SOLICITADO · fecha de referencia)\n- ${allowedDates[1]} (día anterior al solicitado)\n\nCualquier pieza con publishedDate distinto a estas dos fechas se RECHAZA. Sin "casi", sin "del fin de semana", sin "anteayer". Ventana máxima: 48h.\n\n⚠️ IMPORTANTE: la fecha de referencia es el DÍA SOLICITADO (${allowedDates[0]}), que puede NO ser el día de hoy real. Si el día solicitado es pasado, NO traigas piezas del día actual: solo del día solicitado y su anterior. NO asumas que "más reciente = mejor" más allá de esas dos fechas.\n\nPRIORIDAD DE FRESCURA: dentro de las 2 fechas aceptadas, prefiere columnas del propio día solicitado (${allowedDates[0]}) sobre las del día anterior. Pero NUNCA fuera de esas dos fechas.`
         : '';
-      return `FECHA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
+      return `FECHA SOLICITADA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
 
 INTERNACIONAL. Hasta 28 piezas en 2 secciones, distribuidas por regiones para cobertura global plural.
 
 REGLAS ESTRICTAS DE FECHA:
-- publishedDate DEBE estar en una de las 2 fechas aceptadas (HOY o ayer). NUNCA más antiguas.
-- VENTANA: últimas 48h. Acepta piezas de HOY y ayer indistintamente.
-- Si una pieza es de hace 2+ días: rechazar.
+- publishedDate DEBE estar en una de las 2 fechas aceptadas (día solicitado o su anterior). NUNCA más antiguas NI más recientes que el día solicitado.
+- VENTANA: las 2 fechas aceptadas. Acepta piezas del día solicitado y el anterior indistintamente.
+- Si una pieza es de fuera de esas 2 fechas (más vieja O del día actual cuando se pide un día pasado): rechazar.
 - Prioriza relevancia y calidad sobre minutos extra de frescura.
 
 WORLDOPINION (PRIORITARIA, hasta 10 columnas firmadas):
@@ -1708,7 +1724,7 @@ RESERVA EXPLÍCITAMENTE las siguientes búsquedas ANTES de hacer ninguna otra:
      → garantiza piezas Brasil/Chile/Colombia LATAM
 
   BLOQUE 2 · OBLIGATORIO (no opcional): 3 búsquedas
-  4. site:scmp.com OR site:globaltimes.cn OR site:chinadaily.com.cn 2026  (China)
+  4. site:scmp.com OR site:globaltimes.cn OR site:chinadaily.com.cn OR site:theepochtimes.com 2026  (China · incluye contrapunto anti-PCCh)
   5. site:koreaherald.com OR site:hankyoreh.com OR site:japantimes.co.jp OR site:thehindu.com OR site:indianexpress.com 2026  (Asia este+India)
   6. site:haaretz.com OR site:timesofisrael.com OR site:aljazeera.com 2026  (Oriente Medio)
 
@@ -2122,9 +2138,11 @@ export default async function handler(req, res) {
         return `[${i + 1}] ${tag} | ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.author || 'sin autor'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${c.description.slice(0, 200)}`;
       }).join('\n\n');
 
-      const userPrompt = `FECHA: ${todayFull || todayShort}
+      const userPrompt = `FECHA SOLICITADA: ${todayFull || todayShort} (puede ser un día PASADO, no necesariamente hoy)
 
 Tienes a continuación una lista de ${candidates.length} piezas de medios españoles (mayoritariamente opinión, algunas noticias o análisis), ya filtradas por fecha (publicadas en una de las 2 fechas aceptadas: ${allowedISODates.join(' o ')}) y por timestamp (últimas 36h).
+
+🚨 REGLA DE FECHA ABSOLUTA: SOLO usa piezas de la lista CANDIDATAS de abajo. NO añadas columnas de tu memoria ni del día actual. La fecha solicitada (${allowedISODates[0]}) PUEDE SER PASADA; si lo es, las columnas correctas son las de ese día, NO las de hoy. Si una columna no está en CANDIDATAS, no existe para este briefing. Si CANDIDATAS trae pocas piezas, devuelve POCAS — nunca rellenes con columnas del día en curso que no correspondan a la fecha pedida.
 
 ⚠️ MARCADO AUTOMÁTICO DE PIEZAS:
 - ✅ COLUMNA = pieza con autor humano real → CANDIDATA VÁLIDA
@@ -2183,7 +2201,7 @@ Si hay candidatas válidas de estos medios, INCLÚYELAS en este orden de prefere
 REGLAS DE SELECCIÓN (en orden de prioridad):
 1. Selecciona piezas con autor real cuando sea posible. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" "/elsubjetivo/" o similar, también CUENTAN como columna válida. EXCEPCIÓN: items con source "Agenda Pública" o "Artículo 14" pueden incluirse aunque no aparezca autor (Google News no expone el autor, pero los artículos originales son análisis firmados de calidad).
 2. HARD CAPS INVIOLABLES por medio (NO se pueden superar):
-   - Vozpópuli: MÁX 5 columnas ⭐⭐⭐ MÍN 4 OBLIGATORIO si hay ≥5 candidatos en RSS (ver diagnóstico)
+   - Vozpópuli: MÁX 6 columnas ⭐⭐⭐ MÍN 5 OBLIGATORIO si hay ≥6 candidatos en RSS (ver diagnóstico)
      · Vozpópuli es el medio #1 del usuario · si el diagnóstico muestra ≥5 piezas en 48h, ES OBLIGATORIO incluir ≥4 columnas
      · ACEPTA piezas SIN campo author si la URL contiene "/opinion/" o "/firmas/" o "/tribuna/" o "/blog/"
      · Si Google News RSS devuelve URL redirect tipo news.google.com/articles/, ASUME que es columna de opinión (el feed solo trae /opinion/)
@@ -2194,9 +2212,11 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - La Gaceta: MÁX 3 columnas
    - Libertad Digital: MÁX 3 columnas
    - Agenda Pública: MÁX 2 columnas
-   - elDiario.es: MÁX 2 columnas
+   - elDiario.es: MÁX 3 columnas (izquierda, gratuito · líder digital)
+   - CTXT: MÁX 2 columnas (izquierda · análisis formato largo · semanal, no diario)
+   - El Salto: MÁX 2 columnas (izquierda alternativa · movimientos sociales/clima/laboral · gratuito)
    - El País: MÁX 3 columnas
-   - El Mundo: MÁX 2 columnas
+   - El Mundo: MÁX 5 columnas (MÍN 3 si hay material)
    - La Vanguardia: MÁX 2 columnas (Barcelona · centro/cd catalanista)
    - OK Diario: MÁX 2 columnas
    - El Debate: MÁX 2 columnas
@@ -2206,17 +2226,19 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - Ethic: MÁX 2 columnas (revista intelectual · filosofía/sociedad/ética)
    - Letras Libres: MÁX 2 columnas (revista cultural intelectual · ensayo político-cultural)
 2.bis MÍNIMOS OBLIGATORIOS (condicionales — solo aplican si hay material en CANDIDATAS):
-- Si en CANDIDATAS aparece ≥3 items de "Vozpópuli", DEBES incluir mínimo 3 columnas suyas (cap MÁX 5). ⭐⭐ INELUDIBLE
+- Si en CANDIDATAS aparece ≥6 items de "Vozpópuli", DEBES incluir mínimo 5 columnas suyas (cap MÁX 6). ⭐⭐ INELUDIBLE
 - Si aparece ≥2 items de "Artículo 14", DEBES incluir mínimo 2 columnas suyas. ⭐
 - Si aparece ≥2 items de "The Objective", DEBES incluir mínimo 2 columnas suyas (cap MÁX 5). ⭐⭐⭐ INELUDIBLE
 - Si aparece ≥1 item de "elDiario.es", DEBES incluir mínimo 1 columna suya.
+- Si aparece ≥1 item de "CTXT", DEBES incluir mínimo 1 columna suya (izquierda · análisis de fondo).
+- Si aparece ≥1 item de "El Salto", DEBES incluir mínimo 1 columna suya (izquierda alternativa · ángulo social/movimientos).
 - Si aparece ≥1 item de "Huffington Post", DEBES incluir mínimo 1 columna suya (izquierda).
 - Si aparece ≥1 item de "Público", DEBES incluir mínimo 1 columna suya (izquierda).
 - Si aparece ≥2 items de "Libertad Digital", DEBES incluir mínimo 2 columnas suyas.
 - Si aparece ≥1 item de "La Gaceta", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "Agenda Pública" o "El País", DEBES incluir mínimo 1 de cada uno.
-- Si aparece ≥1 item de "El Mundo", DEBES incluir mínimo 1.
-- Si aparece ≥1 item de "La Vanguardia", DEBES incluir mínimo 1 (perspectiva catalana/Barcelona).
+- Si aparece ≥3 items de "El Mundo", DEBES incluir mínimo 3 (cap MÁX 5). Si hay menos, incluye los que haya.
+- Si aparece ≥2 items de "La Vanguardia", DEBES incluir mínimo 2 (cap MÁX 2 · perspectiva catalana/Barcelona).
 - Si aparece ≥1 item de "OK Diario", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "El Debate", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "El Blog Salmón", DEBES incluir mínimo 1.
@@ -2240,7 +2262,7 @@ Este chequeo NO ES OPCIONAL.
 REGLA CLAVE: estos mínimos SOLO aplican si hay candidatos suficientes en los RSS. Si Vozpópuli ese día solo tiene 1 columna (o ninguna) en CANDIDATAS, no fuerzas un mínimo de 2.
 
 ESTAS PREFERENCIAS DEL USUARIO TIENEN PRIORIDAD sobre tu criterio editorial de "qué es más relevante". Si una columna de Vozpópuli existe y es válida, va dentro, aunque encuentres otras 3 que te parezcan más interesantes. El usuario quiere SUS medios, no los que tú prefieras.
-3. Selecciona HASTA 20 columnas en total — pero menos si no hay material fresco suficiente.
+3. Selecciona HASTA 28 columnas en total — pero menos si no hay material fresco suficiente.
 4. MÍNIMO 3 medios distintos en el resultado (si hay material para ello).
 5. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
 6. Prioriza diversidad ideológica/temática entre medios.
@@ -2673,7 +2695,9 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
 
       const longCount = candidates.filter(isLongFormPiece).length;
 
-      const userPrompt = `FECHA: ${todayFull || todayShort}
+      const userPrompt = `FECHA SOLICITADA: ${todayFull || todayShort} (puede ser un día PASADO, no necesariamente hoy)
+
+🚨 REGLA DE FECHA ABSOLUTA: SOLO usa piezas de la lista CANDIDATAS de abajo (ya filtradas a las fechas aceptadas: ${allowedISODates.join(' o ')}). NO añadas noticias de tu memoria ni del día actual. Si la fecha solicitada es pasada, las noticias correctas son las de ese día, NO las de hoy. Si CANDIDATAS trae pocas, devuelve POCAS — nunca rellenes con noticias del día en curso que no correspondan a la fecha pedida.
 
 Tienes a continuación una lista de ${candidates.length} piezas de medios españoles, de las cuales ${longCount} están marcadas como 📊 LARGA (reportajes/investigaciones/análisis) y el resto como 📰 BREVE (noticias del día).
 
