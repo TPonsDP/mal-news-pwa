@@ -80,6 +80,53 @@ function formatCacheAge(timestamp) {
   } catch (_) { return ''; }
 }
 
+// ============ HISTÓRICO DE PIEZAS (localStorage) ============
+// Registra cada briefing generado (fecha, sección, nº de piezas) y calcula la media.
+// Vive solo en este navegador. Guarda los últimos 60 registros por sección.
+const HISTORY_KEY = 'mal-news-history-v1';
+const HISTORY_MAX = 60;
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (_) { return {}; }
+}
+
+// Registra un briefing. `section`: 'world' | 'spainOpinion' | 'spainNews'. `count`: nº de piezas.
+function recordHistory(section, count) {
+  if (!section || typeof count !== 'number' || count <= 0) return;
+  try {
+    const hist = loadHistory();
+    const list = Array.isArray(hist[section]) ? hist[section] : [];
+    list.push({ count, at: new Date().toISOString() });
+    // Conserva solo los últimos HISTORY_MAX
+    hist[section] = list.slice(-HISTORY_MAX);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+  } catch (_) { /* silencioso */ }
+}
+
+// Devuelve estadísticas de una sección: { count, average, min, max } o null si no hay datos.
+function getHistoryStats(section) {
+  try {
+    const hist = loadHistory();
+    const list = Array.isArray(hist[section]) ? hist[section] : [];
+    if (list.length === 0) return null;
+    const totals = list.map(x => Number(x.count) || 0);
+    const sum = totals.reduce((a, b) => a + b, 0);
+    return {
+      count: list.length,
+      average: Math.round((sum / list.length) * 10) / 10,
+      min: Math.min(...totals),
+      max: Math.max(...totals),
+    };
+  } catch (_) { return null; }
+}
+
+function clearHistory() {
+  try { localStorage.removeItem(HISTORY_KEY); } catch (_) { /* silencioso */ }
+}
+
 // ============ FIN CACHE LOCALSTORAGE ============
 
 const RECIPIENT = 'tonipons91@gmail.com';
@@ -887,7 +934,7 @@ function NewsCard({ item, index, sectionColor, type, isLead }) {
   );
 }
 
-function Section({ title, icon, items, color, gradient, count, descriptor, type, note, meta, groupByContinent }) {
+function Section({ title, icon, items, color, gradient, count, descriptor, type, note, meta, groupByContinent, historyKey }) {
   const realCount = items?.length || 0;
   const itemLabel = type === 'opinion' ? (realCount === 1 ? 'COLUMNA' : 'COLUMNAS') : (realCount === 1 ? 'PIEZA' : 'PIEZAS');
 
@@ -1018,6 +1065,26 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
             )}
           </div>
         )}
+
+        {/* Media histórica local (localStorage) */}
+        {historyKey && (() => {
+          const stats = getHistoryStats(historyKey);
+          if (!stats || stats.count < 2) return null;
+          return (
+            <div style={{
+              marginTop: '10px',
+              padding: '6px 12px',
+              background: 'rgba(255,255,255,0.15)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '8px',
+              fontSize: '11px',
+              fontFamily: "'Verdana', sans-serif",
+              color: 'white',
+            }}>
+              📈 Media de tus últimos {stats.count} briefings: <strong>{stats.average}</strong> piezas · rango {stats.min}–{stats.max}
+            </div>
+          );
+        })()}
 
         {/* Panel de diagnóstico de feeds DENTRO de la cabecera — visible inmediatamente al cargar */}
         {meta?.feedDiagnostic && meta.feedDiagnostic.length > 0 && (
@@ -1409,6 +1476,17 @@ export default function App() {
       if (!data.briefing) throw new Error('Respuesta sin briefing');
       setData(data.briefing);
       setStatus('done');
+      // Histórico local: cuenta las piezas de esta sección y regístralo para la media
+      try {
+        const b = data.briefing;
+        let n = 0;
+        if (section === 'spainNews' && Array.isArray(b.spainNews)) n = b.spainNews.length;
+        else if (section === 'spainOpinion' && Array.isArray(b.spainOpinion)) n = b.spainOpinion.length;
+        else if (Array.isArray(b.worldNews) || Array.isArray(b.worldOpinion)) {
+          n = (b.worldNews?.length || 0) + (b.worldOpinion?.length || 0);
+        }
+        if (n > 0) recordHistory(section, n);
+      } catch (_) { /* no-op */ }
     } catch (err) {
       setStatus('error');
       setError(err.message || 'Error desconocido');
@@ -1966,18 +2044,18 @@ export default function App() {
       descriptor: 'Cobertura global plural · ≥6 regiones · equilibrio IZQ/DER · incluye sentencias relevantes · 5 piezas largas mín',
       note: intlData._note,
       meta: intlData._meta,
-      groupByContinent: true },
+      groupByContinent: true , historyKey: 'world' },
     { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 8, type: 'opinion',
       descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto',
       note: intlData._note,
-      meta: intlData._meta },
+      meta: intlData._meta , historyKey: 'world' },
   ] : [];
 
   const spainOpinionSections = spainOpinionData ? [
     { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 16, type: 'opinion',
       descriptor: 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer',
       note: spainOpinionData._note,
-      meta: spainOpinionData._meta },
+      meta: spainOpinionData._meta , historyKey: 'spainOpinion' },
   ] : [];
 
   // Items extras reclasificados desde Opinión a Noticias (defensivo)
@@ -2006,6 +2084,7 @@ export default function App() {
         : 'Eventos concretos · prensa española · publicadas últimas 48h',
       note: hasNewsData ? spainNewsData._note : null,
       meta: hasNewsData ? spainNewsData._meta : null,
+      historyKey: 'spainNews',
     }];
   })();
 
@@ -2566,7 +2645,7 @@ export default function App() {
         {hasAnyData && (
           <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
             {[...spainNewsSections, ...spainOpinionSections, ...intlSections].map((s, i) => (
-              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} groupByContinent={s.groupByContinent} />
+              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} groupByContinent={s.groupByContinent} historyKey={s.historyKey} />
             ))}
           </div>
         )}
