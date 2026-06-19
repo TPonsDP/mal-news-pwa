@@ -1,6 +1,7 @@
 // Vercel serverless function (Node runtime)
 // La API key NUNCA sale del servidor.
 // Modelo: Claude Sonnet 4.6 con web_search (internacional, spainNews) o RSS pre-fetch (spainOpinion).
+// NOTA: el histórico de medias vive en el FRONTEND (App.jsx, localStorage), no aquí.
 
 // ============ MÓDULO RSS PARA OPINIÓN ESPAÑA ============
 // Para evitar limitaciones de web_search en Tier 2 (timeouts, indexación pobre),
@@ -1455,6 +1456,22 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
 
 // ============ FIN MÓDULO RSS ============
 
+// Cuenta las piezas finales por medio y devuelve un string legible para el briefing.
+// section: 'spainNews' | 'spainOpinion' (clave del array dentro de briefing).
+function buildSourceBreakdown(briefing, key) {
+  const arr = (briefing && Array.isArray(briefing[key])) ? briefing[key] : [];
+  if (arr.length === 0) return '';
+  const counts = {};
+  for (const p of arr) {
+    const s = (p && p.source) ? String(p.source).trim() : 'Sin medio';
+    counts[s] = (counts[s] || 0) + 1;
+  }
+  const ordered = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const total = arr.length;
+  const detail = ordered.map(([s, n]) => `${s}: ${n}`).join(' · ');
+  return `📊 Distribución por medio (${total} piezas): ${detail}`;
+}
+
 const COLUMNISTS_GUIDE = `COLUMNISTAS A SEGUIR (priorízalos si han publicado HOY o ayer):
 
 VOZPÓPULI (búsqueda web vozpopuli.com "[columnista]" [fecha], accesible desde primera hora):
@@ -2601,6 +2618,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           notes.push(`🔧 Se forzaron ${enforcementLog.length} columna(s) por cuotas mínimas: ${enforcementLog.slice(0, 5).join(' | ')}${enforcementLog.length > 5 ? '...' : ''}`);
         }
         notes.push(vozDiag);
+        const breakdownOp = buildSourceBreakdown(briefing, 'spainOpinion');
+        if (breakdownOp) notes.push(breakdownOp);
         if (notes.length > 0) briefing._note = notes.join(' || ');
       } else {
         // El modelo no devolvió JSON válido — devolvemos diagnóstico
@@ -2753,16 +2772,19 @@ REGLAS DE SELECCIÓN:
 ⭐⭐ REGLA ANTI-REDUNDANCIA TEMÁTICA ⭐⭐
 Para un mismo evento o tema (ej: "Sánchez recula con el IVA", "sentencia caso Ábalos", "trama Acciona-Sumar"):
 - MÁXIMO 3 piezas del mismo tema, vengan del medio que vengan.
-- Si hay 5+ medios cubriendo lo mismo, elige las 3 que aporten ÁNGULO DIFERENTE:
-  · 1 de izquierda (El País / elDiario.es / HuffPost / Público)
-  · 1 de derecha (Vozpópuli / Libertad Digital / OK Diario / La Gaceta)
-  · 1 análisis/centro (The Objective / Demócrata / Letras Libres)
-- Si las 3 cubren exactamente lo mismo sin ángulo distinto, REDUCE a 2 o 1 y libera espacio para otro tema diferente.
+- Cuando un tema lo cubren varios medios, las 3 piezas DEBEN ser UNA DE CADA BLOQUE (un ángulo de cada lado):
+  · 1 de IZQUIERDA: El País / elDiario.es / Huffington Post / Público / El Nacional.cat
+  · 1 de CENTRO: The Objective / Vozpópuli / Libertad Digital / Crónica Global
+  · 1 de DERECHA: La Gaceta / OK Diario / El Debate / Demócrata
+- Si solo hay piezas de 2 bloques, incluye 2 (uno de cada uno). Si solo hay de 1 bloque, incluye 1.
+- NUNCA 2 piezas del mismo bloque para el mismo tema: si hay dos de izquierda cubriendo lo mismo, elige la mejor y deja hueco para otro bloque o para otro tema.
+- EXCEPCIÓN ANÁLISIS: se permite una 4ª pieza del mismo tema SOLO si es ANÁLISIS de fondo (no opinión, no noticia repetida) que aporta un ángulo nuevo: datos, contexto histórico, explicación técnica, consecuencias. Debe aportar algo que las otras 3 no cubren. Si solo repite lo ya dicho, NO la incluyas. Marca mentalmente: "¿esto enseña algo nuevo o solo opina/repite?".
 - Prefiere DIVERSIDAD TEMÁTICA sobre repetición: mejor 25 temas distintos que 8 temas con 3 piezas cada uno.
 
 CHEQUEO PRE-RESPUESTA:
 - Antes del JSON, mentalmente agrupa las ~28 piezas por TEMA.
-- Si algún tema tiene más de 3 piezas → recorta a 3 con ángulos diversos.
+- Si algún tema tiene más de 3 piezas → recorta a 3, una de cada bloque (izq/centro/der).
+- Si algún tema tiene 2+ piezas del mismo bloque → recorta a 1 de ese bloque.
 - Si tras recortar quedas en menos de 28, busca temas distintos no cubiertos.
 9. Mejor pocas piezas relevantes y frescas que muchas mediocres o forzadas.
 
@@ -3020,6 +3042,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           notes.push(`Se añadieron ${enforcementLog.length} piezas largas que el modelo había omitido (enforcement automático).`);
         }
         notes.push(`📊 ${freeCount} gratis · 🔒 ${paywallCount} paywall`);
+        const breakdownNews = buildSourceBreakdown(briefing, 'spainNews');
+        if (breakdownNews) notes.push(breakdownNews);
         briefing._note = notes.join(' · ');
       }
       return res.status(200).json({ briefing, section });
