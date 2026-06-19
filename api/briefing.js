@@ -1645,7 +1645,7 @@ WORLDNEWS (hasta 20 piezas: noticias + reportajes + análisis):
 ⭐⭐⭐ TEMAS A EXCLUIR OBLIGATORIAMENTE ⭐⭐⭐
 NUNCA incluyas:
 - 🚫 SUCESOS: asesinatos individuales, accidentes, violaciones, homicidios, atracos, incendios sin contexto político (SALVO impacto sistémico claro tipo violencia policial estructural, mafia, crimen de Estado, atentados terroristas con repercusión geopolítica).
-- 🚫 DEPORTES: fútbol, ligas, fichajes, Champions, Eurocopa, NBA, NFL, F1, tenis, atletismo. NO se incluye nunca.
+- 🚫 DEPORTES (EXCLUSIÓN TOTAL): fútbol, ligas, fichajes, Champions, Eurocopa/Mundial, NBA, NFL, F1/MotoGP, tenis, atletismo, golf, ciclismo. NUNCA. Incluye también columnas de OPINIÓN deportiva (cronistas, análisis de partidos) y economía de clubes. Única excepción: corrupción de Estado donde el deporte es secundario.
 - 🚫 CELEBRITIES/FARÁNDULA: prensa rosa, divorcios famosos, premios Grammy, Oscars sin relevancia política, gala/alfombra roja.
 - 🚫 Catástrofes naturales puras sin matiz político/humanitario importante.
 SÍ incluye: política internacional, economía global, conflictos geopolíticos, diplomacia, instituciones multilaterales, ciencia/tecnología con impacto político, cultura/sociedad con relevancia estructural.
@@ -2222,30 +2222,30 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
      · Vozpópuli es el medio #1 del usuario · si el diagnóstico muestra ≥5 piezas en 48h, ES OBLIGATORIO incluir ≥4 columnas
      · ACEPTA piezas SIN campo author si la URL contiene "/opinion/" o "/firmas/" o "/tribuna/" o "/blog/"
      · Si Google News RSS devuelve URL redirect tipo news.google.com/articles/, ASUME que es columna de opinión (el feed solo trae /opinion/)
-   - Artículo 14: MÁX 4 columnas ⭐
-   - The Objective: MÁX 5 columnas ⭐⭐⭐ (MÍN 2)
-   - Huffington Post: MÁX 2 columnas (izquierda alternativa, gratis)
-   - Público: MÁX 2 columnas (izquierda alternativa, gratis)
-   - La Gaceta: MÁX 3 columnas
-   - Libertad Digital: MÁX 3 columnas
-   - Agenda Pública: MÁX 2 columnas
-   - elDiario.es: MÁX 3 columnas (izquierda, gratuito · líder digital)
-   - CTXT: MÁX 2 columnas (izquierda · análisis formato largo · semanal, no diario)
-   - El Salto: MÁX 2 columnas (izquierda alternativa · movimientos sociales/clima/laboral · gratuito)
-   - El País: MÁX 3 columnas
-   - El Mundo: MÁX 5 columnas (MÍN 3 si hay material)
+   - Artículo 14: MÁX 4 columnas ⭐ (MÍN 2)
+   - The Objective: MÁX 4 columnas ⭐⭐⭐ (MÍN 3)
+   - Huffington Post: MÁX 2 columnas (MÍN 1 · izquierda, gratis)
+   - Público: MÁX 2 columnas (MÍN 1 · izquierda, gratis)
+   - La Gaceta: MÁX 3 columnas (MÍN 1)
+   - Libertad Digital: MÁX 4 columnas (MÍN 3)
+   - Agenda Pública: MÁX 2 columnas (MÍN 1)
+   - elDiario.es: MÁX 4 columnas (MÍN 3 · izquierda, gratuito · líder digital)
+   - CTXT: MÁX 2 columnas (MÍN 1 · izquierda · análisis · semanal, no diario)
+   - El Salto: MÁX 2 columnas (MÍN 1 · izquierda alternativa · social/clima/laboral · gratuito)
+   - El País: MÁX 3 columnas (MÍN 3 si hay material)
+   - El Mundo: MÁX 5 columnas (MÍN 4 si hay material)
    - La Vanguardia: MÁX 2 columnas (Barcelona · centro/cd catalanista)
-   - OK Diario: MÁX 2 columnas
-   - El Debate: MÁX 2 columnas
+   - OK Diario: MÁX 2 columnas (MÍN 1)
+   - El Debate: MÁX 2 columnas (MÍN 1)
    - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo · MÍN 1)
-   - Economía de Mallorca: MÁX 2 columnas (regional Baleares · análisis local)
-   - Crónica Global: MÁX 2 columnas (Cataluña · análisis catalán)
+   - Economía de Mallorca: MÁX 2 columnas (MÍN 1 · regional Baleares)
+   - Crónica Global: MÁX 2 columnas (MÍN 1 · Cataluña)
    - Ethic: MÁX 2 columnas (revista intelectual · filosofía/sociedad/ética)
    - Letras Libres: MÁX 2 columnas (revista cultural intelectual · ensayo político-cultural)
 2.bis MÍNIMOS OBLIGATORIOS (condicionales — solo aplican si hay material en CANDIDATAS):
 - Si en CANDIDATAS aparece ≥6 items de "Vozpópuli", DEBES incluir mínimo 5 columnas suyas (cap MÁX 6). ⭐⭐ INELUDIBLE
 - Si aparece ≥2 items de "Artículo 14", DEBES incluir mínimo 2 columnas suyas. ⭐
-- Si aparece ≥2 items de "The Objective", DEBES incluir mínimo 2 columnas suyas (cap MÁX 5). ⭐⭐⭐ INELUDIBLE
+- Si aparece ≥3 items de "The Objective", DEBES incluir mínimo 3 columnas suyas (cap MÁX 4). ⭐⭐⭐ INELUDIBLE
 - Si aparece ≥1 item de "elDiario.es", DEBES incluir mínimo 1 columna suya.
 - Si aparece ≥1 item de "CTXT", DEBES incluir mínimo 1 columna suya (izquierda · análisis de fondo).
 - Si aparece ≥1 item de "El Salto", DEBES incluir mínimo 1 columna suya (izquierda alternativa · ángulo social/movimientos).
@@ -2253,8 +2253,11 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
 - Si aparece ≥1 item de "Público", DEBES incluir mínimo 1 columna suya (izquierda).
 - Si aparece ≥2 items de "Libertad Digital", DEBES incluir mínimo 2 columnas suyas.
 - Si aparece ≥1 item de "La Gaceta", DEBES incluir mínimo 1.
-- Si aparece ≥1 item de "Agenda Pública" o "El País", DEBES incluir mínimo 1 de cada uno.
-- Si aparece ≥3 items de "El Mundo", DEBES incluir mínimo 3 (cap MÁX 5). Si hay menos, incluye los que haya.
+- Si aparece ≥1 item de "Agenda Pública", DEBES incluir mínimo 1.
+- Si aparece ≥3 items de "El País", DEBES incluir mínimo 3 columnas suyas (cap MÁX 3). Si hay menos, incluye las que haya.
+- Si aparece ≥3 items de "elDiario.es", DEBES incluir mínimo 3 columnas suyas (cap MÁX 4 · refuerzo izquierda). Si hay menos, incluye las que haya.
+- Si aparece ≥3 items de "Libertad Digital", DEBES incluir mínimo 3 columnas suyas (cap MÁX 4). Si hay menos, incluye las que haya.
+- Si aparece ≥4 items de "El Mundo", DEBES incluir mínimo 4 (cap MÁX 5). Si hay menos, incluye los que haya.
 - Si aparece ≥2 items de "La Vanguardia", DEBES incluir mínimo 2 (cap MÁX 2 · perspectiva catalana/Barcelona).
 - Si aparece ≥1 item de "OK Diario", DEBES incluir mínimo 1.
 - Si aparece ≥1 item de "El Debate", DEBES incluir mínimo 1.
@@ -2268,8 +2271,9 @@ CHEQUEO PRE-RESPUESTA OBLIGATORIO:
 Antes de devolver el JSON, RECUENTA cuántas columnas hay de cada medio prioritario.
 
 ⭐ VERIFICACIÓN VOZPÓPULI (CRÍTICA):
-   - Si hubo ≥5 candidatos Vozpópuli en la lista RSS → DEBE haber ≥4 columnas Vozpópuli en el output
-   - Si hubo 3-4 candidatos Vozpópuli → DEBE haber ≥3 columnas Vozpópuli en el output
+   - Si hubo ≥6 candidatos Vozpópuli en la lista RSS → DEBE haber ≥5 columnas Vozpópuli en el output (cap MÁX 6)
+   - Si hubo 4-5 candidatos Vozpópuli → DEBE haber ≥4 columnas Vozpópuli en el output
+   - Si hubo 3 candidatos Vozpópuli → DEBE haber ≥3 columnas Vozpópuli en el output
    - Si hubo 1-2 candidatos Vozpópuli → DEBE haber ese número de columnas Vozpópuli
    - SI VIOLAS ESTA REGLA, REHAZ EL OUTPUT desde cero
 
@@ -2279,7 +2283,7 @@ Este chequeo NO ES OPCIONAL.
 REGLA CLAVE: estos mínimos SOLO aplican si hay candidatos suficientes en los RSS. Si Vozpópuli ese día solo tiene 1 columna (o ninguna) en CANDIDATAS, no fuerzas un mínimo de 2.
 
 ESTAS PREFERENCIAS DEL USUARIO TIENEN PRIORIDAD sobre tu criterio editorial de "qué es más relevante". Si una columna de Vozpópuli existe y es válida, va dentro, aunque encuentres otras 3 que te parezcan más interesantes. El usuario quiere SUS medios, no los que tú prefieras.
-3. Selecciona HASTA 28 columnas en total — pero menos si no hay material fresco suficiente.
+3. Selecciona HASTA 36 columnas en total — pero menos si no hay material fresco suficiente.
 4. MÍNIMO 3 medios distintos en el resultado (si hay material para ello).
 5. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
 6. Prioriza diversidad ideológica/temática entre medios.
@@ -2743,9 +2747,12 @@ REGLAS DE SELECCIÓN:
 3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, leyes aprobadas, decisiones judiciales con relevancia institucional.
 4. DESCARTA OBLIGATORIAMENTE:
    - 🚫 SUCESOS: asesinatos, accidentes, violaciones, homicidios, atracos, incendios sin contexto político (SALVO si tienen impacto político/sistémico claro tipo violencia policial, mafia conocida, crimen de Estado).
-   - 🚫 DEPORTES: fútbol, ligas, fichajes, resultados, Eurocopa, baloncesto, F1, tenis. NO se incluye nunca.
+   - 🚫 DEPORTES (EXCLUSIÓN TOTAL Y TAJANTE): fútbol, LaLiga, Champions, fichajes, resultados, clasificaciones, Eurocopa/Mundial, baloncesto/ACB/NBA, F1/MotoGP, tenis, ciclismo, atletismo, golf, pádel. NUNCA, bajo ningún concepto.
+     · CASOS LÍMITE que TAMBIÉN se excluyen: declaraciones de entrenadores/jugadores, lesiones, renovaciones, economía de clubes (fichajes millonarios, deudas de clubes, derechos de TV deportivos), Superliga, presidencias de federaciones, sedes de eventos deportivos, polémicas arbitrales.
+     · ÚNICA excepción: corrupción política o judicial GRAVE con dimensión de Estado donde el deporte es secundario (ej: caso Rubiales por agresión y abuso de poder, no por fútbol; trama de amaños con detenidos por organización criminal). Si dudas, EXCLUYE.
    - 🚫 CELEBRITIES/FARÁNDULA: prensa rosa, divorcios famosos, GH, Eurovisión, gala/alfombra roja, OT, MasterChef.
    - 🚫 Columnas firmadas de opinión solitaria, evergreen sin actualidad, editoriales institucionales.
+   - 🚫 OPINIÓN DEPORTIVA: crónicas de partidos, columnas sobre fútbol/clubes/jugadores aunque estén firmadas por columnista de prestigio. El que sea "opinión" no la salva: si el tema es deporte, FUERA.
    - 🚫 Catástrofes naturales sin matiz político importante.
 5. IDEAL si hay corpus suficiente: MÁX 4 piezas mismo medio, MÍN 7 medios distintos.
 6. ACEPTABLE si corpus limitado: hasta 4 piezas mismo medio, mín 4 medios distintos.
@@ -2800,11 +2807,14 @@ Si falta algún mínimo y HAY items disponibles en CANDIDATAS de ese bloque, ree
 
 Para cada pieza seleccionada, escribe un "summary" propio de 1-2 frases CORTAS (máx 200 caracteres). No copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO. NO te excedas para no truncar el JSON.
 
+⭐ APUNTE DEL EDITOR ("editorNote"):
+Tras seleccionar las piezas, escribe un análisis breve (campo "editorNote", 400-700 caracteres) sobre los 2-3 TEMAS MÁS IMPORTANTES del día — no los más numerosos, sino los de mayor calado político, económico o social. Para cada uno: por qué importa, qué está en juego y, si procede, cómo lo enmarcan distintos medios. Tono: analítico y ecuánime, como un editor que da contexto, NO opinión partidista. Si un tema lo cubren medios de distinto sesgo con enfoques opuestos, señálalo con neutralidad. NO inventes: básate solo en las piezas seleccionadas. Si el día es flojo, un solo tema bien analizado es mejor que tres forzados.
+
 CANDIDATAS:
 ${candidatesText}
 
 OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
-{"date":"${todayShort}","spainNews":[{"rank":1,"title":"...","summary":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
+{"date":"${todayShort}","editorNote":"Análisis de los 2-3 temas clave del día...","spainNews":[{"rank":1,"title":"...","summary":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
 
       const upstream = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
