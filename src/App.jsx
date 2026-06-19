@@ -934,7 +934,7 @@ function NewsCard({ item, index, sectionColor, type, isLead }) {
   );
 }
 
-function Section({ title, icon, items, color, gradient, count, descriptor, type, note, meta, groupByContinent, historyKey }) {
+function Section({ title, icon, items, color, gradient, count, descriptor, type, note, meta, groupByContinent, historyKey, editorNote }) {
   const realCount = items?.length || 0;
   const itemLabel = type === 'opinion' ? (realCount === 1 ? 'COLUMNA' : 'COLUMNAS') : (realCount === 1 ? 'PIEZA' : 'PIEZAS');
 
@@ -1001,6 +1001,31 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
           }}>
             {descriptor}
           </p>
+        )}
+
+        {/* Apunte del editor: análisis de los temas clave del día */}
+        {editorNote && (
+          <div style={{
+            marginTop: '12px',
+            padding: '12px 14px',
+            background: 'rgba(255,255,255,0.16)',
+            border: '1px solid rgba(255,255,255,0.32)',
+            borderLeft: '4px solid rgba(255,255,255,0.7)',
+            borderRadius: '8px',
+            fontSize: '12.5px',
+            fontFamily: "'Crimson Pro', Georgia, serif",
+            lineHeight: 1.5,
+            color: 'white',
+          }}>
+            <div style={{
+              fontSize: '10px', fontWeight: '800', letterSpacing: '0.12em',
+              textTransform: 'uppercase', opacity: 0.85, marginBottom: '5px',
+              fontFamily: "'Space Mono', monospace",
+            }}>
+              ✦ Apunte del editor
+            </div>
+            {editorNote}
+          </div>
         )}
 
         {/* Panel CONTADOR POR REGIÓN (solo si meta tiene regionCounts) */}
@@ -2085,6 +2110,7 @@ export default function App() {
       note: hasNewsData ? spainNewsData._note : null,
       meta: hasNewsData ? spainNewsData._meta : null,
       historyKey: 'spainNews',
+      editorNote: hasNewsData ? spainNewsData.editorNote : null,
     }];
   })();
 
@@ -2645,7 +2671,7 @@ export default function App() {
         {hasAnyData && (
           <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
             {[...spainNewsSections, ...spainOpinionSections, ...intlSections].map((s, i) => (
-              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} groupByContinent={s.groupByContinent} historyKey={s.historyKey} />
+              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} groupByContinent={s.groupByContinent} historyKey={s.historyKey} editorNote={s.editorNote} />
             ))}
           </div>
         )}
