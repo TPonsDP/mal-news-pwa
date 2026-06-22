@@ -80,11 +80,107 @@ function formatCacheAge(timestamp) {
   } catch (_) { return ''; }
 }
 
+// ============ HISTÓRICO DE CAMBIOS (CHANGELOG) ============
+// Panel buscable dentro de la PWA. Para añadir un cambio nuevo, agrega un objeto
+// al principio del array (los más recientes arriba). Campos: fecha, área, texto.
+const CHANGELOG = [
+  { fecha: '2026-06', area: 'Noticias · Vozpópuli', texto: 'Arreglado el feed de noticias de Vozpópuli: la query con exclusión por subruta (-site:.../opinion) rompía Google News y devolvía cero. Simplificada a site:vozpopuli.com limpio.' },
+  { fecha: '2026-06', area: 'UI · Contadores', texto: 'Corregidos los contadores de los botones: Opinión España (hasta 36) y Noticias España (hasta 28), que estaban desactualizados (22 y 25).' },
+  { fecha: '2026-06', area: 'Opinión · La Vanguardia', texto: 'Restaurado el mínimo 2 de La Vanguardia, que se había descolgado.' },
+  { fecha: '2026-06', area: 'Fechas', texto: 'Reforzado el fix del bug de día pasado: regla de fecha absoluta en RSS y en búsquedas web internacionales para no traer piezas del día actual cuando se pide una fecha anterior.' },
+  { fecha: '2026-06', area: 'Noticias · Deportes', texto: 'Filtro anti-deportes reforzado en las 3 secciones, incluyendo casos límite (economía de clubes, declaraciones, arbitrajes) y opinión deportiva.' },
+  { fecha: '2026-06', area: 'Noticias · Análisis', texto: 'Añadido "Apunte del editor": análisis breve de los 2-3 temas clave del día, tono ecuánime. Y excepción de análisis como 4ª pieza de un tema.' },
+  { fecha: '2026-06', area: 'Opinión · Caps', texto: 'Caps por medio ajustados: Vozpópuli 5-6, El Mundo 4-5, The Objective 3-4, El País 3, elDiario.es 3-4, Libertad Digital 3-4. Tope total subido a 36.' },
+  { fecha: '2026-06', area: 'Opinión · Izquierda', texto: 'Añadidos medios de izquierda gratuitos: El Salto (alternativa/social) y CTXT (análisis). elDiario.es reforzado.' },
+  { fecha: '2026-06', area: 'Opinión · La Vanguardia', texto: 'Añadida La Vanguardia con columnistas Enric Juliana y Pilar Rahola.' },
+  { fecha: '2026-06', area: 'Noticias · Bloques', texto: 'Sistema de bloques de sesgo en noticias España: izquierda 5, centro 10 (Vozpópuli ≥5), derecha 4, Baleares 3, económico 4. Regla de 1 izq + 1 centro + 1 der por tema repetido (máx 3 piezas/tema).' },
+  { fecha: '2026-06', area: 'Noticias · Medios', texto: 'ABC y El Español retirados de noticias España. El Economista (ES) añadido al bloque económico.' },
+  { fecha: '2026-06', area: 'Histórico', texto: 'Añadido el registro de piezas en localStorage: media de tus últimos briefings por sección, mostrada bajo cada cabecera.' },
+  { fecha: '2026-06', area: 'Salida', texto: 'Conteo por medio en la salida de cada sección (📊 Distribución por medio).' },
+  { fecha: '2026-06', area: 'Internacional · Opinión', texto: 'Añadida opinión real a regiones que estaban vacías: EUobserver/Voxeurop (UE), Al Jazeera/Al-Monitor (OM), Kyiv Independent (Este), Daily Maverick (África). WSJ y think tanks económicos (Bruegel, PIIE, VoxEU). Project Syndicate mín 2.' },
+  { fecha: '2026-06', area: 'Internacional · Cobertura', texto: 'Cobertura regional ampliada: Asia 20 feeds, LATAM 12, Europa Este creado (9), Oriente Medio 6, Económico Global. Politico Europe en noticias UE. Epoch Times añadido. Caixin eliminado.' },
+];
+// ============ FIN CHANGELOG ============
+
+
 // ============ HISTÓRICO DE PIEZAS (localStorage) ============
 // Registra cada briefing generado (fecha, sección, nº de piezas) y calcula la media.
 // Vive solo en este navegador. Guarda los últimos 60 registros por sección.
 const HISTORY_KEY = 'mal-news-history-v1';
 const HISTORY_MAX = 60;
+
+// Datos SEMILLA: conteos por medio de los briefings ya recibidos (recopilados de los correos).
+// Se siembran una sola vez en localStorage si no hay histórico previo, para que el panel 📊
+// arranque con los datos de junio en vez de vacío. Cada entrada: { at, count, sources }.
+const HISTORY_SEED = {
+  spainNews: [
+    { at: '2026-06-01T19:00:00.000Z', count: 28, sources: { 'elDiario.es': 6, 'Cinco Días': 5, 'OK Diario Baleares': 4, 'El País': 4, 'Libertad Digital': 4, 'Crónica Global': 3, 'El Español': 1, 'Economía de Mallorca': 1 } },
+    { at: '2026-06-03T19:00:00.000Z', count: 21, sources: { 'elDiario.es': 4, 'Libertad Digital': 4, 'Cinco Días': 4, 'El País': 4, 'Crónica Global': 3, 'OK Diario Baleares': 2 } },
+    { at: '2026-06-05T19:00:00.000Z', count: 26, sources: { 'elDiario.es': 7, 'Libertad Digital': 4, 'El Español': 4, 'Cinco Días': 3, 'OK Diario Baleares': 2, 'El País': 2, 'Crónica Global': 1, 'Economía de Mallorca': 1, 'Huffington Post': 1, 'El Nacional.cat': 1 } },
+    { at: '2026-06-06T12:00:00.000Z', count: 28, sources: { 'elDiario.es': 5, 'The Objective': 5, 'Libertad Digital': 3, 'El Español': 2, 'OK Diario': 2, 'La Gaceta': 2, 'Crónica Global': 2, 'El País': 2, 'OK Diario Baleares': 2, 'El Nacional.cat': 1, 'Economía de Mallorca': 1, 'ABC': 1 } },
+    { at: '2026-06-07T19:00:00.000Z', count: 26, sources: { 'El Español': 5, 'elDiario.es': 4, 'El País': 4, 'Economía de Mallorca': 3, 'Libertad Digital': 3, 'Crónica Global': 2, 'OK Diario Baleares': 2, 'Cinco Días': 2, 'El Nacional.cat': 1 } },
+    { at: '2026-06-08T19:00:00.000Z', count: 30, sources: { 'Libertad Digital': 5, 'elDiario.es': 4, 'El País': 4, 'Demócrata': 4, 'The Objective': 4, 'La Gaceta': 3, 'El Español': 2, 'OK Diario': 1, 'ABC': 1, 'Crónica Global': 1, 'El Nacional.cat': 1 } },
+    { at: '2026-06-09T19:00:00.000Z', count: 28, sources: { 'Vozpópuli': 6, 'elDiario.es': 5, 'El Español': 3, 'Libertad Digital': 2, 'El País': 2, 'Demócrata': 2, 'Economía de Mallorca': 2, 'elDiario.es Baleares': 2, 'Crónica Global': 1, 'Cinco Días': 1, 'Invertia': 1, 'Huffington Post': 1 } },
+    { at: '2026-06-10T19:00:00.000Z', count: 27, sources: { 'Vozpópuli': 6, 'elDiario.es': 5, 'El Español': 2, 'Libertad Digital': 2, 'El País': 2, 'Demócrata': 2, 'Economía de Mallorca': 2, 'elDiario.es Baleares': 2, 'Crónica Global': 1, 'Cinco Días': 1, 'Invertia': 1, 'Huffington Post': 1 } },
+    { at: '2026-06-11T19:00:00.000Z', count: 29, sources: { 'elDiario.es': 6, 'Libertad Digital': 5, 'The Objective': 5, 'El Español': 3, 'Demócrata': 2, 'Crónica Global': 2, 'El País': 2, 'OK Diario': 1, 'ABC': 1, 'El Nacional.cat': 1, 'La Gaceta': 1 } },
+    { at: '2026-06-12T19:00:00.000Z', count: 30, sources: { 'elDiario.es': 5, 'Libertad Digital': 5, 'Vozpópuli': 4, 'Huffington Post': 2, 'El País': 2, 'Demócrata': 2, 'El Nacional.cat': 2, 'Cinco Días': 2, 'elDiario.es Baleares': 2, 'El Español': 1, 'Crónica Global': 1, 'OK Diario Baleares': 1, 'Economía de Mallorca': 1 } },
+    { at: '2026-06-13T12:00:00.000Z', count: 29, sources: { 'Libertad Digital': 6, 'Demócrata': 5, 'The Objective': 4, 'elDiario.es': 4, 'El País': 2, 'El Español': 2, 'La Gaceta': 2, 'OK Diario': 1, 'Crónica Global': 1, 'El Nacional.cat': 1, 'ABC': 1 } },
+    { at: '2026-06-14T19:00:00.000Z', count: 28, sources: { 'El País': 4, 'elDiario.es': 4, 'Libertad Digital': 4, 'The Objective': 4, 'Crónica Global': 3, 'Demócrata': 2, 'La Gaceta': 2, 'El Español': 2, 'ABC': 1, 'OK Diario': 1, 'El Nacional.cat': 1 } },
+    { at: '2026-06-15T19:00:00.000Z', count: 39, sources: { 'El País': 5, 'Cinco Días': 5, 'elDiario.es': 5, 'Libertad Digital': 5, 'Demócrata': 4, 'The Objective': 3, 'Crónica Global': 3, 'Economía de Mallorca': 3, 'La Gaceta': 2, 'OK Diario Baleares': 2, 'OK Diario': 1, 'El Nacional.cat': 1 } },
+    { at: '2026-06-16T19:00:00.000Z', count: 36, sources: { 'Libertad Digital': 5, 'elDiario.es': 5, 'The Objective': 5, 'El País': 4, 'Crónica Global': 4, 'Cinco Días': 3, 'La Gaceta': 3, 'OK Diario': 2, 'OK Diario Baleares': 2, 'Economía de Mallorca': 1, 'Demócrata': 1, 'El Nacional.cat': 1 } },
+    { at: '2026-06-17T19:00:00.000Z', count: 32, sources: { 'El País': 5, 'The Objective': 5, 'Cinco Días': 5, 'Crónica Global': 4, 'Libertad Digital': 3, 'elDiario.es': 2, 'La Gaceta': 2, 'Demócrata': 2, 'OK Diario': 1, 'OK Diario Baleares': 1, 'Economía de Mallorca': 1, 'El Nacional.cat': 1 } },
+    { at: '2026-06-18T19:00:00.000Z', count: 31, sources: { 'elDiario.es': 6, 'Libertad Digital': 4, 'Demócrata': 4, 'El País': 3, 'The Objective': 3, 'Cinco Días': 3, 'Crónica Global': 3, 'OK Diario Baleares': 2, 'OK Diario': 1, 'Economía de Mallorca': 1, 'El Nacional.cat': 1 } },
+    { at: '2026-06-19T19:00:00.000Z', count: 30, sources: { 'elDiario.es': 4, 'Demócrata': 4, 'Cinco Días': 4, 'Libertad Digital': 3, 'The Objective': 2, 'El País': 2, 'Crónica Global': 2, 'La Gaceta': 2, 'OK Diario Baleares': 2, 'OK Diario': 1, 'Economía de Mallorca': 1, 'El Nacional.cat': 1 } },
+    { at: '2026-06-20T12:00:00.000Z', count: 33, sources: { 'El País': 6, 'elDiario.es': 5, 'Libertad Digital': 4, 'The Objective': 3, 'La Gaceta': 3, 'Crónica Global': 2, 'Cinco Días': 2, 'Demócrata': 2, 'OK Diario': 1, 'OK Diario Baleares': 1, 'Huffington Post': 1, 'El Nacional.cat': 1, 'Economía de Mallorca': 1 } },
+    { at: '2026-06-21T19:00:00.000Z', count: 30, sources: { 'El País': 5, 'The Objective': 4, 'La Gaceta': 4, 'Libertad Digital': 3, 'Crónica Global': 3, 'Cinco Días': 3, 'elDiario.es': 2, 'Demócrata': 2, 'Economía de Mallorca': 2, 'OK Diario': 1, 'El Nacional.cat': 1 } },
+  ],
+  spainOpinion: [
+    { at: '2026-06-01T19:00:00.000Z', count: 21, sources: { 'The Objective': 4, 'El País': 3, 'La Gaceta': 3, 'Libertad Digital': 3, 'elDiario.es': 2, 'El Mundo': 2, 'OK Diario': 1, 'El Blog Salmón': 1, 'Ethic': 1, 'Letras Libres': 1 } },
+    { at: '2026-06-03T19:00:00.000Z', count: 22, sources: { 'The Objective': 5, 'La Gaceta': 3, 'Libertad Digital': 3, 'elDiario.es': 2, 'El Mundo': 2, 'OK Diario': 2, 'El País': 1, 'El Debate': 1, 'Ethic': 1, 'El Blog Salmón': 1, 'Letras Libres': 1 } },
+    { at: '2026-06-05T19:00:00.000Z', count: 21, sources: { 'The Objective': 4, 'La Gaceta': 3, 'Libertad Digital': 3, 'elDiario.es': 2, 'El País': 2, 'El Mundo': 2, 'OK Diario': 1, 'El Debate': 1, 'El Blog Salmón': 1, 'Ethic': 1, 'Letras Libres': 1 } },
+    { at: '2026-06-06T12:00:00.000Z', count: 23, sources: { 'The Objective': 5, 'El País': 4, 'La Gaceta': 4, 'Libertad Digital': 2, 'El Mundo': 2, 'elDiario.es': 1, 'OK Diario': 1, 'El Debate': 1, 'El Blog Salmón': 1, 'Ethic': 1, 'Letras Libres': 1 } },
+    { at: '2026-06-07T19:00:00.000Z', count: 18, sources: { 'The Objective': 5, 'Libertad Digital': 3, 'La Gaceta': 3, 'El Mundo': 2, 'El País': 2, 'elDiario.es': 1, 'El Debate': 1, 'OK Diario': 1 } },
+    { at: '2026-06-08T19:00:00.000Z', count: 26, sources: { 'The Objective': 5, 'Vozpópuli': 4, 'La Gaceta': 3, 'Libertad Digital': 3, 'El Mundo': 2, 'elDiario.es': 2, 'El País': 2, 'El Debate': 1, 'OK Diario': 1, 'El Blog Salmón': 1, 'Ethic': 1, 'Letras Libres': 1 } },
+    { at: '2026-06-09T19:00:00.000Z', count: 28, sources: { 'The Objective': 5, 'Vozpópuli': 4, 'La Gaceta': 3, 'Libertad Digital': 3, 'El País': 3, 'elDiario.es': 2, 'El Mundo': 2, 'El Debate': 1, 'OK Diario': 1, 'El Blog Salmón': 1, 'Huffington Post': 1, 'Ethic': 1, 'Letras Libres': 1 } },
+    { at: '2026-06-11T19:00:00.000Z', count: 26, sources: { 'The Objective': 5, 'Vozpópuli': 4, 'El País': 3, 'La Gaceta': 3, 'El Mundo': 2, 'Libertad Digital': 2, 'elDiario.es': 1, 'OK Diario': 1, 'El Debate': 1, 'El Blog Salmón': 1, 'Ethic': 1, 'Huffington Post': 1, 'Letras Libres': 1 } },
+    { at: '2026-06-12T19:00:00.000Z', count: 28, sources: { 'The Objective': 5, 'Vozpópuli': 4, 'La Gaceta': 3, 'Libertad Digital': 3, 'elDiario.es': 2, 'El Mundo': 2, 'OK Diario': 2, 'El País': 2, 'El Debate': 1, 'El Blog Salmón': 1, 'Huffington Post': 1, 'Ethic': 1, 'Letras Libres': 1 } },
+    { at: '2026-06-13T12:00:00.000Z', count: 25, sources: { 'The Objective': 5, 'Vozpópuli': 4, 'OK Diario': 2, 'elDiario.es': 2, 'El País': 2, 'El Mundo': 2, 'Libertad Digital': 2, 'La Gaceta': 1, 'El Debate': 1, 'El Blog Salmón': 1, 'Ethic': 1, 'Letras Libres': 1, 'Huffington Post': 1 } },
+    { at: '2026-06-14T19:00:00.000Z', count: 25, sources: { 'The Objective': 4, 'Vozpópuli': 4, 'El País': 3, 'Libertad Digital': 2, 'elDiario.es': 2, 'El Mundo': 2, 'La Gaceta': 2, 'OK Diario': 2, 'El Debate': 1, 'El Blog Salmón': 1, 'Letras Libres': 1, 'Huffington Post': 1 } },
+    { at: '2026-06-15T19:00:00.000Z', count: 29, sources: { 'The Objective': 6, 'La Gaceta': 4, 'Libertad Digital': 3, 'El País': 3, 'Vozpópuli': 2, 'El Mundo': 2, 'elDiario.es': 2, 'El Debate': 1, 'La Vanguardia': 1, 'Huffington Post': 1, 'OK Diario': 1, 'Letras Libres': 1, 'Ethic': 1, 'El Blog Salmón': 1 } },
+    { at: '2026-06-17T19:00:00.000Z', count: 33, sources: { 'El Mundo': 6, 'The Objective': 5, 'Vozpópuli': 4, 'El País': 3, 'La Gaceta': 3, 'elDiario.es': 2, 'Libertad Digital': 2, 'La Vanguardia': 2, 'OK Diario': 1, 'El Debate': 1, 'El Blog Salmón': 1, 'El Salto': 1, 'Ethic': 1, 'Letras Libres': 1 } },
+    { at: '2026-06-18T19:00:00.000Z', count: 34, sources: { 'The Objective': 5, 'El Mundo': 5, 'Vozpópuli': 4, 'La Gaceta': 3, 'El País': 3, 'Libertad Digital': 3, 'elDiario.es': 2, 'La Vanguardia': 2, 'OK Diario': 1, 'El Salto': 1, 'Ethic': 1, 'El Blog Salmón': 1, 'Letras Libres': 1, 'Huffington Post': 1, 'El Debate': 1 } },
+    { at: '2026-06-19T19:00:00.000Z', count: 40, sources: { 'The Objective': 5, 'El Mundo': 5, 'Libertad Digital': 4, 'Vozpópuli': 4, 'El País': 3, 'La Gaceta': 3, 'elDiario.es': 3, 'OK Diario': 2, 'La Vanguardia': 2, 'El Salto': 2, 'Ethic': 2, 'Letras Libres': 2, 'El Debate': 1, 'El Blog Salmón': 1, 'Huffington Post': 1 } },
+    { at: '2026-06-20T12:00:00.000Z', count: 41, sources: { 'El Mundo': 6, 'The Objective': 5, 'elDiario.es': 4, 'Libertad Digital': 4, 'La Gaceta': 4, 'Vozpópuli': 4, 'El País': 3, 'OK Diario': 2, 'El Debate': 2, 'El Salto': 2, 'Letras Libres': 2, 'Ethic': 2, 'La Vanguardia': 2, 'El Blog Salmón': 1, 'Huffington Post': 1 } },
+    { at: '2026-06-21T19:00:00.000Z', count: 40, sources: { 'The Objective': 6, 'El Mundo': 5, 'Libertad Digital': 5, 'elDiario.es': 4, 'Vozpópuli': 4, 'El País': 3, 'La Gaceta': 3, 'La Vanguardia': 3, 'OK Diario': 2, 'El Salto': 2, 'El Debate': 1, 'Huffington Post': 1 } },
+  ],
+  world: [
+    { at: '2026-06-01T21:30:00.000Z', count: 30, sources: { 'Infobae': 3, 'Foreign Affairs': 3, 'Project Syndicate': 3, 'Al Jazeera': 2, 'El Espectador': 2, 'Foreign Policy': 2, 'Daily Maverick': 2, 'Confidencial': 2, 'The National': 1, 'Kyiv Independent': 1, 'Japan Times': 1, 'Global Times': 1, 'The Hindu': 1, 'Mail & Guardian': 1, 'The Guardian': 1, 'The New York Times': 1, 'The Washington Post': 1, 'UnHerd': 1, 'National Review': 1 } },
+    { at: '2026-06-03T21:30:00.000Z', count: 30, sources: { 'Daily Maverick': 4, 'Infobae': 3, 'Foreign Affairs': 2, 'Foreign Policy': 2, 'Korea Herald': 2, 'National Review': 2, 'Project Syndicate': 2, 'Confidencial': 2, 'The National': 1, 'Al Jazeera': 1, 'Times of Israel': 1, 'Kyiv Independent': 1, 'Sixth Tone': 1, 'Global Times': 1, 'El Espectador': 1, 'Washington Post': 1, 'NYT': 1, 'UnHerd': 1, 'Indian Express': 1 } },
+    { at: '2026-06-05T21:30:00.000Z', count: 30, sources: { 'Project Syndicate': 3, 'Al Jazeera': 3, 'The Hill': 3, 'Japan Times': 3, 'Caixin Global': 3, 'Foreign Policy': 3, 'El Espectador': 3, 'Kyiv Independent': 1, 'Infobae': 1, 'MarketWatch': 1, 'Times of Israel': 1, 'The Atlantic': 2, 'UnHerd': 1, 'National Review': 1, 'Foreign Affairs': 1 } },
+    { at: '2026-06-06T18:00:00.000Z', count: 30, sources: { 'Times of Israel': 3, 'Kyiv Independent': 3, 'Project Syndicate': 3, 'Foreign Affairs': 4, 'The Bulwark': 2, 'The Guardian': 3, 'Foreign Policy': 2, 'Al Jazeera': 1, 'Quartz': 1, 'MarketWatch': 1, 'Global Times': 1, 'UnHerd': 2, 'National Review': 1, 'Daily Maverick': 1, 'NYT': 1, 'The Atlantic': 1 } },
+    { at: '2026-06-07T18:30:00.000Z', count: 30, sources: { 'Reuters': 4, 'Times of Israel': 3, 'UnHerd': 3, 'Infobae': 2, 'Caixin Global': 2, 'Global Times': 2, 'The Bulwark': 2, 'Politico': 2, 'Project Syndicate': 2, 'The Atlantic': 2, 'The Guardian': 3, 'Kyiv Independent': 1, 'The National News': 1, 'MarketWatch': 1, 'NYT': 1 } },
+    { at: '2026-06-08T21:30:00.000Z', count: 20, sources: { 'Al Jazeera': 3, 'Korea Herald': 3, 'Infobae': 3, 'Kyiv Independent': 3, 'Global Times': 2, 'Caixin Global': 1, 'Daily Maverick': 1, 'La Jornada': 1, 'MarketWatch': 1, 'Foreign Affairs': 1, 'The Bulwark': 1 } },
+    { at: '2026-06-09T21:30:00.000Z', count: 20, sources: { 'Infobae': 5, 'Daily Maverick': 3, 'Caixin Global': 2, 'Japan Times': 2, 'Foreign Affairs': 2, 'Al Jazeera': 1, 'Times of Israel': 1, 'The Hindu': 1, 'Global Times': 1, 'Foreign Policy': 1, 'Politico': 1 } },
+    { at: '2026-06-11T21:30:00.000Z', count: 20, sources: { 'Kyiv Independent': 3, 'Foreign Affairs': 3, 'Caixin Global': 3, 'South China Morning Post': 2, 'Times of Israel': 1, 'Foreign Policy': 1, 'The Hill': 1, 'The Atlantic': 1, 'Daily Maverick': 1, 'La Nación': 1, 'The National': 1, 'National Review': 1, 'Forbes': 1 } },
+    { at: '2026-06-12T21:30:00.000Z', count: 21, sources: { 'Caixin Global': 3, 'MarketWatch': 2, 'Korea Herald': 2, 'Infobae': 2, 'Foreign Affairs': 2, 'The Hill': 2, 'The Atlantic': 1, 'Times of Israel': 1, 'Reuters': 1, 'The Guardian': 1, 'WSJ': 1, 'Premium Times': 1, 'Daily Maverick': 1, 'NYT': 1 } },
+    { at: '2026-06-13T18:00:00.000Z', count: 20, sources: { 'Times of Israel': 4, 'Kyiv Independent': 2, 'Caixin Global': 2, 'Foreign Affairs': 2, 'The Hill': 2, 'Infobae Colombia': 2, 'Foreign Policy': 1, 'Global Times': 1, 'The Moscow Times': 1, 'Mail & Guardian': 1, 'Forbes': 1, 'Daily Maverick': 1 } },
+    { at: '2026-06-14T18:00:00.000Z', count: 20, sources: { 'The Hill': 3, 'Infobae': 3, 'The Bulwark': 2, 'MarketWatch': 2, 'Global Times': 2, 'Al Jazeera': 1, 'Daily Maverick': 1, 'The Guardian': 1, 'Premium Times': 1, 'Mail & Guardian': 1, 'The Korea Times': 1, 'The Hindu': 1, 'Indian Express': 1 } },
+    { at: '2026-06-15T21:30:00.000Z', count: 20, sources: { 'Times of Israel': 2, 'Infobae': 3, 'Foreign Policy': 2, 'The Guardian': 2, 'Reuters': 1, 'WSJ': 1, 'The Bulwark': 1, 'UnHerd': 1, 'SCMP': 1, 'Global Times': 1, 'Foreign Affairs': 1, 'Al Jazeera': 1, 'MarketWatch': 1, 'Mail & Guardian': 1, 'PIIE': 1 } },
+    { at: '2026-06-17T21:30:00.000Z', count: 20, sources: { 'SCMP': 5, 'China Daily': 4, 'Kyiv Independent': 3, 'Premium Times': 2, 'Times of Israel': 1, 'Forbes': 1, 'MarketWatch': 1, 'La Nación': 1, 'Foreign Policy': 1, 'The Hill': 1 } },
+    { at: '2026-06-19T18:30:00.000Z', count: 20, sources: { 'The Hill': 3, 'Japan Times': 3, 'Al Jazeera': 2, 'Global Times': 2, 'Foreign Policy': 2, 'Foreign Affairs': 2, 'Times of Israel': 1, 'NYT': 1, 'The Atlantic': 1, 'UnHerd': 1, 'Premium Times': 1, 'Daily Maverick': 1 } },
+    { at: '2026-06-20T18:00:00.000Z', count: 20, sources: { 'Foreign Affairs': 3, 'Premium Times Nigeria': 3, 'Foreign Policy': 2, 'The Bulwark': 2, 'Al Jazeera': 1, 'The Hill': 1, 'Times of Israel': 1, 'Kyiv Independent': 1, 'The Moscow Times': 1, 'Global Times': 1, 'Project Syndicate': 1, 'The Atlantic': 1, 'UnHerd': 1, 'MarketWatch': 1 } },
+    { at: '2026-06-21T18:30:00.000Z', count: 20, sources: { 'Kyiv Independent': 4, 'SCMP': 4, 'El Tiempo': 2, 'Infobae': 2, 'Al Jazeera': 1, 'Times of Israel': 1, 'Le Monde': 1, 'The Hindu': 1, 'Global Times': 1, 'Premium Times': 1, 'The Hill': 1, 'The Atlantic': 1, 'Jerusalem Post': 1 } },
+  ],
+};
+
+// Siembra los datos semilla solo si no hay histórico previo (no pisa datos del usuario).
+function seedHistoryOnce() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (raw) return; // ya hay datos: no tocar
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(HISTORY_SEED));
+  } catch (_) { /* silencioso */ }
+}
 
 function loadHistory() {
   try {
@@ -94,12 +190,15 @@ function loadHistory() {
 }
 
 // Registra un briefing. `section`: 'world' | 'spainOpinion' | 'spainNews'. `count`: nº de piezas.
-function recordHistory(section, count) {
+// `breakdown`: objeto opcional { 'Medio': nº, ... } con el desglose por medio de ese briefing.
+function recordHistory(section, count, breakdown) {
   if (!section || typeof count !== 'number' || count <= 0) return;
   try {
     const hist = loadHistory();
     const list = Array.isArray(hist[section]) ? hist[section] : [];
-    list.push({ count, at: new Date().toISOString() });
+    const entry = { count, at: new Date().toISOString() };
+    if (breakdown && typeof breakdown === 'object') entry.sources = breakdown;
+    list.push(entry);
     // Conserva solo los últimos HISTORY_MAX
     hist[section] = list.slice(-HISTORY_MAX);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
@@ -120,6 +219,40 @@ function getHistoryStats(section) {
       min: Math.min(...totals),
       max: Math.max(...totals),
     };
+  } catch (_) { return null; }
+}
+
+// Agrega el conteo por medio de una sección en los últimos `days` días.
+// Devuelve { briefings, days, totals: [{source, total, avg}], rango } o null.
+function getSourceTotals(section, days = 30) {
+  try {
+    const hist = loadHistory();
+    const list = Array.isArray(hist[section]) ? hist[section] : [];
+    if (list.length === 0) return null;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const recent = list.filter(x => {
+      const t = x.at ? new Date(x.at).getTime() : 0;
+      return t >= cutoff;
+    });
+    if (recent.length === 0) return null;
+    const acc = {};
+    let withBreakdown = 0;
+    for (const e of recent) {
+      if (e.sources && typeof e.sources === 'object') {
+        withBreakdown++;
+        for (const [s, n] of Object.entries(e.sources)) {
+          acc[s] = (acc[s] || 0) + (Number(n) || 0);
+        }
+      }
+    }
+    const totals = Object.entries(acc)
+      .map(([source, total]) => ({
+        source,
+        total,
+        avg: withBreakdown > 0 ? Math.round((total / withBreakdown) * 10) / 10 : 0,
+      }))
+      .sort((a, b) => b.total - a.total || a.source.localeCompare(b.source));
+    return { briefings: withBreakdown, days, totals };
   } catch (_) { return null; }
 }
 
@@ -1366,6 +1499,10 @@ export default function App() {
   // PressReader: si el usuario tiene acceso (vía biblioteca o suscripción)
   // hace que los medios disponibles allí se marquen con 📚 verde en vez de 🔒 PAGO
   const [pressReaderEnabled, setPressReaderEnabled] = useState(loadPressReaderEnabled());
+  const [showChangelog, setShowChangelog] = useState(false);
+  const [changelogQuery, setChangelogQuery] = useState('');
+  const [showStats, setShowStats] = useState(false);
+  const [statsSection, setStatsSection] = useState('spainOpinion');
 
   // Sincronizar a window para que NewsCard/MediaGroup puedan acceder sin prop drilling
   useEffect(() => {
@@ -1381,6 +1518,11 @@ export default function App() {
       return next;
     });
   };
+
+  // Sembrar el histórico con los datos de junio ya recopilados (solo si está vacío)
+  useEffect(() => {
+    seedHistoryOnce();
+  }, []);
 
   // Hidratar desde localStorage al montar (solo una vez)
   useEffect(() => {
@@ -1501,16 +1643,22 @@ export default function App() {
       if (!data.briefing) throw new Error('Respuesta sin briefing');
       setData(data.briefing);
       setStatus('done');
-      // Histórico local: cuenta las piezas de esta sección y regístralo para la media
+      // Histórico local: cuenta las piezas de esta sección y registra total + desglose por medio
       try {
         const b = data.briefing;
-        let n = 0;
-        if (section === 'spainNews' && Array.isArray(b.spainNews)) n = b.spainNews.length;
-        else if (section === 'spainOpinion' && Array.isArray(b.spainOpinion)) n = b.spainOpinion.length;
-        else if (Array.isArray(b.worldNews) || Array.isArray(b.worldOpinion)) {
-          n = (b.worldNews?.length || 0) + (b.worldOpinion?.length || 0);
+        let arr = [];
+        if (section === 'spainNews' && Array.isArray(b.spainNews)) arr = b.spainNews;
+        else if (section === 'spainOpinion' && Array.isArray(b.spainOpinion)) arr = b.spainOpinion;
+        else arr = [...(b.worldNews || []), ...(b.worldOpinion || [])];
+        const n = arr.length;
+        if (n > 0) {
+          const breakdown = {};
+          for (const p of arr) {
+            const s = (p && p.source) ? String(p.source).trim() : 'Sin medio';
+            breakdown[s] = (breakdown[s] || 0) + 1;
+          }
+          recordHistory(section, n, breakdown);
         }
-        if (n > 0) recordHistory(section, n);
       } catch (_) { /* no-op */ }
     } catch (err) {
       setStatus('error');
@@ -2130,14 +2278,14 @@ export default function App() {
     if (spainOpinionStatus === 'loading') return 'Buscando opinión España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainOpinionStatus === 'done') return `🔄 Recargar opinión España (${realSpainOpinionCount})`;
-    return '✍️ Opinión España (hasta 22)';
+    return '✍️ Opinión España (hasta 36)';
   })();
 
   const spainNewsBtnLabel = (() => {
     if (spainNewsStatus === 'loading') return 'Buscando noticias España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainNewsStatus === 'done') return `🔄 Recargar noticias España (${realSpainNewsCount})`;
-    return '🇪🇸 Noticias España (hasta 25)';
+    return '🇪🇸 Noticias España (hasta 28)';
   })();
 
   const hasAnyData = intlData || spainNewsData || spainOpinionData;
@@ -2926,6 +3074,205 @@ export default function App() {
           </p>
         </div>
       </div>
+
+      {/* Botón flotante: histórico de cambios */}
+      <button
+        onClick={() => setShowChangelog(true)}
+        style={{
+          position: 'fixed', bottom: '18px', right: '18px', zIndex: 9998,
+          background: '#16140F', color: '#F4ECD4', border: '2px solid #F4ECD4',
+          borderRadius: '50%', width: '52px', height: '52px', fontSize: '20px',
+          cursor: 'pointer', boxShadow: '3px 3px 0 rgba(0,0,0,0.3)',
+          fontFamily: "'Space Mono', monospace",
+        }}
+        title="Histórico de cambios"
+      >
+        ✦
+      </button>
+
+      {/* Botón flotante: estadísticas por medio */}
+      <button
+        onClick={() => setShowStats(true)}
+        style={{
+          position: 'fixed', bottom: '80px', right: '18px', zIndex: 9998,
+          background: '#16140F', color: '#F4ECD4', border: '2px solid #F4ECD4',
+          borderRadius: '50%', width: '52px', height: '52px', fontSize: '20px',
+          cursor: 'pointer', boxShadow: '3px 3px 0 rgba(0,0,0,0.3)',
+          fontFamily: "'Space Mono', monospace",
+        }}
+        title="Estadísticas por medio (último mes)"
+      >
+        📊
+      </button>
+
+      {/* Modal: tabla de piezas por medio (último mes) */}
+      {showStats && (() => {
+        const SECTION_LABELS = {
+          spainNews: '🇪🇸 Noticias España',
+          spainOpinion: '✍️ Opinión España',
+          world: '🌍 Internacional',
+        };
+        const stats = getSourceTotals(statsSection, 30);
+        return (
+          <div
+            onClick={() => setShowStats(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              background: 'rgba(0,0,0,0.6)', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', padding: '16px',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#F4ECD4', color: '#16140F', maxWidth: '620px',
+                width: '100%', maxHeight: '85vh', overflowY: 'auto',
+                border: '3px solid #16140F', borderRadius: '12px',
+                boxShadow: '6px 6px 0 rgba(0,0,0,0.4)', padding: '20px',
+                fontFamily: "'Crimson Pro', Georgia, serif",
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h2 style={{ margin: 0, fontFamily: "'Space Mono', monospace", fontSize: '17px', letterSpacing: '0.04em' }}>
+                  📊 Piezas por medio · últimos 30 días
+                </h2>
+                <button
+                  onClick={() => setShowStats(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#16140F', lineHeight: 1 }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Selector de sección */}
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                {Object.entries(SECTION_LABELS).map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setStatsSection(key)}
+                    style={{
+                      padding: '6px 10px', borderRadius: '6px', cursor: 'pointer',
+                      fontSize: '12px', fontFamily: "'Verdana', sans-serif",
+                      border: '2px solid #16140F',
+                      background: statsSection === key ? '#16140F' : 'transparent',
+                      color: statsSection === key ? '#F4ECD4' : '#16140F',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {!stats ? (
+                <p style={{ opacity: 0.7, fontStyle: 'italic', lineHeight: 1.5 }}>
+                  Aún no hay datos para esta sección. Los datos se acumulan cada vez que generas un briefing — vuelve tras unos días de uso.
+                </p>
+              ) : (
+                <>
+                  <div style={{ fontSize: '11px', fontFamily: "'Space Mono', monospace", opacity: 0.65, marginBottom: '10px' }}>
+                    {stats.briefings} briefings registrados · {stats.totals.length} medios
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #16140F', textAlign: 'left' }}>
+                        <th style={{ padding: '6px 4px', fontFamily: "'Space Mono', monospace", fontSize: '11px' }}>MEDIO</th>
+                        <th style={{ padding: '6px 4px', fontFamily: "'Space Mono', monospace", fontSize: '11px', textAlign: 'right' }}>TOTAL</th>
+                        <th style={{ padding: '6px 4px', fontFamily: "'Space Mono', monospace", fontSize: '11px', textAlign: 'right' }}>MEDIA/DÍA</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.totals.map((r, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid rgba(22,20,15,0.12)' }}>
+                          <td style={{ padding: '6px 4px' }}>{r.source}</td>
+                          <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 700 }}>{r.total}</td>
+                          <td style={{ padding: '6px 4px', textAlign: 'right', opacity: 0.7 }}>{r.avg}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Modal: histórico de cambios buscable */}
+      {showChangelog && (() => {
+        const q = changelogQuery.trim().toLowerCase();
+        const filtered = q
+          ? CHANGELOG.filter(c =>
+              c.texto.toLowerCase().includes(q) ||
+              c.area.toLowerCase().includes(q) ||
+              c.fecha.toLowerCase().includes(q))
+          : CHANGELOG;
+        return (
+          <div
+            onClick={() => setShowChangelog(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              background: 'rgba(0,0,0,0.6)', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', padding: '16px',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#F4ECD4', color: '#16140F', maxWidth: '620px',
+                width: '100%', maxHeight: '85vh', overflowY: 'auto',
+                border: '3px solid #16140F', borderRadius: '12px',
+                boxShadow: '6px 6px 0 rgba(0,0,0,0.4)', padding: '20px',
+                fontFamily: "'Crimson Pro', Georgia, serif",
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h2 style={{ margin: 0, fontFamily: "'Space Mono', monospace", fontSize: '18px', letterSpacing: '0.04em' }}>
+                  ✦ Histórico de cambios
+                </h2>
+                <button
+                  onClick={() => setShowChangelog(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#16140F', lineHeight: 1 }}
+                >
+                  ×
+                </button>
+              </div>
+              <input
+                type="text"
+                value={changelogQuery}
+                onChange={(e) => setChangelogQuery(e.target.value)}
+                placeholder="Buscar cambios… (ej: Vozpópuli, deportes, fechas)"
+                style={{
+                  width: '100%', padding: '8px 12px', marginBottom: '14px',
+                  border: '2px solid #16140F', borderRadius: '8px',
+                  fontSize: '14px', fontFamily: "'Verdana', sans-serif",
+                  boxSizing: 'border-box', background: 'white',
+                }}
+              />
+              <div style={{ fontSize: '11px', fontFamily: "'Space Mono', monospace", opacity: 0.6, marginBottom: '8px' }}>
+                {filtered.length} de {CHANGELOG.length} cambios
+              </div>
+              {filtered.length === 0 ? (
+                <p style={{ opacity: 0.6, fontStyle: 'italic' }}>Sin resultados para "{changelogQuery}".</p>
+              ) : (
+                filtered.map((c, i) => (
+                  <div key={i} style={{
+                    padding: '10px 0', borderBottom: '1px solid rgba(22,20,15,0.15)',
+                  }}>
+                    <div style={{
+                      fontFamily: "'Space Mono', monospace", fontSize: '10px',
+                      textTransform: 'uppercase', letterSpacing: '0.08em',
+                      opacity: 0.7, marginBottom: '3px',
+                    }}>
+                      {c.fecha} · {c.area}
+                    </div>
+                    <div style={{ fontSize: '14px', lineHeight: 1.45 }}>{c.texto}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
