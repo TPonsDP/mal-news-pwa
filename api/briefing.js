@@ -140,11 +140,12 @@ const SPAIN_NEWS_FEEDS = [
 
   // Google News RSS (fallback solo para medios sin RSS público fiable)
   // NOTA: portada.xml de Vozpópuli devuelve 403 desde Vercel — se omite el RSS nativo.
-  // Las queries con OR de site: rinden mal en Google News; se usan queries simples
-  // por sección + ventana 2d como red de seguridad ante indexado lento.
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+-site:vozpopuli.com/opinion&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+-site:vozpopuli.com/opinion+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
-  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+-site:vozpopuli.com/opinion+when:2d&hl=es-ES&gl=ES&ceid=ES:es' },
+  // FIX: la exclusión "-site:vozpopuli.com/opinion" (subruta) rompía el feed en Google News
+  // (no distingue bien subrutas en exclusión → devolvía cero). Ahora query LIMPIA site:vozpopuli.com;
+  // el clasificador isOpinionPiece separa después noticia vs columna por la firma del autor.
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+when:1d&hl=es-ES&gl=ES&ceid=ES:es' },
+  { source: 'Vozpópuli', url: 'https://news.google.com/rss/search?q=site:vozpopuli.com+when:2d&hl=es-ES&gl=ES&ceid=ES:es' },
   // Invertia - sección de El Español, RSS nativo + fallback Google News
   { source: 'Invertia', url: 'https://www.elespanol.com/invertia/rss/' },
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
@@ -1730,6 +1731,9 @@ ANTES de seleccionar las 20 piezas internacionales, OBLIGATORIAMENTE asegúrate 
 🚫 USA y UK están limitados a CAP MÁX (no MIN), no abuses de ellos. Si te falta espacio para LATAM/Asia/África, RECORTA USA/UK.
 
 ⭐⭐⭐ PRESUPUESTO OBLIGATORIO DE BÚSQUEDAS (tienes 10 búsquedas disponibles) ⭐⭐⭐
+
+🚨 FECHA EN LAS BÚSQUEDAS: la fecha solicitada puede ser PASADA. Al buscar y al seleccionar piezas, SOLO acepta artículos publicados en las fechas aceptadas (${allowedDates && allowedDates.length ? allowedDates.join(' o ') : 'día solicitado y anterior'}). Si una pieza encontrada es del día actual (hoy real) pero se pidió un día pasado, DESCÁRTALA. No reportes noticias posteriores a la fecha solicitada aunque el buscador las muestre como "más recientes".
+
 RESERVA EXPLÍCITAMENTE las siguientes búsquedas ANTES de hacer ninguna otra:
 
   BLOQUE 1 · PROTEGIDO (reservado, no negociable): 3 búsquedas
@@ -2234,7 +2238,7 @@ REGLAS DE SELECCIÓN (en orden de prioridad):
    - El Salto: MÁX 2 columnas (MÍN 1 · izquierda alternativa · social/clima/laboral · gratuito)
    - El País: MÁX 3 columnas (MÍN 3 si hay material)
    - El Mundo: MÁX 5 columnas (MÍN 4 si hay material)
-   - La Vanguardia: MÁX 2 columnas (Barcelona · centro/cd catalanista)
+   - La Vanguardia: MÁX 2 columnas (MÍN 2 · Barcelona · centro/cd catalanista)
    - OK Diario: MÁX 2 columnas (MÍN 1)
    - El Debate: MÁX 2 columnas (MÍN 1)
    - El Blog Salmón: MÁX 2 columnas (análisis económico divulgativo · MÍN 1)
