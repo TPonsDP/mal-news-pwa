@@ -151,14 +151,16 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'Invertia', url: 'https://news.google.com/rss/search?q=site:invertia.com+OR+site:elespanol.com/invertia&hl=es-ES&gl=ES&ceid=ES:es' },
 ];
 
-async function fetchOneFeed(feed, timeoutMs = 8000) {
-  // Primer intento
+async function fetchOneFeed(feed, timeoutMs = 12000) {
+  // Primer intento. Timeout 12s: con maxDuration:60 hay margen para dar a los
+  // feeds lentos (Google News desde Vercel) más oportunidad de responder.
   const r1 = await fetchOneFeedAttempt(feed, timeoutMs);
   if (r1.items.length > 0) return r1;
-  // Reintento ÚNICO solo para errores de red/timeout (NO empty), mismo timeout.
-  // No alargamos el timeout en el retry para no disparar el tiempo total → evita 504.
+  // Reintento ÚNICO solo para errores de red/timeout (NO empty), con timeout CORTO
+  // (3s): si el feed ya colgó una vez, no le damos otros 12s. Evita que un solo
+  // feed lento consuma 24s. Con maxDuration:60 esto es red de seguridad.
   if (r1.status === 'timeout' || r1.status === 'fetch_error') {
-    const r2 = await fetchOneFeedAttempt(feed, timeoutMs);
+    const r2 = await fetchOneFeedAttempt(feed, 3000);
     if (r2.items.length > 0) return r2;
   }
   return r1;
@@ -1202,9 +1204,22 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
 
   const feedResults = [];
 
+  // ⏱️ PRESUPUESTO DE TIEMPO para toda la fase de feeds. Si se agota, dejamos de
+  // pedir feeds y seguimos con LO QUE YA TENGAMOS recogido (degradación elegante):
+  // un feed que no llegó a tiempo no aporta piezas ese día, pero NO tumba el
+  // briefing con un 504. Deja holgura dentro de maxDuration:60 para que el modelo
+  // genere después.
+  const FEED_BUDGET_MS = 30000;
+  const feedPhaseStart = Date.now();
+  const budgetSpent = () => (Date.now() - feedPhaseStart) >= FEED_BUDGET_MS;
+
   // 1) Feeds NATIVOS: en paralelo, batches de 25 (no se throttlean)
   const NATIVE_BATCH = 25;
   for (let i = 0; i < nativeFeeds.length; i += NATIVE_BATCH) {
+    if (budgetSpent()) {
+      console.log(`⏱️ Presupuesto de feeds agotado en fase nativa (${i}/${nativeFeeds.length}); sigo con lo recogido`);
+      break;
+    }
     const batch = nativeFeeds.slice(i, i + NATIVE_BATCH);
     const batchResults = await Promise.all(batch.map(feed => fetchOneFeed(feed)));
     feedResults.push(...batchResults);
@@ -1215,6 +1230,10 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
   const GNEWS_BATCH = 6;
   const GNEWS_DELAY_MS = 350;
   for (let i = 0; i < gnewsFeeds.length; i += GNEWS_BATCH) {
+    if (budgetSpent()) {
+      console.log(`⏱️ Presupuesto de feeds agotado en fase Google News (${i}/${gnewsFeeds.length}); sigo con lo recogido`);
+      break;
+    }
     const batch = gnewsFeeds.slice(i, i + GNEWS_BATCH);
     const batchResults = await Promise.all(batch.map(feed => fetchOneFeed(feed)));
     feedResults.push(...batchResults);
@@ -2042,6 +2061,10 @@ ${list}`;
     return {};
   }
 }
+
+// Vercel Pro: permite hasta 60s de ejecución. Sin esto, la función usa el
+// default del plan y puede cortar con 504 antes de que el modelo termine.
+export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
