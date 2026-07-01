@@ -2062,9 +2062,12 @@ ${list}`;
   }
 }
 
-// Vercel Pro: permite hasta 60s de ejecución. Sin esto, la función usa el
-// default del plan y puede cortar con 504 antes de que el modelo termine.
-export const config = { maxDuration: 60 };
+// Vercel Pro (Fluid Compute): permite hasta 300s. La fase pesada es la
+// generación del modelo (Sonnet, hasta 12k tokens, ~40-70s). Con 300s hay
+// margen de sobra para feeds + generación sin cortar con 504.
+// ⚠️ REQUIERE activar Fluid Compute en Vercel → Settings → Functions; si no
+// está activo, el tope se queda en 60s aunque aquí ponga 300.
+export const config = { maxDuration: 300 };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -2843,20 +2846,58 @@ ${candidatesText}
 OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
 {"date":"${todayShort}","editorNote":"Análisis de los 2-3 temas clave del día...","spainNews":[{"rank":1,"title":"...","summary":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
 
-      const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 16000,
-          messages: [{ role: 'user', content: userPrompt }],
-          // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
-        }),
-      });
+      // AbortController: si la API de Anthropic se cuelga, cortamos a los 90s y
+      // devolvemos un error limpio en vez de dejar la función colgada hasta el
+      // maxDuration (5 min) → evita el 504 FUNCTION_INVOCATION_TIMEOUT.
+      const acNews = new AbortController();
+      const acNewsTimer = setTimeout(() => acNews.abort(), 90000);
+      let upstream;
+      try {
+        upstream = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 12000,
+            messages: [{ role: 'user', content: userPrompt }],
+            // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
+          }),
+          signal: acNews.signal,
+        });
+      } catch (e) {
+        clearTimeout(acNewsTimer);
+        // 🛟 FALLBACK: si el modelo se cuelga/timeout/red, NO devolvemos 504.
+        // Servimos un briefing DEGRADADO con las piezas crudas de los feeds
+        // (ya recogidas y filtradas por fecha), sin la curación del modelo.
+        // Feo pero funcional: el usuario recibe noticias reales al instante.
+        const aborted = e.name === 'AbortError';
+        const fallbackItems = candidates.slice(0, 28).map((c, i) => ({
+          rank: i + 1,
+          title: c.title || '(sin título)',
+          summary: String(c.description || '').slice(0, 300),
+          source: c.source || '',
+          url: c.url || '',
+          publishedDate: c.publishedDate || todayShort,
+        }));
+        return res.status(200).json({
+          briefing: {
+            date: todayShort,
+            editorNote: aborted
+              ? '⚠️ Briefing de emergencia: la generación superó el tiempo límite. Estas son las piezas recogidas de los feeds sin curación editorial. Recarga en unos minutos para el briefing completo.'
+              : '⚠️ Briefing de emergencia: fallo temporal al generar. Piezas de feeds sin curar. Recarga en unos minutos.',
+            spainNews: fallbackItems,
+            _fallback: true,
+            _fallbackReason: aborted ? 'model_timeout' : `model_fetch_error: ${String(e.message || e).slice(0, 200)}`,
+            _meta: { candidatesFound: candidates.length, degraded: true },
+          },
+          section,
+        });
+      }
+      clearTimeout(acNewsTimer);
 
       if (!upstream.ok) {
         const errText = await upstream.text();
