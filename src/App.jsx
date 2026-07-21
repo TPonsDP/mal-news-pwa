@@ -275,14 +275,16 @@ const BRAND = {
   shadowLg: '6px 6px 0 rgba(22, 20, 15, 0.22)',
   // Gradientes oficiales por bucket (Riso: tinta sólida → deep, sin blend modes)
   intlGrad: 'linear-gradient(90deg, #00A896, #007F70)',       // Noticias Internacional: teal
-  opinionGrad: 'linear-gradient(90deg, #FF2D7A, #E50E5C)',     // Opinión España: rosa flúor
-  newsGrad: 'linear-gradient(90deg, #FF6B00, #D45500)',        // Noticias España: naranja
-  worldOpinionGrad: 'linear-gradient(90deg, #7C3AED, #5B1FC0)',// Opinión Internacional: violeta
+  worldNewsGrad: 'linear-gradient(90deg, #00FA8C, #00B368)',  // Noticias Internacional: verde menta brillante
+  worldOpinionGrad: 'linear-gradient(90deg, #0FA69D, #0A7A73)', // Opinión Internacional: teal
+  opinionGrad: 'linear-gradient(90deg, #D6FF00, #A8CC00)',     // Opinión España: amarillo lima flúor
+  newsGrad: 'linear-gradient(90deg, #F86040, #D63E1E)',        // Noticias España: coral
+  worldOpinionGrad: 'linear-gradient(90deg, #0FA69D, #0A7A73)',// Opinión Internacional: teal
   // Colores sólidos para bordes/badges (start de cada gradiente)
   intlColor: '#00A896',        // teal
-  opinionColor: '#FF2D7A',     // rosa flúor
-  newsColor: '#FF6B00',        // naranja
-  worldOpinionColor: '#7C3AED',// violeta
+  opinionColor: '#D6FF00',     // amarillo lima flúor
+  newsColor: '#F86040',        // coral
+  worldOpinionColor: '#0FA69D',// teal
 
   // ============ ALIASES PARA RETROCOMPATIBILIDAD ============
   navy: '#1A3FE6',
@@ -323,13 +325,13 @@ function DiagonalHeader({ dateObj }) {
       </defs>
 
       {/* Fondo gris humo con esquinas redondeadas */}
-      <rect x="0" y="0" width="600" height="210" fill="#F0F4F8" rx="10" />
+      <rect x="0" y="0" width="600" height="210" fill="#ADD0FF" rx="10" />
 
       {/* Bloque azul Oxford con corte diagonal */}
-      <path d="M 0 0 L 280 0 L 200 210 L 0 210 Z" fill="#1A365D" />
+      <path d="M 0 0 L 280 0 L 200 210 L 0 210 Z" fill="#FA4E3F" />
 
       {/* Línea naranja siguiendo el corte diagonal */}
-      <line x1="280" y1="0" x2="200" y2="210" stroke="#FA6900" strokeWidth="4" />
+      <line x1="280" y1="0" x2="200" y2="210" stroke="#FADD00" strokeWidth="4" />
 
       {/* Logo circular dentro del bloque azul */}
       <g transform="translate(110, 105)">
@@ -343,14 +345,14 @@ function DiagonalHeader({ dateObj }) {
       </g>
 
       {/* Zona derecha: día en serif Georgia */}
-      <text x="305" y="70" fontFamily="Georgia, 'Times New Roman', serif" fontStyle="italic" fontSize="42" fill="#1A365D">
+      <text x="305" y="70" fontFamily="Georgia, 'Times New Roman', serif" fontStyle="italic" fontSize="42" fill="#011142">
         {dayName}
       </text>
 
       {/* Día número grande naranja + mes en azul */}
-      <text x="320" y="108" fontFamily="'Verdana', 'Geneva', sans-serif" fontWeight="900" fontSize="34" fill="#FA6900" letterSpacing="-0.02em">
+      <text x="320" y="108" fontFamily="'Verdana', 'Geneva', sans-serif" fontWeight="900" fontSize="34" fill="#FA4E3F" letterSpacing="-0.02em">
         {dayNumber}
-        <tspan fontSize="17" fill="#1A365D" fontWeight="700" dx="8">{month}</tspan>
+        <tspan fontSize="17" fill="#011142" fontWeight="700" dx="8">{month}</tspan>
       </text>
 
       {/* Año con letterspacing amplio */}
@@ -360,8 +362,8 @@ function DiagonalHeader({ dateObj }) {
       <line x1="320" y1="156" x2="575" y2="156" stroke="#1A365D" strokeWidth="0.5" opacity="0.25" />
 
       {/* Sub-etiquetas en dos líneas con color diferenciado */}
-      <text x="320" y="176" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#5A6B7C" letterSpacing="0.16em">ESPAÑA · OPINIÓN</text>
-      <text x="320" y="194" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#0F766E" letterSpacing="0.16em">MUNDO · INTERNACIONAL</text>
+      <text x="320" y="176" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#3D737A" letterSpacing="0.16em">ESPAÑA · OPINIÓN</text>
+      <text x="320" y="194" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#3D737A" letterSpacing="0.16em">MUNDO · INTERNACIONAL</text>
     </svg>
   );
 }
@@ -1565,9 +1567,14 @@ export default function App() {
 
     const setters = {
       international:  { setData: setIntlData,         setStatus: setIntlStatus,         setError: setIntlError },
+      worldNews:      { setData: setIntlData,         setStatus: setIntlStatus,         setError: setIntlError },
+      worldOpinion:   { setData: setIntlData,         setStatus: setIntlStatus,         setError: setIntlError },
       spainNews:      { setData: setSpainNewsData,    setStatus: setSpainNewsStatus,    setError: setSpainNewsError },
       spainOpinion:   { setData: setSpainOpinionData, setStatus: setSpainOpinionStatus, setError: setSpainOpinionError },
     };
+    // worldNews/worldOpinion son sub-modos que llenan solo su parte del estado intl.
+    // Al guardar hay que FUSIONAR (mantener la otra mitad ya cargada), no reemplazar.
+    const isIntlSubMode = (section === 'worldNews' || section === 'worldOpinion');
     const { setData, setStatus, setError } = setters[section] || {};
     if (!setData) return;
 
@@ -1641,15 +1648,38 @@ export default function App() {
 
       const data = await res.json();
       if (!data.briefing) throw new Error('Respuesta sin briefing');
-      setData(data.briefing);
+      if (isIntlSubMode) {
+        // Fusionar: conservar la parte ya cargada (worldNews o worldOpinion) y
+        // actualizar solo la que acaba de llegar. Así los dos botones se acumulan.
+        setIntlData(prev => {
+          const base = prev || {};
+          const incoming = data.briefing || {};
+          return {
+            ...base,
+            ...incoming,
+            date: incoming.date || base.date,
+            worldNews: (section === 'worldNews')
+              ? (incoming.worldNews || [])
+              : (base.worldNews || incoming.worldNews || []),
+            worldOpinion: (section === 'worldOpinion')
+              ? (incoming.worldOpinion || [])
+              : (base.worldOpinion || incoming.worldOpinion || []),
+          };
+        });
+      } else {
+        setData(data.briefing);
+      }
       setStatus('done');
       // Histórico local: cuenta las piezas de esta sección y registra total + desglose por medio
       try {
         const b = data.briefing;
         let arr = [];
+        let histKey = section;
         if (section === 'spainNews' && Array.isArray(b.spainNews)) arr = b.spainNews;
         else if (section === 'spainOpinion' && Array.isArray(b.spainOpinion)) arr = b.spainOpinion;
-        else arr = [...(b.worldNews || []), ...(b.worldOpinion || [])];
+        else if (section === 'worldNews') { arr = b.worldNews || []; histKey = 'world'; }
+        else if (section === 'worldOpinion') { arr = b.worldOpinion || []; histKey = 'worldOpinion'; }
+        else { arr = [...(b.worldNews || []), ...(b.worldOpinion || [])]; histKey = 'world'; }
         const n = arr.length;
         if (n > 0) {
           const breakdown = {};
@@ -1657,7 +1687,7 @@ export default function App() {
             const s = (p && p.source) ? String(p.source).trim() : 'Sin medio';
             breakdown[s] = (breakdown[s] || 0) + 1;
           }
-          recordHistory(section, n, breakdown);
+          recordHistory(histKey, n, breakdown);
         }
       } catch (_) { /* no-op */ }
     } catch (err) {
@@ -1895,10 +1925,10 @@ export default function App() {
 
     // Mapeo de colores y gradientes por sección (debe coincidir con SECTION_COLORS/SECTION_GRADIENTS de la PWA)
     const SECTION_STYLES = {
-      worldOpinion: { color: '#7C3AED', gradient: 'linear-gradient(90deg, #7C3AED, #5B1FC0)' },
-      worldNews:    { color: '#00A896', gradient: 'linear-gradient(90deg, #00A896, #007F70)' },
-      spainOpinion: { color: '#FF2D7A', gradient: 'linear-gradient(90deg, #FF2D7A, #E50E5C)' },
-      spainNews:    { color: '#FF6B00', gradient: 'linear-gradient(90deg, #FF6B00, #D45500)' },
+      worldOpinion: { color: '#0FA69D', gradient: 'linear-gradient(90deg, #0FA69D, #0A7A73)' },
+      worldNews:    { color: '#00FA8C', gradient: 'linear-gradient(90deg, #00FA8C, #00B368)' },
+      spainOpinion: { color: '#D6FF00', gradient: 'linear-gradient(90deg, #D6FF00, #A8CC00)' },
+      spainNews:    { color: '#F86040', gradient: 'linear-gradient(90deg, #F86040, #D63E1E)' },
     };
 
     const getDay = (iso) => {
@@ -2047,25 +2077,25 @@ export default function App() {
   ${W} .date { font-family:'Space Mono',monospace; font-size:12px; letter-spacing:0.3em; color:#0028C2; text-transform:uppercase; font-weight:700; margin:10px 0 0; }
   ${W} .total { font-family:'Space Mono',monospace; font-size:11px; color:#16140F; background:#FF2D7A; display:inline-block; padding:3px 10px; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
   ${W} .footer { text-align:center; margin-top:32px; padding:18px; font-family:'Space Mono',monospace; font-size:10px; color:rgba(22,20,15,0.6); letter-spacing:0.15em; border-top:3px double #1A3FE6; }
-  ${W} .next-briefing { background:#FFFCF2; border:3px solid #16140F; border-radius:0; padding:20px 22px; margin:32px 0 0; box-shadow:6px 6px 0 #00A896; }
-  ${W} .next-briefing-label { text-align:center; font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.18em; color:#16140F; margin-bottom:14px; }
+  ${W} .next-briefing { background:#FFFCF2; border:3px solid #011142; border-radius:0; padding:20px 22px; margin:32px 0 0; box-shadow:6px 6px 0 #011142; }
+  ${W} .next-briefing-label { text-align:center; font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.18em; color:#011142; margin-bottom:14px; }
   ${W} .schedule-card { display:flex; gap:14px; align-items:center; padding:14px 16px; border-radius:0; margin-bottom:10px; background:#FFFCF2; }
-  ${W} .spain-card { border:2px solid #16140F; box-shadow:4px 4px 0 #FF6B00; }
-  ${W} .intl-card { border:2px solid #16140F; box-shadow:4px 4px 0 #00A896; }
+  ${W} .spain-card { border:2px solid #011142; box-shadow:4px 4px 0 #F86040; }
+  ${W} .intl-card { border:2px solid #011142; box-shadow:4px 4px 0 #00FA8C; }
   ${W} .card-icon { font-size:32px; flex-shrink:0; }
   ${W} .card-body { flex:1; }
-  ${W} .card-title { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.16em; color:#16140F; margin-bottom:3px; }
-  ${W} .spain-card .card-title { color:#D45500; }
-  ${W} .intl-card .card-title { color:#007F70; }
-  ${W} .card-time { font-style:italic; font-size:18px; font-weight:700; color:#16140F; margin-bottom:3px; line-height:1.2; }
-  ${W} .card-reason { font-size:12px; font-style:italic; color:rgba(22,20,15,0.7); line-height:1.3; }
-  ${W} .next-briefing-schedule { border-top:2px dashed rgba(22,20,15,0.2); padding-top:14px; margin-top:8px; }
-  ${W} .schedule-title { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.12em; color:#16140F; margin-bottom:10px; text-align:center; }
+  ${W} .card-title { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.16em; color:#011142; margin-bottom:3px; }
+  ${W} .spain-card .card-title { color:#F86040; }
+  ${W} .intl-card .card-title { color:#00B368; }
+  ${W} .card-time { font-style:italic; font-size:18px; font-weight:700; color:#011142; margin-bottom:3px; line-height:1.2; }
+  ${W} .card-reason { font-size:12px; font-style:italic; color:rgba(1,17,66,0.7); line-height:1.3; }
+  ${W} .next-briefing-schedule { border-top:2px dashed #FADD00; padding-top:14px; margin-top:8px; }
+  ${W} .schedule-title { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.12em; color:#011142; margin-bottom:10px; text-align:center; }
   ${W} .schedule-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   ${W} .schedule-col-title { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; letter-spacing:0.14em; padding:5px 0; margin-bottom:4px; text-align:center; border-radius:0; color:#FFFCF2; }
-  ${W} .spain-title { background:#FF6B00; }
-  ${W} .intl-title { background:#00A896; }
-  ${W} .schedule-row { display:flex; justify-content:space-between; font-size:12px; color:#16140F; padding:3px 6px; border-bottom:1px dashed rgba(22,20,15,0.12); }
+  ${W} .spain-title { background:#F86040; color:#FFFCF2; }
+  ${W} .intl-title { background:#00B368; color:#FFFCF2; }
+  ${W} .schedule-row { display:flex; justify-content:space-between; font-size:12px; color:#011142; padding:3px 6px; border-bottom:1px dashed rgba(1,17,66,0.15); }
   ${W} .schedule-row:last-child { border-bottom:none; }
   ${W} .copy-hint { background:#1A3FE6; border:3px solid #16140F; border-radius:0; padding:14px 18px; margin-bottom:20px; font-size:13px; color:#FFFCF2; text-align:center; box-shadow:4px 4px 0 #FF2D7A; }
   ${W} .copy-hint strong { color:#FFFCF2; }
@@ -2621,13 +2651,13 @@ export default function App() {
               cursor: (spainOpinionStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
               background: spainOpinionStatus === 'loading'
-                ? `linear-gradient(90deg, #65A30D, #FACC15, #65A30D)`
+                ? `linear-gradient(90deg, #A8CC00, #EFFF7A, #A8CC00)`
                 : BRAND.opinionGrad,
               backgroundSize: spainOpinionStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: spainOpinionStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: 'white', opacity: (spainOpinionStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 6px 20px rgba(101,163,13,0.40)', textTransform: 'uppercase',
-              textShadow: '0 1px 2px rgba(0,0,0,0.15)',
+              color: '#1A1A0A', opacity: (spainOpinionStatus === 'loading' || isInCooldown) ? 0.65 : 1,
+              boxShadow: '0 6px 20px rgba(214,255,0,0.45)', textTransform: 'uppercase',
+              textShadow: 'none',
             }}
           >
             {spainOpinionBtnLabel}
@@ -2643,12 +2673,12 @@ export default function App() {
               cursor: (spainNewsStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
               background: spainNewsStatus === 'loading'
-                ? `linear-gradient(90deg, #C2410C, #FA6900, #C2410C)`
+                ? `linear-gradient(90deg, #D63E1E, #FF8A6B, #D63E1E)`
                 : BRAND.newsGrad,
               backgroundSize: spainNewsStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: spainNewsStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
               color: 'white', opacity: (spainNewsStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 6px 20px rgba(250,105,0,0.40)', textTransform: 'uppercase',
+              boxShadow: '0 6px 20px rgba(248,96,64,0.42)', textTransform: 'uppercase',
               textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
@@ -2657,7 +2687,7 @@ export default function App() {
 
           <button
             className="mal-cta"
-            onClick={() => fetchSection('international')}
+            onClick={() => fetchSection('worldNews')}
             disabled={intlStatus === 'loading' || isInCooldown}
             style={{
               border: 'none', borderRadius: '12px', padding: '14px 22px',
@@ -2665,16 +2695,38 @@ export default function App() {
               cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
               background: intlStatus === 'loading'
-                ? `linear-gradient(90deg, #0F766E, #5EEAD4, #0F766E)`
-                : BRAND.intlGrad,
+                ? `linear-gradient(90deg, #00B368, #5EFFB0, #00B368)`
+                : BRAND.worldNewsGrad || BRAND.intlGrad,
               backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
               color: 'white', opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 6px 20px rgba(15,118,110,0.40)', textTransform: 'uppercase',
+              boxShadow: '0 6px 20px rgba(0,250,140,0.40)', textTransform: 'uppercase',
               textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
-            {intlBtnLabel}
+            🌍 Noticias Internacional
+          </button>
+
+          <button
+            className="mal-cta"
+            onClick={() => fetchSection('worldOpinion')}
+            disabled={intlStatus === 'loading' || isInCooldown}
+            style={{
+              border: 'none', borderRadius: '12px', padding: '14px 22px',
+              fontSize: '11px', fontWeight: '800', letterSpacing: '0.08em',
+              cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
+              transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
+              background: intlStatus === 'loading'
+                ? `linear-gradient(90deg, #0A7A73, #4FD4C8, #0A7A73)`
+                : BRAND.worldOpinionGrad || BRAND.intlGrad,
+              backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
+              animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
+              color: 'white', opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
+              boxShadow: '0 6px 20px rgba(15,166,157,0.42)', textTransform: 'uppercase',
+              textShadow: '0 1px 2px rgba(0,0,0,0.15)',
+            }}
+          >
+            ✍️ Opinión Internacional
           </button>
         </div>
 
