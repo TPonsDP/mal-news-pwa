@@ -166,6 +166,57 @@ async function fetchOneFeed(feed, timeoutMs = 12000) {
   return r1;
 }
 
+// 🔁 Helper de reintento para la API de Anthropic. Reintenta ante 529 (overloaded)
+// y 429 (rate limit) con backoff creciente. NO reintenta ante errores 4xx de la
+// petición (400, 401...) porque no se arreglan reintentando. Devuelve la Response
+// (ok o no) o lanza el error de red/abort para que el caller lo maneje.
+// Cada intento respeta un AbortController con `timeoutMs`. `maxRetries` reintentos
+// EXTRA (total intentos = maxRetries + 1).
+async function callAnthropicWithRetry(body, apiKey, { timeoutMs = 90000, maxRetries = 3 } = {}) {
+  let lastResp = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), timeoutMs);
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(body),
+        signal: ac.signal,
+      });
+      clearTimeout(timer);
+      // Éxito o error que NO se arregla reintentando → devolver tal cual
+      if (resp.ok || (resp.status !== 529 && resp.status !== 429 && resp.status < 500)) {
+        return resp;
+      }
+      // 529 / 429 / 5xx → reintentar con backoff si quedan intentos
+      lastResp = resp;
+      if (attempt < maxRetries) {
+        const waitMs = Math.min(2000 * Math.pow(2, attempt), 12000); // 2s, 4s, 8s (máx 12s)
+        console.log(`🔁 Anthropic ${resp.status} (intento ${attempt + 1}/${maxRetries + 1}); reintento en ${waitMs}ms`);
+        await new Promise(r => setTimeout(r, waitMs));
+        continue;
+      }
+      return resp; // agotados los reintentos, devolver el último (no-ok)
+    } catch (e) {
+      clearTimeout(timer);
+      // Abort/red: reintentar si quedan intentos (salvo que sea abort por timeout duro)
+      if (attempt < maxRetries && e.name !== 'AbortError') {
+        const waitMs = Math.min(2000 * Math.pow(2, attempt), 12000);
+        console.log(`🔁 Anthropic error de red "${e.message}" (intento ${attempt + 1}); reintento en ${waitMs}ms`);
+        await new Promise(r => setTimeout(r, waitMs));
+        continue;
+      }
+      throw e; // abort por timeout o últimos reintentos → propagar al caller
+    }
+  }
+  return lastResp;
+}
+
 async function fetchOneFeedAttempt(feed, timeoutMs) {
   const result = {
     source: feed.source,
@@ -1278,9 +1329,14 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
       .map(d => new Date(d + 'T00:00:00Z').getTime())
       .filter(t => !isNaN(t));
     if (dayMs.length) {
+      // Límite inferior: inicio del día más antiguo permitido − margen TZ
       allowedLoMs = Math.min(...dayMs) - TZ_MARGIN_MS;
-      // fin del día más reciente = inicio + 24h
-      allowedHiMs = Math.max(...dayMs) + 24 * 60 * 60 * 1000 + TZ_MARGIN_MS;
+      // Límite superior: FIN del día más reciente permitido EN HORA DE MADRID.
+      // El día más reciente en ISO-UTC empieza a las 00:00 UTC; su fin en Madrid (UTC+2
+      // en verano) es a las 22:00 UTC de ESE MISMO día. Usamos +22h para no invadir la
+      // madrugada UTC del día siguiente (que en Madrid ya es el día siguiente).
+      // FIX FUGA: antes +24h+3h dejaba pasar noticias del día posterior de madrugada.
+      allowedHiMs = Math.max(...dayMs) + 22 * 60 * 60 * 1000;
     }
   }
   const withinWindow = (it) => {
@@ -1590,7 +1646,7 @@ D2. Si tu respuesta supera 12000 tokens, recórtala devolviendo menos piezas (pr
 const SECTIONS = {
   international: {
     label: 'Internacional + Energía',
-    system: `Eres mi editor de noticias personal de élite. Tu tarea es buscar en web noticias de las ÚLTIMAS 48H y devolver un briefing parcial MAL NEWS de 18 piezas en 2 secciones internacionales (12 noticias + 6 opinión). Las COLUMNAS DE OPINIÓN son la parte más valiosa del briefing — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con análisis genérico.
+    system: `Eres mi editor de noticias personal de élite. Tu tarea es hacer un RESUMEN SEMANAL: busca en web las noticias y columnas más relevantes de los ÚLTIMOS 7 DÍAS y devuelve un briefing internacional MAL NEWS de 45 piezas en 2 secciones (30 noticias + 15 opinión). Usa SOLO medios FREE o de muro parcial (NYT, The Atlantic, The Guardian, Foreign Affairs, Foreign Policy, Le Monde, Al Jazeera, SCMP, Infobae, Kyiv Independent, Times of Israel, etc.). NO uses paywall duro (FT, WSJ, Bloomberg, The Economist, Nikkei). Al ser semanal, prioriza las historias con más recorrido y los mejores análisis/reportajes de la semana, no solo lo de hoy. Las COLUMNAS DE OPINIÓN son la parte más valiosa — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con relleno genérico.
 
 ${RULES_BASE}
 
@@ -1598,66 +1654,62 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas spainNews ni spai
 {
   "date": "DD/MM/YYYY",
   "worldOpinion": [
-    /* EXACTAMENTE 6 piezas — PRIORITARIAS. Columnas firmadas publicadas en últimas 48h con un evento concreto detrás (no análisis evergreen). Solo medios internacionales no españoles. Distribuye entre IZQ y DER y respeta los mínimos regionales. */
-    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "NYT|FT|Le Monde|Economist|...", "lean": "left|right", "url": "https://...", "publishedDate": "2026-05-07"}
+    /* EXACTAMENTE 15 columnas firmadas de medios FREE o muro parcial (NO paywall duro). RESUMEN SEMANAL: columnas destacadas de los ÚLTIMOS 7 DÍAS. Solo medios internacionales no españoles. Project Syndicate 1-2 máx. */
+    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "NYT|The Atlantic|The Guardian|Project Syndicate|Le Monde|...", "lean": "left|right", "url": "https://...", "publishedDate": "2026-05-07"}
   ],
   "worldNews": [
-    /* EXACTAMENTE 12 piezas, menos si no hay tantas frescas. Equilibrio left/right.
-       Cobertura: EEUU, UK, Europa Occ., Europa Este, Oriente Medio, India, Asia, África, LATAM, Australia, Rusia, Turquía.
-       INCLUYE PIEZAS JURÍDICAS RELEVANTES cuando haya: sentencias internacionales del día (Tribunal Penal Internacional, CIJ, TJUE, Supreme Court USA, etc.), decisiones regulatorias (CE, FTC, antitrust), o cambios jurisprudenciales significativos. Marca region como la del tribunal o país de la sentencia. */
+    /* EXACTAMENTE 30 piezas de medios FREE o muro parcial (NO paywall duro como FT/WSJ/Bloomberg/Economist/Nikkei). RESUMEN SEMANAL: lo más relevante de los ÚLTIMOS 7 DÍAS. Reparto por TEMA (ver instrucciones). Equilibrio left/right.
+       INCLUYE PIEZAS JURÍDICAS RELEVANTES cuando haya: sentencias internacionales de la semana (Tribunal Penal Internacional, CIJ, TJUE, Supreme Court USA, etc.), decisiones regulatorias. Marca region como la del tribunal o país de la sentencia. */
     {"rank": 1, "title": "...", "summary": "2-3 frases con dato/nombre/cifra concreta", "source": "BBC|Reuters|...", "region": "EEUU|UK|Europa Occ.|Europa Este|Oriente Medio|India|Asia|África|LATAM|Australia|Rusia|Turquía", "lean": "left", "url": "https://...", "publishedDate": "2026-05-07"}
   ]
 }
 
 ${COLUMNISTS_GUIDE}`,
     user: (today, todayFull, requestTime, allowedDates) => {
-      const dateList = (allowedDates && allowedDates.length === 2)
-        ? `\n\nFECHAS ACEPTADAS (ÚNICAS DOS, sin excepción):\n- ${allowedDates[0]} (DÍA SOLICITADO · fecha de referencia)\n- ${allowedDates[1]} (día anterior al solicitado)\n\nCualquier pieza con publishedDate distinto a estas dos fechas se RECHAZA. Sin "casi", sin "del fin de semana", sin "anteayer". Ventana máxima: 48h.\n\n⚠️ IMPORTANTE: la fecha de referencia es el DÍA SOLICITADO (${allowedDates[0]}), que puede NO ser el día de hoy real. Si el día solicitado es pasado, NO traigas piezas del día actual: solo del día solicitado y su anterior. NO asumas que "más reciente = mejor" más allá de esas dos fechas.\n\nPRIORIDAD DE FRESCURA: dentro de las 2 fechas aceptadas, prefiere columnas del propio día solicitado (${allowedDates[0]}) sobre las del día anterior. Pero NUNCA fuera de esas dos fechas.`
-        : '';
+      const refDate = (allowedDates && allowedDates.length >= 1) ? allowedDates[0] : (todayFull || today);
+      const dateList = `\n\nVENTANA SEMANAL (RESUMEN DE 7 DÍAS):\n- Fecha de referencia (día solicitado): ${refDate}\n- ACEPTA piezas publicadas en los ÚLTIMOS 7 DÍAS contando hacia atrás desde ${refDate} (ese día y los 6 anteriores).\n- RECHAZA cualquier pieza MÁS RECIENTE que ${refDate} (si el día solicitado es pasado, NO traigas piezas posteriores) y cualquiera de MÁS de 7 días de antigüedad.\n\n⚠️ La fecha de referencia (${refDate}) puede NO ser el día de hoy real. La ventana son 7 días hacia atrás desde ella, nunca hacia delante.\n\nPRIORIDAD: dentro de los 7 días, prefiere las historias con MÁS RECORRIDO de la semana y los mejores análisis/reportajes, no solo lo más reciente. Es un RESUMEN SEMANAL, no un boletín del día.`;
       return `FECHA SOLICITADA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
 
-INTERNACIONAL. 18 piezas en 2 secciones (12 noticias + 6 opinión), distribuidas por regiones para cobertura global plural.
+INTERNACIONAL SEMANAL. 45 piezas en 2 secciones (30 noticias + 15 opinión), organizadas POR TEMA, resumen de los ÚLTIMOS 7 DÍAS. Solo medios free o de muro parcial.
 
 REGLAS ESTRICTAS DE FECHA:
-- publishedDate DEBE estar en una de las 2 fechas aceptadas (día solicitado o su anterior). NUNCA más antiguas NI más recientes que el día solicitado.
-- VENTANA: las 2 fechas aceptadas. Acepta piezas del día solicitado y el anterior indistintamente.
-- Si una pieza es de fuera de esas 2 fechas (más vieja O del día actual cuando se pide un día pasado): rechazar.
-- Prioriza relevancia y calidad sobre minutos extra de frescura.
+- publishedDate DEBE estar dentro de los ÚLTIMOS 7 DÍAS desde la fecha de referencia (${refDate}): ese día y los 6 anteriores.
+- NUNCA más reciente que ${refDate}. NUNCA más de 7 días de antigüedad.
+- Al ser semanal, es normal y deseable mezclar piezas de distintos días de la semana.
+- Prioriza relevancia, calado y calidad sobre minutos extra de frescura.
 
-WORLDOPINION (PRIORITARIA, EXACTAMENTE 6 columnas firmadas):
+WORLDOPINION (PRIORITARIA, EXACTAMENTE 15 columnas firmadas de medios FREE o muro parcial · RESUMEN SEMANAL de los últimos 7 días):
 
-⭐⭐⭐ MÍNIMOS OBLIGATORIOS REGIONALES (ajustados a 6 columnas) ⭐⭐⭐
-- 🏛️ Project Syndicate: MÍNIMO 1 columna (análisis económico/político de élite · Stiglitz, Krugman, Roubini, Summers, Varoufakis)
-- 🌎 LATAM: MÍNIMO 1 columna (de Confidencial, Infobae, El Espectador, Clarín, El Mercurio)
-- 🇪🇺 Europa Occidental: MÍNIMO 1 columna (de Le Monde, Le Figaro u otros europeos cuando los haya)
-- 🌏 Asia: MÍNIMO 1 columna (de SCMP, Hankyoreh, Korea Herald, JoongAng, Japan Times, CNA, The Hindu, Indian Express)
-- TOTAL mínimos garantizados: 4 columnas
-- 2 columnas restantes FLEXIBLES: USA, UK, OM, África, Rusia según actualidad
+⭐⭐⭐ COMPOSICIÓN (foco temático + free) ⭐⭐⭐
+- 🏛️ Project Syndicate: 1-2 columnas MÁX (análisis económico/político de élite · Stiglitz, Krugman, Roubini, Summers, Varoufakis · los titulares NO gastan cupo, solo abrir el artículo)
+- 📊 ECONOMÍA / IA / TECNOLOGÍA: MÍNIMO 4 columnas (análisis económico, mercados, inteligencia artificial, tecnología · de The Atlantic, The Guardian, Noema, Project Syndicate, Rest of World)
+- 🗽 Grandes firmas anglo (muro parcial cuenta como free): 5-6 columnas de NYT, The Atlantic, The Guardian
+- 🌎 LATAM: MÍNIMO 2 columnas (Infobae, El Espectador, El Tiempo)
+- 🇪🇺 Europa / 🌏 Asia: MÍNIMO 2 entre ambas (Le Monde, SCMP, The Hindu)
 
 HARD CAPS:
-- Máx 2 columnas USA · Máx 1 columna UK · Máx 2 columnas mismo medio
-- Mín 5 medios distintos · ≥4 regiones distintas
+- Máx 5 columnas USA · Máx 3 columnas mismo medio · Máx 2 de Project Syndicate
+- Mín 7 medios distintos
 - Solo firmadas (autor real, no editoriales institucionales)
-- Solo medios internacionales no españoles
-- Distribuye entre izquierda, centro y derecha
-- Si una región no tiene columna fresca firmada, DÉJALA SIN cubrir (NO sustituyas con anglo extra)
+- Solo medios internacionales no españoles, FREE o muro parcial (NO FT/WSJ/Bloomberg/Economist/Nikkei)
+- Al ser SEMANAL, cubre las mejores columnas de los 7 días, no solo las de hoy
+- Si un tema no tiene columna fresca firmada en medio free, DÉJALO SIN cubrir (NO uses paywall duro)
 
-CHECKLIST OBLIGATORIO antes de generar worldOpinion:
-□ ¿Tengo ≥1 columna de Project Syndicate?
-□ ¿Tengo ≥1 columna LATAM?
-□ ¿Tengo ≥1 columna Europa Occ?
-□ ¿Tengo ≥1 columna Asia?
-□ ¿USA está limitado a máx 2?
-□ ¿Tengo ≥5 medios distintos?
+CHECKLIST antes de generar worldOpinion:
+□ ¿Project Syndicate entre 1 y 2 (no más)?
+□ ¿≥4 columnas de economía/IA/tecnología?
+□ ¿≥2 LATAM?
+□ ¿Solo medios free o muro parcial (ningún FT/WSJ/Bloomberg/Economist)?
+□ ¿≥7 medios distintos?
 Si alguno falla, REJECT y ajusta.
 
-WORLDNEWS (EXACTAMENTE 12 piezas: noticias + reportajes + análisis):
+WORLDNEWS (EXACTAMENTE 30 piezas, organizadas POR TEMA, solo medios free/muro parcial · RESUMEN SEMANAL de los últimos 7 días):
 - 🎯 OBJETIVO: equilibrio entre PIEZAS CORTAS (noticias breaking) y PIEZAS LARGAS (reportajes, investigaciones, análisis profundos, perfiles, dossiers).
 
-⭐⭐⭐ PRIORIDAD FUENTES GRATIS sobre paywall (CRÍTICO) ⭐⭐⭐
-- 🔓 GRATIS internacional: Politico, The Hill, Project Syndicate, Reuters, MarketWatch, Quartz, The Guardian, UnHerd, Kyiv Independent, Moscow Times, Times of Israel, The Hindu, Indian Express, Jakarta Post, Bangkok Post, Premium Times, El Espectador, Infobae, Mail&Guardian, National Review, Global Times, China Daily, Sixth Tone, Korea Herald, Korea Times, Hankyoreh, Channel News Asia, TODAYonline, Jakarta Globe, Tempo
-- 🔒 PAYWALL: NYT, WaPo, WSJ, The Atlantic, Bloomberg, FT, The Economist, Foreign Affairs, Foreign Policy, The Spectator, Le Monde, Le Figaro, Haaretz, Japan Times, Clarín, El Mercurio, New Yorker, SCMP, The Business Times Singapore
-- Si el mismo tema está en una fuente gratis y una de pago, ELIGE LA GRATIS.
+⭐⭐⭐ SOLO MEDIOS FREE O MURO PARCIAL (CRÍTICO) ⭐⭐⭐
+- 🔓 USABLES (free + muro parcial, el usuario los cuenta como free): Politico, The Hill, Project Syndicate, Reuters, MarketWatch, Quartz, The Guardian, UnHerd, Kyiv Independent, Moscow Times, Times of Israel, The Hindu, Indian Express, Jakarta Post, Bangkok Post, Premium Times, El Espectador, Infobae, El Tiempo, Mail&Guardian, National Review, Global Times, China Daily, Sixth Tone, Korea Herald, Korea Times, Hankyoreh, Channel News Asia, TODAYonline, Jakarta Globe, Tempo, Al Jazeera, NYT, The Atlantic, Foreign Affairs, Foreign Policy, Le Monde, SCMP, Noema, Rest of World, Aeon
+- 🚫 PAYWALL DURO — NO USAR NUNCA: WSJ, Bloomberg, FT, The Economist, Nikkei, The Business Times Singapore, WaPo (muro estricto)
+- Si el mismo tema está en una fuente free y una de pago duro, ELIGE LA FREE.
 - Solo usa pago si cubre un ángulo único no disponible en gratis ese día.
 - Las de pago aparecen marcadas con 🔒 cuando son necesarias.
 
@@ -1678,8 +1730,8 @@ Para un mismo evento o tema global (ej: "Trump aranceles", "guerra Ucrania", "el
 - Prefiere DIVERSIDAD TEMÁTICA sobre repetición: mejor 12 temas distintos con 1 pieza que 6 temas con 2.
 - Especialmente crítico para Trump/USA donde 10 medios escriben sobre lo mismo: limita a 2 con ángulos distintos.
 
-⭐⭐⭐ REGLA INELUDIBLE — MÍNIMO 3 PIEZAS LARGAS POR BRIEFING ⭐⭐⭐
-Si después de seleccionar las 12 piezas tienes menos de 3 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": NYT, WaPo, Atlantic, FT, Bloomberg, The Economist, Foreign Affairs publican análisis profundo a diario.
+⭐⭐⭐ REGLA INELUDIBLE — MÍNIMO 6 PIEZAS LARGAS POR BRIEFING ⭐⭐⭐
+Si después de seleccionar las 30 piezas tienes menos de 6 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": al ser SEMANAL, NYT, The Atlantic, The Guardian, Foreign Affairs, Foreign Policy, Noema publican decenas de análisis profundos cada semana (todos free o muro parcial).
 
 ESTRATEGIA DE BÚSQUEDA DE PIEZAS LARGAS (ejecuta estas búsquedas adicionales para garantizar mínimo 5):
 - site:nytimes.com investigation OR "long read" 2026
@@ -1711,41 +1763,29 @@ PIEZAS LARGAS RECONOCIBLES POR:
 - Keywords inglesas en título o sección: "investigation", "deep dive", "the inside story", "long read", "feature", "essay", "explained", "what happened", "behind the scenes", "profile of", "the big read", "the big take", "briefing", "anatomy of"
 
 CHECKLIST ANTES DE DEVOLVER JSON FINAL:
-□ Cuenta cuántas de mis 12 piezas son LARGAS (reportaje/análisis/investigación/perfil/crónica)
-□ Si <3, busco más con las queries de arriba y reemplazo breves repetitivas
+□ Cuenta cuántas de mis 30 piezas son LARGAS (reportaje/análisis/investigación/perfil/crónica)
+□ Si <6, busco más con las queries de arriba y reemplazo breves repetitivas
 □ Las LARGAS aportan profundidad y tiempo de lectura >3 min
 
-- HARD CAPS: Máx 4 piezas USA · Máx 2 piezas UK · Máx 2 piezas mismo medio
-⭐⭐⭐ MÍNIMOS REGIONALES — REGLA INVIOLABLE (ajustados a 12 piezas) ⭐⭐⭐
-ANTES de seleccionar las 12 piezas internacionales, OBLIGATORIAMENTE asegúrate de cubrir:
-  · 🇪🇺 Europa Occidental (FR/DE/IT): MÍNIMO 1 pieza
-  · 🌍 Europa Este (Ucrania/Polonia): MÍNIMO 1 pieza
-  · 🕌 Oriente Medio (Israel/Mundo árabe/Irán): MÍNIMO 1 pieza
-  · 🌏 ASIA (India + China + Japón + Corea + SE Asia): MÍNIMO 3 piezas ⭐⭐ INELUDIBLE
-    - China: SCMP, Global Times, China Daily, Sixth Tone
-    - Japón: Japan Times, Asahi, Yomiuri, Nikkei Asia
-    - Corea del Sur: Korea Herald, Korea Times, Korea JoongAng Daily, Hankyoreh
-    - India: The Hindu, Indian Express, Times of India, Hindustan Times, Scroll.in
-    - Singapur: Channel News Asia (CNA), The Business Times, TODAYonline
-    - Indonesia: Jakarta Post, Jakarta Globe, Tempo, Kompas, Tirto
-    - SE Asia general: Bangkok Post (Tailandia), Philippine Daily Inquirer
-  · 🌎 LATAM (Argentina/México/Brasil/Colombia/Chile): MÍNIMO 2 piezas ⭐⭐ INELUDIBLE
-    - Clarín, La Nación, Infobae (Argentina)
-    - Folha, O Globo, Estadão (Brasil)
-    - El Universal, Milenio, Reforma (México)
-    - El Espectador, El Tiempo, Semana (Colombia)
-    - El Mercurio, La Tercera (Chile)
-    - Confidencial (Nicaragua/Costa Rica, Chamorro, investigativo)
-  · 🌍 África (Sudáfrica/Nigeria/Kenia/Egipto): MÍNIMO 1 pieza
-    - Daily Maverick, Mail & Guardian, News24 (Sudáfrica)
-    - Premium Times, Vanguard, Punch (Nigeria)
-    - The Africa Report, AllAfrica (panafricanos)
-  · 💰 Económico global (Bloomberg/Reuters/FT/Forbes/MarketWatch/Economist): MÍNIMO 1 pieza
-  · 🇷🇺 Rusia: opcional, solo si hay noticia relevante (Moscow Times, Meduza)
-  · 🇦🇺 Australia / 🇹🇷 Turquía: opcionales
+- HARD CAPS: Máx 7 piezas USA · Máx 3 piezas UK · Máx 4 piezas mismo medio
+⭐⭐⭐ CUPO POR TEMA — TOTAL 30 PIEZAS (organiza por TEMA, no por región · RESUMEN SEMANAL) ⭐⭐⭐
+Reparte las 30 piezas así (la región es criterio secundario para dar pluralidad dentro de cada tema):
+  · 📊 ECONOMÍA / MERCADOS GLOBALES: 6 piezas (mercados, comercio, tipos, energía, empresas · MarketWatch, Reuters, Infobae, SCMP business, Al Jazeera economy, Quartz)
+  · 🌐 GEOPOLÍTICA / CONFLICTOS: 6 piezas (Ucrania, Oriente Medio, tensiones · Kyiv Independent, Times of Israel, Al Jazeera, The Guardian, Foreign Policy)
+  · 🤖 IA / TECNOLOGÍA: 5 piezas (inteligencia artificial, big tech, innovación · The Atlantic, The Guardian tech, SCMP tech, Rest of World, Noema)
+  · 📖 LECTURAS INTERESANTES: 4 piezas (grandes reportajes, ensayo, ideas, ciencia, cultura · The Atlantic, The Guardian long reads, Aeon, Noema, Foreign Affairs)
+  · 🎤 ENTREVISTAS: 3 piezas FLEXIBLE (entrevistas de fondo de cualquier medio free · si no hay, el hueco va a IA o ECONOMÍA)
+  · 🌏 ASIA / CHINA: 3 piezas (SCMP, Global Times, China Daily, Japan Times, The Hindu, Korea Herald, CNA)
+  · 🌎 LATAM + 🇪🇺 EUROPA: 3 piezas (LATAM Infobae/El Tiempo/El Espectador + Europa Le Monde/Politico Europe)
 
-🚫 NO empieces a generar el JSON hasta haber MENTALMENTE confirmado que vas a cubrir cada región MÍN.
-🚫 USA y UK están limitados a CAP MÁX (no MIN), no abuses de ellos. Si te falta espacio para LATAM/Asia/África, RECORTA USA/UK.
+REGLAS:
+- Cupos = OBJETIVO. Si un tema no tiene material fresco free en toda la semana, rellena con ECONOMÍA o
+  GEOPOLÍTICA (entrevistas → IA/Economía). NUNCA inventes ni uses paywall duro.
+- Solo medios FREE o muro parcial. USA limitado a máx 7 (no abuses de la sobrecobertura anglo).
+- Al ser SEMANAL: prioriza las historias con recorrido de los 7 días y los mejores reportajes de la semana.
+- Prioriza DIVERSIDAD: 30 temas/enfoques distintos, evita repetir el mismo asunto.
+
+🚫 NO empieces el JSON hasta confirmar mentalmente el reparto temático y que NINGUNA pieza es de paywall duro.
 
 ⭐⭐⭐ PRESUPUESTO OBLIGATORIO DE BÚSQUEDAS (tienes 10 búsquedas disponibles) ⭐⭐⭐
 
@@ -1873,7 +1913,7 @@ Búsqueda recomendada: site:[dominio]/opinion ${today} para columnas firmadas, s
 OUTPUT: solo JSON, sin texto antes ni después:
 {"date":"DD/MM/YYYY","worldOpinion":[...],"worldNews":[...]}`;
     },
-    maxUses: 10,
+    maxUses: 16,
   },
   // spainNews y spainOpinion usan flujo Plan B (RSS pre-fetch + prompts inline)
   // No necesitan system/user aquí, solo label para validación de section válida
@@ -2341,20 +2381,20 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
 {"date":"${todayShort}","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
 
       currentStep = 'call-anthropic';
-      const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
+      let upstream;
+      try {
+        upstream = await callAnthropicWithRetry({
           model: 'claude-sonnet-4-6',
           max_tokens: 12000,
           messages: [{ role: 'user', content: userPrompt }],
-          // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
-        }),
-      });
+        }, apiKey, { timeoutMs: 90000, maxRetries: 3 });
+      } catch (e) {
+        return res.status(504).json({
+          error: `La generación de opinión España falló tras reintentos: ${String(e.message || e).slice(0, 200)}. Reintenta en 1-2 minutos.`,
+          step: 'anthropic-timeout',
+          candidatesFound: candidates.length,
+        });
+      }
 
       if (!upstream.ok) {
         const errText = await upstream.text();
@@ -2843,70 +2883,55 @@ REGLAS DE SELECCIÓN:
    - Si el mismo evento/tema está cubierto por una gratis y una de pago, ELIGE LA GRATIS.
    - Solo selecciona una de pago si cubre un tema/ángulo único que ninguna gratis trata ese día.
    - Esto NO elimina las de pago: aparecen marcadas con 🔒 si son necesarias.
-1. Devuelve las piezas que haya. Si solo hay 8 frescas y relevantes, devuelve 8. No fuerces el cupo.
-2. Selecciona EXACTAMENTE 15 piezas (puedes devolver menos SOLO si la lista de candidatas es más corta).
-3. PRIORIZA eventos concretos del día: votaciones, sentencias, declaraciones políticas, datos económicos, leyes aprobadas, decisiones judiciales con relevancia institucional.
+1. Devuelve las piezas que haya. Si solo hay 12 frescas y relevantes, devuelve 12. No fuerces el cupo.
+2. Selecciona EXACTAMENTE 25 piezas (puedes devolver menos SOLO si la lista de candidatas es más corta).
+3. PRIORIZA eventos concretos del día: datos económicos, votaciones, sentencias, declaraciones, leyes, decisiones con relevancia institucional. Y busca ENTREVISTAS de calidad.
 4. DESCARTA OBLIGATORIAMENTE:
-   - 🚫 SUCESOS: asesinatos, accidentes, violaciones, homicidios, atracos, incendios sin contexto político (SALVO si tienen impacto político/sistémico claro tipo violencia policial, mafia conocida, crimen de Estado).
-   - 🚫 DEPORTES (EXCLUSIÓN TOTAL Y TAJANTE): fútbol, LaLiga, Champions, fichajes, resultados, clasificaciones, Eurocopa/Mundial, baloncesto/ACB/NBA, F1/MotoGP, tenis, ciclismo, atletismo, golf, pádel. NUNCA, bajo ningún concepto.
-     · CASOS LÍMITE que TAMBIÉN se excluyen: declaraciones de entrenadores/jugadores, lesiones, renovaciones, economía de clubes (fichajes millonarios, deudas de clubes, derechos de TV deportivos), Superliga, presidencias de federaciones, sedes de eventos deportivos, polémicas arbitrales.
-     · ÚNICA excepción: corrupción política o judicial GRAVE con dimensión de Estado donde el deporte es secundario (ej: caso Rubiales por agresión y abuso de poder, no por fútbol; trama de amaños con detenidos por organización criminal). Si dudas, EXCLUYE.
+   - 🚫 SUCESOS: asesinatos, accidentes, violaciones, homicidios, atracos, incendios sin contexto político (SALVO impacto político/sistémico claro).
+   - 🚫 DEPORTES (EXCLUSIÓN TOTAL Y TAJANTE): fútbol, LaLiga, Champions, fichajes, resultados, clasificaciones, Eurocopa/Mundial, baloncesto/ACB/NBA, F1/MotoGP, tenis, ciclismo, atletismo, golf, pádel. NUNCA.
+     · CASOS LÍMITE que TAMBIÉN se excluyen: declaraciones de entrenadores/jugadores, lesiones, renovaciones, economía de clubes, Superliga, federaciones, sedes deportivas, polémicas arbitrales.
+     · ÚNICA excepción: corrupción política/judicial GRAVE de Estado donde el deporte es secundario. Si dudas, EXCLUYE.
    - 🚫 CELEBRITIES/FARÁNDULA: prensa rosa, divorcios famosos, GH, Eurovisión, gala/alfombra roja, OT, MasterChef.
-   - 🚫 PODCAST / AUDIO / VÍDEO (EXCLUSIÓN TOTAL): cualquier pieza cuyo título empiece o contenga "Podcast", "Audio", "Vídeo", "Escucha", "En directo", "Streaming", "Newsletter", "Boletín", "El Salón de", "#N Lo que hay que leer" o formatos equivalentes que no sean una noticia de texto. Si el título indica que es un episodio/programa y no un artículo, FUERA.
-   - 🚫 EDITORIALES E INSTITUCIONALES (EXCLUSIÓN TOTAL): editoriales sin firma, "Editorial", "Sumario", "Portadas", "Portadas destacadas", "La foto del día", columnas firmadas de opinión solitaria, evergreen sin actualidad. En NOTICIAS solo van hechos/eventos concretos, NO opinión ni editorial.
-   - 🚫 OPINIÓN DEPORTIVA: crónicas de partidos, columnas sobre fútbol/clubes/jugadores aunque estén firmadas por columnista de prestigio. El que sea "opinión" no la salva: si el tema es deporte, FUERA.
+   - 🚫 PODCAST / AUDIO / VÍDEO: títulos con "Podcast", "Audio", "Vídeo", "Escucha", "En directo", "Streaming", "Newsletter", "Boletín", "El Salón de", "#N Lo que hay que leer". Si es episodio/programa y no artículo, FUERA.
+   - 🚫 EDITORIALES E INSTITUCIONALES: editoriales sin firma, "Editorial", "Sumario", "Portadas", "La foto del día". En NOTICIAS solo hechos, NO opinión ni editorial.
+   - 🚫 OPINIÓN DEPORTIVA: crónicas/columnas de fútbol aunque firmadas. Si el tema es deporte, FUERA.
    - 🚫 Catástrofes naturales sin matiz político importante.
-5. IDEAL si hay corpus suficiente: MÁX 3 piezas mismo medio, MÍN 6 medios distintos.
-6. ACEPTABLE si corpus limitado: hasta 3 piezas mismo medio, mín 4 medios distintos.
-7. ⭐⭐ CUPO FIJO POR BLOQUE DE SESGO — TOTAL 15 PIEZAS ⭐⭐
-   Cada bloque tiene un cupo EXACTO. Clasifica cada pieza por el medio que la firma:
+5. MÁX 3 piezas del mismo medio. MÍN 6 medios distintos (si hay corpus).
 
-   🔴 IZQUIERDA — 5 piezas (medios: El País, elDiario.es, Huffington Post, El Nacional.cat, Demócrata)
-   ⚪ CENTRO — 4 piezas (medios: Libertad Digital, The Objective, Vozpópuli, Crónica Global) · VOZPÓPULI PRIORITARIO, mín 2
-   🔵 DERECHA — 3 piezas (medios: La Gaceta, OK Diario, El Debate)
-   🏝️ BALEARES — 2 piezas (medios: OK Diario Baleares, elDiario.es Baleares, Economía de Mallorca)
-   💰 ECONÓMICO — 1 pieza (medios: Cinco Días, Invertia, El Economista (ES))
+6. ⭐⭐ CUPO POR TEMA — TOTAL 25 PIEZAS ⭐⭐
+   Clasifica cada pieza por su TEMA (no por el medio). Cupos objetivo:
 
-   REGLAS de los cupos:
-   - Los cupos son OBJETIVO EXACTO. Si un bloque no tiene suficientes candidatas frescas, rellena el
-     hueco restante con el bloque más fuerte disponible (Izquierda o Centro) para llegar a 15. NUNCA
-     inventes ni fuerces piezas viejas/irrelevantes.
-   - HARD CAP: máximo 3 piezas del mismo medio individual (sin excepciones).
-   - Dentro de cada bloque reparte entre los medios disponibles; no cargues todo el cupo en un solo medio.
-   - Prioridad si falta material para llegar a 15: Izquierda → Centro (Vozpópuli primero) → Derecha → Baleares → Económico.
+   💰 ECONOMÍA — 6 (macro/mercados/Ibex/tipos/BCE, empleo, vivienda, precios, empresas, banca, fiscalidad)
+      · Fuentes: Cinco Días, Invertia, El Economista, y economía de El País / elDiario.es / Crónica Global
+      · EQUILIBRIO IDEOLÓGICO: no todas del mismo sesgo. Mezcla económico puro con izq (El País/elDiario) y centro/der (Libertad Digital/The Objective económico).
+   🎤 ENTREVISTAS — 5 (FLEXIBLE) entrevistas de fondo: políticas, económicas, culturales, empresariales
+      · Fuentes: cualquier medio. Detecta formato entrevista (título tipo «Nombre: "declaración"», "Entrevista a", "habla con", pregunta-respuesta).
+      · ⚠️ SI NO HAY 5 ENTREVISTAS FRESCAS, deja las que haya y AUMENTA el cupo de TECNOLOGÍA con las restantes (no rellenes con más política/economía).
+   🇪🇸 PAÍS / SOCIEDAD — 5 (demografía, migración, vivienda, sanidad, educación, territorio, seguridad como fenómeno)
+      · Fuentes: El País, elDiario.es, El Mundo, Crónica Global, Huffington Post.
+   🏛️ POLÍTICA — 4 (Gobierno, oposición, Congreso, justicia/corrupción con relevancia política, autonomías)
+      · EQUILIBRIO IDEOLÓGICO OBLIGATORIO: mín 1 IZQUIERDA (El País/elDiario/HuffPost), mín 1 CENTRO (Libertad Digital/The Objective/Vozpópuli), mín 1 DERECHA (La Gaceta/OK Diario/El Debate). La 4ª libre.
+   🔬 CIENCIA / TECNOLOGÍA — 2 (IA, investigación, energía, ciencia, innovación) · sube si faltan entrevistas
+      · Fuentes: The Objective, El País, elDiario.es.
+   🎭 CULTURA / IDEAS — 1 (libros, cine, ensayo, pensamiento, patrimonio)
+      · Fuentes: El País, El Mundo, La Vanguardia.
+   🏝️ BALEARES — 2 (Mallorca/Baleares, local relevante)
+      · Fuentes: OK Diario Baleares, elDiario.es Baleares, Economía de Mallorca.
 
-8. Equilibrio temático: política, economía, sociedad, justicia/corrupción de relevancia política, internacional con foco España, cultura/ciencia/tecnología.
+   REGLAS:
+   - Cupos = OBJETIVO. Si un tema no tiene material fresco suficiente, rellena con ECONOMÍA o PAÍS
+     (salvo entrevistas, cuyo hueco va a TECNOLOGÍA). NUNCA inventes ni fuerces piezas viejas.
+   - HARD CAP: máx 3 piezas del mismo medio individual.
+   - En ECONOMÍA y POLÍTICA respeta el equilibrio ideológico indicado.
 
-⭐⭐ REGLA ANTI-REDUNDANCIA TEMÁTICA (BRIEFING DE 15 PIEZAS) ⭐⭐
-Para un mismo evento o tema (ej: "Sánchez recula con el IVA", "sentencia caso Ábalos", "trama Acciona-Sumar"):
-- MÁXIMO 2 piezas del mismo tema, vengan del medio que vengan. Como norma, 1 sola pieza por tema.
-- La 2ª pieza del mismo tema SOLO se admite si aporta un ÁNGULO DISTINTO de OTRO BLOQUE ideológico
-  (no el mismo enfoque repetido). Bloques:
-  · IZQUIERDA: El País / elDiario.es / Huffington Post / El Nacional.cat / Demócrata
-  · CENTRO: The Objective / Vozpópuli / Libertad Digital / Crónica Global
-  · DERECHA: La Gaceta / OK Diario / El Debate
-- 🚫 PROHIBIDO repetir el mismo tema con dos medios del MISMO bloque. Si dos medios de izquierda
-  cuentan lo mismo, elige UNO y deja el hueco para OTRO tema distinto.
-- 🚫 PROHIBIDO que dos piezas distintas cuenten esencialmente la misma noticia con distinto titular.
-  Si el hecho central es el mismo (misma sentencia, misma cifra, mismo anuncio), es UNA pieza.
-- PRIORIDAD ABSOLUTA: DIVERSIDAD TEMÁTICA. Con solo 15 huecos, cada tema repetido es un tema
-  que se queda fuera. Mejor 15 temas distintos que 8 temas con piezas duplicadas.
-
-CHEQUEO PRE-RESPUESTA:
-- Antes del JSON, agrupa mentalmente las piezas por TEMA.
-- Si algún tema tiene más de 2 piezas → recorta a 1 (o 2 solo si son de bloques distintos con ángulos distintos).
-- Si algún tema tiene 2+ piezas del mismo bloque → recorta a 1.
-- Si tras recortar quedas en menos de 28, busca temas distintos no cubiertos.
-9. Mejor pocas piezas relevantes y frescas que muchas mediocres o forzadas.
+7. ⭐⭐ ANTI-REDUNDANCIA ⭐⭐ Máx 2 piezas del mismo tema-noticia (norma: 1). Prohibido 2 titulares del
+   mismo hecho. Prioridad ABSOLUTA a diversidad: mejor 25 asuntos distintos que 10 repetidos.
+8. Mejor pocas piezas relevantes y frescas que muchas mediocres o forzadas.
 
 CHEQUEO PRE-RESPUESTA OBLIGATORIO:
-Antes de devolver el JSON, RECUENTA las piezas por BLOQUE DE SESGO y verifica los mínimos (condicionales a material en CANDIDATAS):
-- 🔴 ¿Tienes ≥5 de IZQUIERDA (El País, elDiario.es, HuffPost, El Nacional.cat)?
-- ⚪ ¿Tienes ≥10 de CENTRO, de las cuales ≥5 de Vozpópuli (+ The Objective, Libertad Digital, Crónica Global)?
-- 🔵 ¿Tienes ≥4 de DERECHA (La Gaceta, OK Diario, El Debate, Demócrata)?
-- 🏝️ ¿Tienes ≥3 de BALEARES (OK Bal, elDiario Bal, Economía de Mallorca)?
-- 💰 ¿Tienes ≥4 ECONÓMICAS (Cinco Días, Invertia, El Economista ES)?
-- ¿Respetas el HARD CAP de máx 4 piezas por medio (Vozpópuli hasta 6)?
+- ¿Suman ~25? ¿Economía ≈6 con equilibrio ideológico? ¿Política 4 con izq+centro+der?
+- ¿Entrevistas: incluí las frescas que había? ¿El resto del cupo fue a Tecnología?
+- ¿Máx 3 por medio? ¿Sin deporte/podcast/editorial? ¿Sin temas duplicados?
 Si falta algún mínimo y HAY items disponibles en CANDIDATAS de ese bloque, reemplaza piezas de relleno por las que faltan. Si NO hay material fresco de un bloque, déjalo corto — no inventes.
 
 Para cada pieza seleccionada, escribe un "summary" propio de 1-2 frases CORTAS (máx 200 caracteres). No copies el resumen del feed, redáctalo tú con voz neutral periodística que cuente el QUÉ y el CONTEXTO. NO te excedas para no truncar el JSON.
@@ -2923,33 +2948,9 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
       // AbortController: si la API de Anthropic se cuelga, cortamos a los 90s y
       // devolvemos un error limpio en vez de dejar la función colgada hasta el
       // maxDuration (5 min) → evita el 504 FUNCTION_INVOCATION_TIMEOUT.
-      const acNews = new AbortController();
-      const acNewsTimer = setTimeout(() => acNews.abort(), 90000);
-      let upstream;
-      try {
-        upstream = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 12000,
-            messages: [{ role: 'user', content: userPrompt }],
-            // SIN tools: el modelo ya tiene la lista, solo filtra y selecciona
-          }),
-          signal: acNews.signal,
-        });
-      } catch (e) {
-        clearTimeout(acNewsTimer);
-        // 🛟 FALLBACK: si el modelo se cuelga/timeout/red, NO devolvemos 504.
-        // Servimos un briefing DEGRADADO con las piezas crudas de los feeds
-        // (ya recogidas y filtradas por fecha), sin la curación del modelo.
-        // Feo pero funcional: el usuario recibe noticias reales al instante.
-        const aborted = e.name === 'AbortError';
-        const fallbackItems = candidates.slice(0, 28).map((c, i) => ({
+      // Reintenta 529 (overloaded) / 429 (rate limit) con backoff antes de rendirse.
+      const buildFallback = (reason) => {
+        const fallbackItems = candidates.slice(0, 25).map((c, i) => ({
           rank: i + 1,
           title: c.title || '(sin título)',
           summary: String(c.description || '').slice(0, 300),
@@ -2960,24 +2961,33 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         return res.status(200).json({
           briefing: {
             date: todayShort,
-            editorNote: aborted
-              ? '⚠️ Briefing de emergencia: la generación superó el tiempo límite. Estas son las piezas recogidas de los feeds sin curación editorial. Recarga en unos minutos para el briefing completo.'
-              : '⚠️ Briefing de emergencia: fallo temporal al generar. Piezas de feeds sin curar. Recarga en unos minutos.',
+            editorNote: '⚠️ Briefing de emergencia: la API estaba sobrecargada o tardó demasiado. Estas son las piezas recogidas de los feeds sin curación editorial. Recarga en 1-2 minutos para el briefing completo.',
             spainNews: fallbackItems,
             _fallback: true,
-            _fallbackReason: aborted ? 'model_timeout' : `model_fetch_error: ${String(e.message || e).slice(0, 200)}`,
+            _fallbackReason: reason,
             _meta: { candidatesFound: candidates.length, degraded: true },
           },
           section,
         });
+      };
+
+      let upstream;
+      try {
+        upstream = await callAnthropicWithRetry({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 12000,
+          messages: [{ role: 'user', content: userPrompt }],
+        }, apiKey, { timeoutMs: 90000, maxRetries: 3 });
+      } catch (e) {
+        // Timeout duro o error de red tras los reintentos → fallback degradado
+        return buildFallback(e.name === 'AbortError' ? 'model_timeout' : `model_fetch_error: ${String(e.message || e).slice(0, 200)}`);
       }
-      clearTimeout(acNewsTimer);
 
       if (!upstream.ok) {
+        // 529/429/5xx tras agotar reintentos, o 4xx → fallback degradado (nunca dejamos al usuario sin nada)
         const errText = await upstream.text();
-        return res.status(upstream.status).json({
-          error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
-        });
+        console.log(`⚠️ Noticias España: Anthropic ${upstream.status} tras reintentos: ${errText.slice(0, 200)}`);
+        return buildFallback(`anthropic_${upstream.status}: ${errText.slice(0, 150)}`);
       }
 
       const data = await upstream.json();
@@ -3142,55 +3152,37 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           }
         }
 
-        // ⭐⭐ RECORTE FINAL POR CUPO DE BLOQUE — cierra el briefing en 15 piezas ⭐⭐
-        // Manda por encima de cualquier enforcement previo. Agrupa por bloque ideológico,
-        // recorta cada bloque a su cupo, y si falta para 15 rellena con Izquierda/Centro.
-        const BLOCK_OF = (src) => {
-          if (['El País','elDiario.es','Huffington Post','El Nacional.cat','Demócrata'].includes(src)) return 'izq';
-          if (['Libertad Digital','The Objective','Vozpópuli','Crónica Global'].includes(src)) return 'centro';
-          if (['La Gaceta','OK Diario','El Debate'].includes(src)) return 'der';
-          if (['OK Diario Baleares','elDiario.es Baleares','Economía de Mallorca'].includes(src)) return 'bal';
-          if (['Cinco Días','Invertia','El Economista (ES)','El Economista'].includes(src)) return 'eco';
-          return 'otro';
-        };
-        const BLOCK_QUOTA = { izq: 5, centro: 4, der: 3, bal: 2, eco: 1 };
-        const TARGET_TOTAL = 15;
+        // ⭐⭐ RECORTE FINAL — cierra el briefing en 25 piezas, tope 3 por medio ⭐⭐
+        // El reparto TEMÁTICO (economía/entrevistas/país/política/tecnología/cultura/baleares)
+        // lo hace el MODELO vía prompt (el tema no se puede deducir del medio). Aquí solo
+        // garantizamos el total y el cap por medio, respetando el orden/ranking del modelo.
+        const TARGET_TOTAL = 25;
         const MAX_PER_MEDIO = 3;
         if (Array.isArray(briefing.spainNews) && briefing.spainNews.length > 0) {
           const pool = briefing.spainNews.slice();
           const picked = [];
-          const perBlock = { izq: 0, centro: 0, der: 0, bal: 0, eco: 0, otro: 0 };
           const perMedio = {};
+          // Pasada 1: respetar cap por medio
           for (const item of pool) {
-            const b = BLOCK_OF(item.source);
-            const quota = BLOCK_QUOTA[b] || 0;
-            const medioCount = perMedio[item.source] || 0;
             if (picked.length >= TARGET_TOTAL) break;
-            if (medioCount >= MAX_PER_MEDIO) continue;
-            if (b === 'otro') continue;
-            if (perBlock[b] >= quota) continue;
+            const mc = perMedio[item.source] || 0;
+            if (mc >= MAX_PER_MEDIO) continue;
             picked.push(item);
-            perBlock[b]++;
-            perMedio[item.source] = medioCount + 1;
+            perMedio[item.source] = mc + 1;
           }
+          // Pasada 2: si el cap dejó hueco y aún faltan piezas, completar ignorando el cap
           if (picked.length < TARGET_TOTAL) {
             const pickedUrls = new Set(picked.map(p => p.url));
-            const rest = pool.filter(p => !pickedUrls.has(p.url));
-            const blockRank = { izq: 0, centro: 1, der: 2, bal: 3, eco: 4, otro: 5 };
-            rest.sort((a, b) => blockRank[BLOCK_OF(a.source)] - blockRank[BLOCK_OF(b.source)]);
-            for (const item of rest) {
+            for (const item of pool) {
               if (picked.length >= TARGET_TOTAL) break;
-              const medioCount = perMedio[item.source] || 0;
-              if (medioCount >= MAX_PER_MEDIO) continue;
+              if (pickedUrls.has(item.url)) continue;
               picked.push(item);
-              perMedio[item.source] = medioCount + 1;
-              const fb = BLOCK_OF(item.source); if (perBlock[fb] !== undefined) perBlock[fb]++;
             }
           }
           picked.forEach((it, i) => { it.rank = i + 1; });
           const cutCount = briefing.spainNews.length - picked.length;
           briefing.spainNews = picked;
-          if (cutCount > 0) console.log(`✂️ Recorte a 15 por cupo de bloque: ${cutCount} fuera. Reparto: izq${perBlock.izq} centro${perBlock.centro} der${perBlock.der} bal${perBlock.bal} eco${perBlock.eco}`);
+          if (cutCount > 0) console.log(`✂️ Recorte a 25 (tope 3/medio): ${cutCount} fuera de ${briefing.spainNews.length + cutCount}`);
         }
 
         // Marcar con _isPaywall las piezas de fuentes paywall
@@ -3280,14 +3272,9 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         }\n\n⭐ IMPORTANTE: Estas ${intlOpinionCandidates.length} candidatas son material PRE-VERIFICADO de medios internacionales. ÚSALAS PRIORITARIAMENTE para llenar worldOpinion (mínimo 5-6 deben venir de esta lista). Si una candidata es buena, INCLÚYELA con su URL exacta. Combina con web_search SOLO para cobertura adicional (LATAM, Asia, África, OM, otras zonas no representadas arriba).`
       : '';
 
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
+    let upstream;
+    try {
+      upstream = await callAnthropicWithRetry({
         model: 'claude-sonnet-4-6',
         max_tokens: 12000,
         system: cfg.system,
@@ -3296,8 +3283,12 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           role: 'user',
           content: cfg.user(todayShort, todayFull, nowTime, allowedISODates) + candidatesText,
         }],
-      }),
-    });
+      }, apiKey, { timeoutMs: 120000, maxRetries: 3 });
+    } catch (e) {
+      return res.status(504).json({
+        error: `La generación internacional falló tras reintentos: ${String(e.message || e).slice(0, 200)}. Reintenta en 1-2 minutos.`,
+      });
+    }
 
     if (!upstream.ok) {
       const errText = await upstream.text();
@@ -3359,7 +3350,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
       const worldOpinionArr = Array.isArray(briefing.worldOpinion) ? briefing.worldOpinion : [];
       const longInWorldNews = worldNewsArr.filter(isLongFormIntl);
       const longCount = longInWorldNews.length;
-      const targetLongIntl = 3;
+      const targetLongIntl = 6;
 
       // Marcar las piezas detectadas como largas
       worldNewsArr.forEach(piece => {
