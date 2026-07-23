@@ -1646,7 +1646,7 @@ D2. Si tu respuesta supera 12000 tokens, recórtala devolviendo menos piezas (pr
 const SECTIONS = {
   international: {
     label: 'Internacional + Energía',
-    system: `Eres mi editor de noticias personal de élite. Tu tarea es hacer un RESUMEN SEMANAL: busca en web las noticias y columnas más relevantes de los ÚLTIMOS 7 DÍAS y devuelve un briefing internacional MAL NEWS de 45 piezas en 2 secciones (30 noticias + 15 opinión). Usa SOLO medios FREE o de muro parcial (NYT, The Atlantic, The Guardian, Foreign Affairs, Foreign Policy, Le Monde, Al Jazeera, SCMP, Infobae, Kyiv Independent, Times of Israel, etc.). NO uses paywall duro (FT, WSJ, Bloomberg, The Economist, Nikkei). Al ser semanal, prioriza las historias con más recorrido y los mejores análisis/reportajes de la semana, no solo lo de hoy. Las COLUMNAS DE OPINIÓN son la parte más valiosa — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con relleno genérico.
+    system: `Eres mi editor de noticias personal de élite. Tu tarea es hacer un RESUMEN SEMANAL: busca en web las noticias y columnas más relevantes de los ÚLTIMOS 7 DÍAS y devuelve un briefing internacional MAL NEWS de 28 piezas en 2 secciones (20 noticias + 8 opinión). Usa SOLO medios FREE o de muro parcial (NYT, The Atlantic, The Guardian, Foreign Affairs, Foreign Policy, Le Monde, Al Jazeera, SCMP, Infobae, Kyiv Independent, Times of Israel, etc.). NO uses paywall duro (FT, WSJ, Bloomberg, The Economist, Nikkei). Al ser semanal, prioriza las historias con más recorrido y los mejores análisis/reportajes de la semana, no solo lo de hoy. Las COLUMNAS DE OPINIÓN son la parte más valiosa — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con relleno genérico.
 
 ${RULES_BASE}
 
@@ -1654,11 +1654,11 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas spainNews ni spai
 {
   "date": "DD/MM/YYYY",
   "worldOpinion": [
-    /* EXACTAMENTE 15 columnas firmadas de medios FREE o muro parcial (NO paywall duro). RESUMEN SEMANAL: columnas destacadas de los ÚLTIMOS 7 DÍAS. Solo medios internacionales no españoles. Project Syndicate 1-2 máx. */
+    /* EXACTAMENTE 8 columnas firmadas de medios FREE o muro parcial (NO paywall duro). RESUMEN SEMANAL: columnas destacadas de los ÚLTIMOS 7 DÍAS. Solo medios internacionales no españoles. Project Syndicate 1-2 máx. */
     {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "NYT|The Atlantic|The Guardian|Project Syndicate|Le Monde|...", "lean": "left|right", "url": "https://...", "publishedDate": "2026-05-07"}
   ],
   "worldNews": [
-    /* EXACTAMENTE 30 piezas de medios FREE o muro parcial (NO paywall duro como FT/WSJ/Bloomberg/Economist/Nikkei). RESUMEN SEMANAL: lo más relevante de los ÚLTIMOS 7 DÍAS. Reparto por TEMA (ver instrucciones). Equilibrio left/right.
+    /* EXACTAMENTE 20 piezas de medios FREE o muro parcial (NO paywall duro como FT/WSJ/Bloomberg/Economist/Nikkei). RESUMEN SEMANAL: lo más relevante de los ÚLTIMOS 7 DÍAS. Reparto por TEMA (ver instrucciones). Equilibrio left/right.
        INCLUYE PIEZAS JURÍDICAS RELEVANTES cuando haya: sentencias internacionales de la semana (Tribunal Penal Internacional, CIJ, TJUE, Supreme Court USA, etc.), decisiones regulatorias. Marca region como la del tribunal o país de la sentencia. */
     {"rank": 1, "title": "...", "summary": "2-3 frases con dato/nombre/cifra concreta", "source": "BBC|Reuters|...", "region": "EEUU|UK|Europa Occ.|Europa Este|Oriente Medio|India|Asia|África|LATAM|Australia|Rusia|Turquía", "lean": "left", "url": "https://...", "publishedDate": "2026-05-07"}
   ]
@@ -1670,7 +1670,7 @@ ${COLUMNISTS_GUIDE}`,
       const dateList = `\n\nVENTANA SEMANAL (RESUMEN DE 7 DÍAS):\n- Fecha de referencia (día solicitado): ${refDate}\n- ACEPTA piezas publicadas en los ÚLTIMOS 7 DÍAS contando hacia atrás desde ${refDate} (ese día y los 6 anteriores).\n- RECHAZA cualquier pieza MÁS RECIENTE que ${refDate} (si el día solicitado es pasado, NO traigas piezas posteriores) y cualquiera de MÁS de 7 días de antigüedad.\n\n⚠️ La fecha de referencia (${refDate}) puede NO ser el día de hoy real. La ventana son 7 días hacia atrás desde ella, nunca hacia delante.\n\nPRIORIDAD: dentro de los 7 días, prefiere las historias con MÁS RECORRIDO de la semana y los mejores análisis/reportajes, no solo lo más reciente. Es un RESUMEN SEMANAL, no un boletín del día.`;
       return `FECHA SOLICITADA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
 
-INTERNACIONAL SEMANAL. 45 piezas en 2 secciones (30 noticias + 15 opinión), organizadas POR TEMA, resumen de los ÚLTIMOS 7 DÍAS. Solo medios free o de muro parcial.
+INTERNACIONAL SEMANAL. 28 piezas en 2 secciones (20 noticias + 8 opinión), organizadas POR TEMA, resumen de los ÚLTIMOS 7 DÍAS. Solo medios free o de muro parcial.
 
 REGLAS ESTRICTAS DE FECHA:
 - publishedDate DEBE estar dentro de los ÚLTIMOS 7 DÍAS desde la fecha de referencia (${refDate}): ese día y los 6 anteriores.
@@ -1678,7 +1678,7 @@ REGLAS ESTRICTAS DE FECHA:
 - Al ser semanal, es normal y deseable mezclar piezas de distintos días de la semana.
 - Prioriza relevancia, calado y calidad sobre minutos extra de frescura.
 
-WORLDOPINION (PRIORITARIA, EXACTAMENTE 15 columnas firmadas de medios FREE o muro parcial · RESUMEN SEMANAL de los últimos 7 días):
+WORLDOPINION (PRIORITARIA, EXACTAMENTE 8 columnas firmadas de medios FREE o muro parcial · RESUMEN SEMANAL de los últimos 7 días):
 
 ⭐⭐⭐ COMPOSICIÓN (foco temático + free) ⭐⭐⭐
 - 🏛️ Project Syndicate: 1-2 columnas MÁX (análisis económico/político de élite · Stiglitz, Krugman, Roubini, Summers, Varoufakis · los titulares NO gastan cupo, solo abrir el artículo)
@@ -1703,7 +1703,7 @@ CHECKLIST antes de generar worldOpinion:
 □ ¿≥7 medios distintos?
 Si alguno falla, REJECT y ajusta.
 
-WORLDNEWS (EXACTAMENTE 30 piezas, organizadas POR TEMA, solo medios free/muro parcial · RESUMEN SEMANAL de los últimos 7 días):
+WORLDNEWS (EXACTAMENTE 20 piezas, organizadas POR TEMA, solo medios free/muro parcial · RESUMEN SEMANAL de los últimos 7 días):
 - 🎯 OBJETIVO: equilibrio entre PIEZAS CORTAS (noticias breaking) y PIEZAS LARGAS (reportajes, investigaciones, análisis profundos, perfiles, dossiers).
 
 ⭐⭐⭐ SOLO MEDIOS FREE O MURO PARCIAL (CRÍTICO) ⭐⭐⭐
@@ -1768,7 +1768,7 @@ CHECKLIST ANTES DE DEVOLVER JSON FINAL:
 □ Las LARGAS aportan profundidad y tiempo de lectura >3 min
 
 - HARD CAPS: Máx 7 piezas USA · Máx 3 piezas UK · Máx 4 piezas mismo medio
-⭐⭐⭐ CUPO POR TEMA — TOTAL 30 PIEZAS (organiza por TEMA, no por región · RESUMEN SEMANAL) ⭐⭐⭐
+⭐⭐⭐ CUPO POR TEMA — TOTAL 20 PIEZAS (organiza por TEMA, no por región · RESUMEN SEMANAL) ⭐⭐⭐
 Reparte las 30 piezas así (la región es criterio secundario para dar pluralidad dentro de cada tema):
   · 📊 ECONOMÍA / MERCADOS GLOBALES: 6 piezas (mercados, comercio, tipos, energía, empresas · MarketWatch, Reuters, Infobae, SCMP business, Al Jazeera economy, Quartz)
   · 🌐 GEOPOLÍTICA / CONFLICTOS: 6 piezas (Ucrania, Oriente Medio, tensiones · Kyiv Independent, Times of Israel, Al Jazeera, The Guardian, Foreign Policy)
@@ -2154,13 +2154,20 @@ export default async function handler(req, res) {
     }
   })();
 
-  if (!section || !SECTIONS[section]) {
+  // worldNews / worldOpinion son SUB-MODOS de 'international': misma config, pero
+  // cada uno genera solo su parte (menos carga → evita 504 en el briefing semanal).
+  // 'international' (legacy) sigue generando ambas juntas, retrocompatible.
+  const intlSubMode = (section === 'worldNews' || section === 'worldOpinion') ? section : null;
+  const effectiveSection = intlSubMode ? 'international' : section;
+
+  if (!effectiveSection || !SECTIONS[effectiveSection]) {
     return res.status(400).json({
-      error: `Parámetro 'section' requerido. Valores válidos: ${Object.keys(SECTIONS).join(', ')}`,
+      error: `Parámetro 'section' requerido. Valores válidos: ${Object.keys(SECTIONS).join(', ')}, worldNews, worldOpinion`,
     });
   }
 
-  const cfg = SECTIONS[section];
+  const cfg = SECTIONS[effectiveSection];
+  const isInternational = effectiveSection === 'international';
 
   // ============ FLUJO ESPECIAL RSS PARA spainOpinion ============
   // No usa web_search. Pre-fetcha los 9 RSS, filtra por fecha, pasa la lista al modelo.
@@ -2351,24 +2358,24 @@ Este chequeo NO ES OPCIONAL.
 REGLA CLAVE: estos mínimos SOLO aplican si hay candidatos suficientes en los RSS. Si Vozpópuli ese día solo tiene 1 columna (o ninguna) en CANDIDATAS, no fuerzas un mínimo de 2.
 
 ESTAS PREFERENCIAS DEL USUARIO TIENEN PRIORIDAD sobre tu criterio editorial de "qué es más relevante". Si una columna de Vozpópuli existe y es válida, va dentro, aunque encuentres otras 3 que te parezcan más interesantes. El usuario quiere SUS medios, no los que tú prefieras.
-3. Selecciona EXACTAMENTE 25 columnas en total — menos SOLO si no hay material fresco suficiente.
+3. Selecciona EXACTAMENTE 16 columnas en total — menos SOLO si no hay material fresco suficiente.
 4. MÍNIMO 5 medios distintos en el resultado (si hay material para ello).
 5. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
 6. Prioriza diversidad ideológica/temática entre medios.
 
-⭐⭐ CUPO POR BLOQUE — TOTAL 25 COLUMNAS ⭐⭐
+⭐⭐ CUPO POR BLOQUE — TOTAL 16 COLUMNAS ⭐⭐
 Clasifica cada columna por el medio que la firma:
-- ⚪ CENTRO — 9 columnas (Vozpópuli, The Objective, Libertad Digital, Crónica Global, Artículo 14) · VOZPÓPULI 6 (líder del usuario)
-- 🔴 IZQUIERDA — 7 columnas (El País, elDiario.es, Huffington Post, Público, El Salto, CTXT)
-- 🔵 DERECHA — 4 columnas (La Gaceta, OK Diario, El Debate)
-- 📰 EL MUNDO — 3 columnas (suscripción del usuario, bloque propio)
-- 🏛️ CATALUÑA/OTROS — 2 columnas (La Vanguardia, Letras Libres, Ethic, El Blog Salmón, Agenda Pública)
+- ⚪ CENTRO — 6 columnas (Vozpópuli, The Objective, Libertad Digital, Crónica Global, Artículo 14) · VOZPÓPULI 4 (líder del usuario)
+- 🔴 IZQUIERDA — 4 columnas (El País, elDiario.es, Huffington Post, Público, El Salto, CTXT)
+- 🔵 DERECHA — 3 columnas (La Gaceta, OK Diario, El Debate)
+- 📰 EL MUNDO — 2 columnas (suscripción del usuario, bloque propio)
+- 🏛️ CATALUÑA/OTROS — 1 columna (La Vanguardia, Letras Libres, Ethic, El Blog Salmón, Agenda Pública)
 
 REGLAS de los cupos:
-- HARD CAP: máx 3 columnas por medio, EXCEPTO Vozpópuli que llega a 6 y El Mundo a 3.
+- HARD CAP: máx 3 columnas por medio, EXCEPTO Vozpópuli que llega a 4 y El Mundo a 2.
 - Si un bloque no tiene material fresco suficiente, rellena el hueco con Centro (Vozpópuli primero) o Izquierda.
 - Reparte dentro de cada bloque entre los medios disponibles; no cargues todo el cupo en uno solo.
-- Prioridad si falta para 25: Centro (Vozpópuli) → Izquierda → El Mundo → Derecha → Cataluña/otros.
+- Prioridad si falta para 16: Centro (Vozpópuli) → Izquierda → El Mundo → Derecha → Cataluña/otros.
 
 Si un medio preferido no tiene candidatas, completa con los siguientes en orden de preferencia.
 
@@ -2640,9 +2647,9 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
             if (['La Vanguardia','Letras Libres','Ethic','El Blog Salmón','Agenda Pública'].includes(src)) return 'otros';
             return 'resto';
           };
-          const OPI_QUOTA = { centro: 9, izq: 7, der: 4, mundo: 3, otros: 2 };
-          const OPI_TARGET = 25;
-          const OPI_MAX_MEDIO = { 'Vozpópuli': 6, 'El Mundo': 3 };
+          const OPI_QUOTA = { centro: 6, izq: 4, der: 3, mundo: 2, otros: 1 };
+          const OPI_TARGET = 16;
+          const OPI_MAX_MEDIO = { 'Vozpópuli': 4, 'El Mundo': 2 };
           const OPI_DEFAULT_MAX = 3;
           const pool = (briefing.spainOpinion || []).slice();
           if (pool.length > OPI_TARGET) {
@@ -3253,7 +3260,10 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
     // ============ PRE-FETCH RSS OPINIÓN INTERNACIONAL ============
     let intlOpinionCandidates = [];
     let intlOpinionDiagnostic = [];
-    if (section === 'international') {
+    // Solo pre-fetcheamos opinión si vamos a generarla (international completo o worldOpinion)
+    const willGenerateOpinion = isInternational && intlSubMode !== 'worldNews';
+    const willGenerateNews = isInternational && intlSubMode !== 'worldOpinion';
+    if (willGenerateOpinion) {
       try {
         const intlResult = await fetchInternationalOpinionRss(allowedISODates, excludeUrlsSet);
         intlOpinionCandidates = intlResult.candidates || [];
@@ -3264,13 +3274,21 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
       }
     }
 
-    const candidatesText = (section === 'international' && intlOpinionCandidates.length > 0)
+    const candidatesText = (willGenerateOpinion && intlOpinionCandidates.length > 0)
       ? `\n\n📰 CANDIDATAS DE OPINIÓN INTERNACIONAL PRE-RECOLECTADAS (RSS directos, últimas 48h):\n${
           intlOpinionCandidates.map((c, i) =>
             `[${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.author || 'sin autor'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${(c.description || '').slice(0, 200)}`
           ).join('\n\n')
         }\n\n⭐ IMPORTANTE: Estas ${intlOpinionCandidates.length} candidatas son material PRE-VERIFICADO de medios internacionales. ÚSALAS PRIORITARIAMENTE para llenar worldOpinion (mínimo 5-6 deben venir de esta lista). Si una candidata es buena, INCLÚYELA con su URL exacta. Combina con web_search SOLO para cobertura adicional (LATAM, Asia, África, OM, otras zonas no representadas arriba).`
       : '';
+
+    // Instrucción de sub-modo: si es worldNews/worldOpinion, generar SOLO esa parte
+    let subModeInstruction = '';
+    if (intlSubMode === 'worldNews') {
+      subModeInstruction = '\n\n🎯 MODO SOLO-NOTICIAS: Genera ÚNICAMENTE el array "worldNews" (20 piezas). Devuelve "worldOpinion" como array VACÍO []. No pierdas tiempo ni búsquedas en columnas de opinión.';
+    } else if (intlSubMode === 'worldOpinion') {
+      subModeInstruction = '\n\n🎯 MODO SOLO-OPINIÓN: Genera ÚNICAMENTE el array "worldOpinion" (8 columnas). Devuelve "worldNews" como array VACÍO []. Concentra todas las búsquedas en columnas de opinión firmadas.';
+    }
 
     let upstream;
     try {
@@ -3281,7 +3299,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: cfg.maxUses }],
         messages: [{
           role: 'user',
-          content: cfg.user(todayShort, todayFull, nowTime, allowedISODates) + candidatesText,
+          content: cfg.user(todayShort, todayFull, nowTime, allowedISODates) + candidatesText + subModeInstruction,
         }],
       }, apiKey, { timeoutMs: 120000, maxRetries: 3 });
     } catch (e) {
@@ -3308,7 +3326,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
       .join('');
 
     const briefing = extractJson(text);
-    if (briefing && typeof briefing === 'object' && section === 'international') {
+    if (briefing && typeof briefing === 'object' && isInternational) {
       // Detectar piezas largas en worldNews
       const LONG_KEYWORDS_INTL = [
         'investigation', 'deep dive', 'inside story', 'long read', 'feature',
