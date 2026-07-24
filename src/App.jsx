@@ -632,6 +632,42 @@ function groupBySource(items, priorityOrder = null) {
   return groups;
 }
 
+// Orden fijo de temas por sección (para que los grupos salgan siempre en el mismo orden)
+const TOPIC_ORDER = {
+  spainNews:    ['Economía', 'Entrevistas', 'País', 'Política', 'Tecnología', 'Cultura', 'Baleares'],
+  spainOpinion: ['Centro', 'Izquierda', 'Derecha', 'El Mundo', 'Cataluña'],
+  worldNews:    ['Economía', 'Geopolítica', 'Tecnología', 'Lecturas', 'Entrevistas', 'Asia', 'LATAM/Europa'],
+  worldOpinion: ['Economía/IA', 'Geopolítica', 'Anglo', 'LATAM', 'Europa/Asia'],
+};
+// Iconos por tema
+const TOPIC_ICONS = {
+  'Economía': '💰', 'Entrevistas': '🎤', 'País': '🇪🇸', 'Política': '🏛️',
+  'Tecnología': '🔬', 'Cultura': '🎭', 'Baleares': '🏝️', 'Geopolítica': '🌐',
+  'Lecturas': '📖', 'Asia': '🌏', 'LATAM/Europa': '🌎', 'Economía/IA': '📊',
+  'Anglo': '🗽', 'LATAM': '🌎', 'Europa/Asia': '🇪🇺',
+  'Centro': '⚪', 'Izquierda': '🔴', 'Derecha': '🔵', 'El Mundo': '📰', 'Cataluña': '🏛️',
+};
+
+// Agrupa piezas por su campo `topic`. Si una pieza no trae topic, cae en "Otros".
+// Ordena los grupos según TOPIC_ORDER[historyKey]; los temas no listados van al final.
+function groupByTopic(items, historyKey) {
+  if (!Array.isArray(items)) return [];
+  const map = new Map();
+  for (const item of items) {
+    const key = (item.topic && String(item.topic).trim()) || 'Otros';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(item);
+  }
+  const order = TOPIC_ORDER[historyKey] || [];
+  const rank = (t) => {
+    const idx = order.indexOf(t);
+    return idx === -1 ? 999 : idx;
+  };
+  return Array.from(map.entries())
+    .map(([topic, items]) => ({ topic, items }))
+    .sort((a, b) => rank(a.topic) - rank(b.topic));
+}
+
 // MEDIAGROUP · Diseño C minimalista
 // - Borde lateral izquierdo: COLOR DE LA SECCIÓN (Opinión/Noticias/Internacional)
 // - Cabecera con fondo: COLOR DE IDENTIDAD del medio (Vozpópuli, El País, etc.)
@@ -1453,16 +1489,40 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
             </div>
           ))
         ) : (
-          // Render flat agrupado por medio (en opinión: orden por preferencia del usuario)
-          groupBySource(items, type === 'opinion' ? OPINION_SOURCE_PRIORITY : null).map((mediaGroup, mgi) => (
-            <MediaGroup
-              key={mediaGroup.source}
-              source={mediaGroup.source}
-              items={mediaGroup.items}
-              sectionColor={color}
-              type={type}
-              groupIndex={mgi}
-            />
+          // Render agrupado por TEMA, y dentro de cada tema por medio
+          groupByTopic(items, historyKey).map((topicGroup, tgi) => (
+            <div key={topicGroup.topic} style={{ marginBottom: tgi < groupByTopic(items, historyKey).length - 1 ? '14px' : '0' }}>
+              <div style={{
+                margin: '8px 4px 6px',
+                padding: '6px 12px',
+                background: `linear-gradient(90deg, ${color}18, transparent)`,
+                borderLeft: `3px solid ${color}`,
+                borderRadius: '4px',
+                fontFamily: "'Verdana', 'Geneva', sans-serif",
+                fontSize: '12px',
+                fontWeight: '700',
+                color: color,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}>
+                <span style={{ fontSize: '15px' }}>{TOPIC_ICONS[topicGroup.topic] || '📄'}</span>
+                <span>{topicGroup.topic}</span>
+                <span style={{ opacity: 0.6, fontWeight: '500' }}>· {topicGroup.items.length}</span>
+              </div>
+              {groupBySource(topicGroup.items, type === 'opinion' ? OPINION_SOURCE_PRIORITY : null).map((mediaGroup, mgi) => (
+                <MediaGroup
+                  key={`${topicGroup.topic}-${mediaGroup.source}`}
+                  source={mediaGroup.source}
+                  items={mediaGroup.items}
+                  sectionColor={color}
+                  type={type}
+                  groupIndex={mgi}
+                />
+              ))}
+            </div>
           ))
         )}
 
@@ -2244,14 +2304,14 @@ export default function App() {
 
   const intlSections = intlData ? [
     { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 20, type: 'news',
-      descriptor: 'Cobertura global plural · ≥6 regiones · equilibrio IZQ/DER · incluye sentencias relevantes · 5 piezas largas mín',
+      descriptor: 'Cobertura global por temas · economía, geopolítica, IA, lecturas · medios free',
       note: intlData._note,
       meta: intlData._meta,
-      groupByContinent: true , historyKey: 'world' },
+      groupByContinent: false, historyKey: 'worldNews' },
     { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 8, type: 'opinion',
-      descriptor: 'Columnas firmadas · medios internacionales · 48h previas · evento concreto',
+      descriptor: 'Columnas firmadas · medios internacionales free · por tema',
       note: intlData._note,
-      meta: intlData._meta , historyKey: 'world' },
+      meta: intlData._meta , historyKey: 'worldOpinion' },
   ] : [];
 
   const spainOpinionSections = spainOpinionData ? [
@@ -2655,7 +2715,7 @@ export default function App() {
                 : BRAND.opinionGrad,
               backgroundSize: spainOpinionStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: spainOpinionStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
-              color: '#1A1A0A', opacity: (spainOpinionStatus === 'loading' || isInCooldown) ? 0.65 : 1,
+              color: '#011142', opacity: (spainOpinionStatus === 'loading' || isInCooldown) ? 0.65 : 1,
               boxShadow: '0 6px 20px rgba(214,255,0,0.45)', textTransform: 'uppercase',
               textShadow: 'none',
             }}
