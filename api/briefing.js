@@ -1655,12 +1655,12 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas spainNews ni spai
   "date": "DD/MM/YYYY",
   "worldOpinion": [
     /* EXACTAMENTE 8 columnas firmadas de medios FREE o muro parcial (NO paywall duro). RESUMEN SEMANAL: columnas destacadas de los ÚLTIMOS 7 DÍAS. Solo medios internacionales no españoles. Project Syndicate 1-2 máx. */
-    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "NYT|The Atlantic|The Guardian|Project Syndicate|Le Monde|...", "lean": "left|right", "url": "https://...", "publishedDate": "2026-05-07"}
+    {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "NYT|The Atlantic|The Guardian|Project Syndicate|Le Monde|...", "lean": "left|right", "topic": "Economía/IA|Geopolítica|Anglo|LATAM|Europa/Asia", "url": "https://...", "publishedDate": "2026-05-07"}
   ],
   "worldNews": [
     /* EXACTAMENTE 20 piezas de medios FREE o muro parcial (NO paywall duro como FT/WSJ/Bloomberg/Economist/Nikkei). RESUMEN SEMANAL: lo más relevante de los ÚLTIMOS 7 DÍAS. Reparto por TEMA (ver instrucciones). Equilibrio left/right.
        INCLUYE PIEZAS JURÍDICAS RELEVANTES cuando haya: sentencias internacionales de la semana (Tribunal Penal Internacional, CIJ, TJUE, Supreme Court USA, etc.), decisiones regulatorias. Marca region como la del tribunal o país de la sentencia. */
-    {"rank": 1, "title": "...", "summary": "2-3 frases con dato/nombre/cifra concreta", "source": "BBC|Reuters|...", "region": "EEUU|UK|Europa Occ.|Europa Este|Oriente Medio|India|Asia|África|LATAM|Australia|Rusia|Turquía", "lean": "left", "url": "https://...", "publishedDate": "2026-05-07"}
+    {"rank": 1, "title": "...", "summary": "2-3 frases con dato/nombre/cifra concreta", "source": "BBC|Reuters|...", "region": "EEUU|UK|Europa Occ.|Europa Este|Oriente Medio|India|Asia|África|LATAM|Australia|Rusia|Turquía", "topic": "Economía|Geopolítica|Tecnología|Lecturas|Entrevistas|Asia|LATAM/Europa", "lean": "left", "url": "https://...", "publishedDate": "2026-05-07"}
   ]
 }
 
@@ -1913,7 +1913,7 @@ Búsqueda recomendada: site:[dominio]/opinion ${today} para columnas firmadas, s
 OUTPUT: solo JSON, sin texto antes ni después:
 {"date":"DD/MM/YYYY","worldOpinion":[...],"worldNews":[...]}`;
     },
-    maxUses: 16,
+    maxUses: 8,
   },
   // spainNews y spainOpinion usan flujo Plan B (RSS pre-fetch + prompts inline)
   // No necesitan system/user aquí, solo label para validación de section válida
@@ -2385,7 +2385,7 @@ CANDIDATAS:
 ${candidatesText}
 
 OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: NO ARRAY VACÍO, PREFERIDOS PRIMERO.
-{"date":"${todayShort}","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
+{"date":"${todayShort}","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","topic":"Centro|Izquierda|Derecha|El Mundo|Cataluña","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
 
       currentStep = 'call-anthropic';
       let upstream;
@@ -2724,6 +2724,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           return acc;
         }, {});
         briefing._meta = {
+          sectionTarget: 16,
           totalCandidates: candidates.length,
           selectedCount,
           mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
@@ -2950,7 +2951,7 @@ CANDIDATAS:
 ${candidatesText}
 
 OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
-{"date":"${todayShort}","editorNote":"Análisis de los 2-3 temas clave del día...","spainNews":[{"rank":1,"title":"...","summary":"...","source":"...","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
+{"date":"${todayShort}","editorNote":"Análisis de los 2-3 temas clave del día...","spainNews":[{"rank":1,"title":"...","summary":"...","source":"...","topic":"Economía|Entrevistas|País|Política|Tecnología|Cultura|Baleares","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
 
       // AbortController: si la API de Anthropic se cuelga, cortamos a los 90s y
       // devolvemos un error limpio en vez de dejar la función colgada hasta el
@@ -3223,6 +3224,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         const freeCount = (briefing.spainNews || []).length - paywallCount;
 
         briefing._meta = {
+          sectionTarget: 25,
           totalCandidates: candidates.length,
           selectedCount: (briefing.spainNews || []).length,
           longCandidatesCount: longCount,
@@ -3301,7 +3303,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           role: 'user',
           content: cfg.user(todayShort, todayFull, nowTime, allowedISODates) + candidatesText + subModeInstruction,
         }],
-      }, apiKey, { timeoutMs: 120000, maxRetries: 3 });
+      }, apiKey, { timeoutMs: 150000, maxRetries: 3 });
     } catch (e) {
       return res.status(504).json({
         error: `La generación internacional falló tras reintentos: ${String(e.message || e).slice(0, 200)}. Reintenta en 1-2 minutos.`,
@@ -3442,6 +3444,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
 
       briefing._meta = {
         ...briefing._meta,
+        sectionTarget: { worldNews: 20, worldOpinion: 8 },
+        subMode: intlSubMode || 'both',
         intlOpinionCandidatesCount: intlOpinionCandidates.length,
         feedDiagnostic: intlOpinionDiagnostic,
         allowedDates: allowedISODates,
