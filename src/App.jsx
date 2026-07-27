@@ -2303,7 +2303,7 @@ export default function App() {
   };
 
   const intlSections = intlData ? [
-    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 20, type: 'news',
+    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 12, type: 'news',
       descriptor: 'Cobertura global por temas · economía, geopolítica, IA, lecturas · medios free',
       note: intlData._note,
       meta: intlData._meta,
