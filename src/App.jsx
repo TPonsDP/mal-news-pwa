@@ -1488,10 +1488,18 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
               ))}
             </div>
           ))
-        ) : (
-          // Render agrupado por TEMA, y dentro de cada tema por medio
-          groupByTopic(items, historyKey).map((topicGroup, tgi) => (
-            <div key={topicGroup.topic} style={{ marginBottom: tgi < groupByTopic(items, historyKey).length - 1 ? '14px' : '0' }}>
+        ) : (() => {
+          // Si las piezas no traen topic (ej: briefing de emergencia/fallback), agrupar
+          // por MEDIO en vez de tirar todo a "Otros".
+          const withTopic = items.filter(it => it && it.topic && String(it.topic).trim()).length;
+          const useTopics = withTopic >= Math.ceil(items.length / 2);
+          if (!useTopics) {
+            return groupBySource(items, type === 'opinion' ? OPINION_SOURCE_PRIORITY : null).map((mediaGroup, mgi) => (
+              <MediaGroup key={mediaGroup.source} source={mediaGroup.source} items={mediaGroup.items} sectionColor={color} type={type} groupIndex={mgi} />
+            ));
+          }
+          return groupByTopic(items, historyKey).map((topicGroup, tgi) => (
+            <div key={topicGroup.topic} style={{ marginBottom: '14px' }}>
               <div style={{
                 margin: '8px 4px 6px',
                 padding: '6px 12px',
@@ -1523,8 +1531,8 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
                 />
               ))}
             </div>
-          ))
-        )}
+          ));
+        })()}
 
       </div>
     </div>
@@ -2303,7 +2311,7 @@ export default function App() {
   };
 
   const intlSections = intlData ? [
-    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 12, type: 'news',
+    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 10, type: 'news',
       descriptor: 'Cobertura global por temas · economía, geopolítica, IA, lecturas · medios free',
       note: intlData._note,
       meta: intlData._meta,
