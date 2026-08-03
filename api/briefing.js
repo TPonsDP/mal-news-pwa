@@ -1646,7 +1646,7 @@ D2. Si tu respuesta supera 12000 tokens, recórtala devolviendo menos piezas (pr
 const SECTIONS = {
   international: {
     label: 'Internacional + Energía',
-    system: `Eres mi editor de noticias personal de élite. Tu tarea es hacer un RESUMEN SEMANAL: busca en web las noticias y columnas más relevantes de los ÚLTIMOS 7 DÍAS y devuelve un briefing internacional MAL NEWS de 20 piezas en 2 secciones (12 noticias + 8 opinión). Usa SOLO medios FREE o de muro parcial (NYT, The Atlantic, The Guardian, Foreign Affairs, Foreign Policy, Le Monde, Al Jazeera, SCMP, Infobae, Kyiv Independent, Times of Israel, etc.). NO uses paywall duro (FT, WSJ, Bloomberg, The Economist, Nikkei). Al ser semanal, prioriza las historias con más recorrido y los mejores análisis/reportajes de la semana, no solo lo de hoy. Las COLUMNAS DE OPINIÓN son la parte más valiosa — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con relleno genérico.
+    system: `Eres mi editor de noticias personal de élite. Tu tarea es hacer un RESUMEN SEMANAL: busca en web las noticias y columnas más relevantes de los ÚLTIMOS 7 DÍAS y devuelve un briefing internacional MAL NEWS de 18 piezas en 2 secciones (10 noticias + 8 opinión). Usa SOLO medios FREE o de muro parcial (NYT, The Atlantic, The Guardian, Foreign Affairs, Foreign Policy, Le Monde, Al Jazeera, SCMP, Infobae, Kyiv Independent, Times of Israel, etc.). NO uses paywall duro (FT, WSJ, Bloomberg, The Economist, Nikkei). Al ser semanal, prioriza las historias con más recorrido y los mejores análisis/reportajes de la semana, no solo lo de hoy. Las COLUMNAS DE OPINIÓN son la parte más valiosa — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con relleno genérico.
 
 ${RULES_BASE}
 
@@ -1658,7 +1658,7 @@ ESQUEMA JSON EXACTO (devuelve SOLO estas 2 claves, NO incluyas spainNews ni spai
     {"rank": 1, "title": "...", "summary": "...", "author": "...", "source": "NYT|The Atlantic|The Guardian|Project Syndicate|Le Monde|...", "lean": "left|right", "topic": "Economía/IA|Geopolítica|Anglo|LATAM|Europa/Asia", "url": "https://...", "publishedDate": "2026-05-07"}
   ],
   "worldNews": [
-    /* EXACTAMENTE 12 piezas de medios FREE o muro parcial (NO paywall duro como FT/WSJ/Bloomberg/Economist/Nikkei). RESUMEN SEMANAL: lo más relevante de los ÚLTIMOS 7 DÍAS. Reparto por TEMA (ver instrucciones). Equilibrio left/right.
+    /* EXACTAMENTE 10 piezas de medios FREE o muro parcial (NO paywall duro como FT/WSJ/Bloomberg/Economist/Nikkei). RESUMEN SEMANAL: lo más relevante de los ÚLTIMOS 7 DÍAS. Reparto por TEMA (ver instrucciones). Equilibrio left/right.
        INCLUYE PIEZAS JURÍDICAS RELEVANTES cuando haya: sentencias internacionales de la semana (Tribunal Penal Internacional, CIJ, TJUE, Supreme Court USA, etc.), decisiones regulatorias. Marca region como la del tribunal o país de la sentencia. */
     {"rank": 1, "title": "...", "summary": "2-3 frases con dato/nombre/cifra concreta", "source": "BBC|Reuters|...", "region": "EEUU|UK|Europa Occ.|Europa Este|Oriente Medio|India|Asia|África|LATAM|Australia|Rusia|Turquía", "topic": "Economía|Geopolítica|Tecnología|Lecturas|Entrevistas|Asia|LATAM/Europa", "lean": "left", "url": "https://...", "publishedDate": "2026-05-07"}
   ]
@@ -1670,7 +1670,7 @@ ${COLUMNISTS_GUIDE}`,
       const dateList = `\n\nVENTANA SEMANAL (RESUMEN DE 7 DÍAS):\n- Fecha de referencia (día solicitado): ${refDate}\n- ACEPTA piezas publicadas en los ÚLTIMOS 7 DÍAS contando hacia atrás desde ${refDate} (ese día y los 6 anteriores).\n- RECHAZA cualquier pieza MÁS RECIENTE que ${refDate} (si el día solicitado es pasado, NO traigas piezas posteriores) y cualquiera de MÁS de 7 días de antigüedad.\n\n⚠️ La fecha de referencia (${refDate}) puede NO ser el día de hoy real. La ventana son 7 días hacia atrás desde ella, nunca hacia delante.\n\nPRIORIDAD: dentro de los 7 días, prefiere las historias con MÁS RECORRIDO de la semana y los mejores análisis/reportajes, no solo lo más reciente. Es un RESUMEN SEMANAL, no un boletín del día.`;
       return `FECHA SOLICITADA: ${todayFull || today} (hora petición: ${requestTime})${dateList}
 
-INTERNACIONAL SEMANAL. 20 piezas en 2 secciones (12 noticias + 8 opinión), organizadas POR TEMA, resumen de los ÚLTIMOS 7 DÍAS. Solo medios free o de muro parcial.
+INTERNACIONAL SEMANAL. 20 piezas en 2 secciones (10 noticias + 8 opinión), organizadas POR TEMA, resumen de los ÚLTIMOS 7 DÍAS. Solo medios free o de muro parcial.
 
 REGLAS ESTRICTAS DE FECHA:
 - publishedDate DEBE estar dentro de los ÚLTIMOS 7 DÍAS desde la fecha de referencia (${refDate}): ese día y los 6 anteriores.
@@ -1703,7 +1703,7 @@ CHECKLIST antes de generar worldOpinion:
 □ ¿≥7 medios distintos?
 Si alguno falla, REJECT y ajusta.
 
-WORLDNEWS (EXACTAMENTE 12 piezas, organizadas POR TEMA, solo medios free/muro parcial · RESUMEN SEMANAL de los últimos 7 días):
+WORLDNEWS (EXACTAMENTE 10 piezas, organizadas POR TEMA, solo medios free/muro parcial · RESUMEN SEMANAL de los últimos 7 días):
 - 🎯 OBJETIVO: equilibrio entre PIEZAS CORTAS (noticias breaking) y PIEZAS LARGAS (reportajes, investigaciones, análisis profundos, perfiles, dossiers).
 
 ⭐⭐⭐ SOLO MEDIOS FREE O MURO PARCIAL (CRÍTICO) ⭐⭐⭐
@@ -1731,7 +1731,7 @@ Para un mismo evento o tema global (ej: "Trump aranceles", "guerra Ucrania", "el
 - Especialmente crítico para Trump/USA donde 10 medios escriben sobre lo mismo: limita a 2 con ángulos distintos.
 
 ⭐⭐⭐ REGLA INELUDIBLE — MÍNIMO 3 PIEZAS LARGAS POR BRIEFING ⭐⭐⭐
-Si después de seleccionar las 12 piezas tienes menos de 3 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": al ser SEMANAL, NYT, The Atlantic, The Guardian, Foreign Affairs, Foreign Policy, Noema publican decenas de análisis profundos cada semana (todos free o muro parcial).
+Si después de seleccionar las 10 piezas tienes menos de 3 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": al ser SEMANAL, NYT, The Atlantic, The Guardian, Foreign Affairs, Foreign Policy, Noema publican decenas de análisis profundos cada semana (todos free o muro parcial).
 
 ESTRATEGIA DE BÚSQUEDA DE PIEZAS LARGAS (ejecuta estas búsquedas adicionales para garantizar mínimo 5):
 - site:nytimes.com investigation OR "long read" 2026
@@ -1763,27 +1763,26 @@ PIEZAS LARGAS RECONOCIBLES POR:
 - Keywords inglesas en título o sección: "investigation", "deep dive", "the inside story", "long read", "feature", "essay", "explained", "what happened", "behind the scenes", "profile of", "the big read", "the big take", "briefing", "anatomy of"
 
 CHECKLIST ANTES DE DEVOLVER JSON FINAL:
-□ Cuenta cuántas de mis 12 piezas son LARGAS (reportaje/análisis/investigación/perfil/crónica)
+□ Cuenta cuántas de mis 10 piezas son LARGAS (reportaje/análisis/investigación/perfil/crónica)
 □ Si <3, busco más con las queries de arriba y reemplazo breves repetitivas
 □ Las LARGAS aportan profundidad y tiempo de lectura >3 min
 
 - HARD CAPS: Máx 7 piezas USA · Máx 3 piezas UK · Máx 4 piezas mismo medio
-⭐⭐⭐ CUPO POR TEMA — TOTAL 12 PIEZAS (organiza por TEMA, no por región · RESUMEN SEMANAL) ⭐⭐⭐
-Reparte las 12 piezas así (la región es criterio secundario para dar pluralidad dentro de cada tema):
-  · 📊 ECONOMÍA / MERCADOS GLOBALES: 3 piezas (mercados, comercio, tipos, energía, empresas · MarketWatch, Reuters, Infobae, SCMP business, Al Jazeera economy, Quartz)
-  · 🌐 GEOPOLÍTICA / CONFLICTOS: 3 piezas (Ucrania, Oriente Medio, tensiones · Kyiv Independent, Times of Israel, Al Jazeera, The Guardian, Foreign Policy)
-  · 🤖 IA / TECNOLOGÍA: 2 piezas (inteligencia artificial, big tech, innovación · The Atlantic, The Guardian tech, SCMP tech, Rest of World, Noema)
-  · 📖 LECTURAS INTERESANTES: 1 pieza (grandes reportajes, ensayo, ideas, ciencia, cultura · The Atlantic, The Guardian long reads, Aeon, Noema, Foreign Affairs)
-  · 🎤 ENTREVISTAS: 1 pieza FLEXIBLE (entrevistas de fondo de cualquier medio free · si no hay, el hueco va a IA o ECONOMÍA)
-  · 🌏 ASIA / CHINA: 1 pieza (SCMP, Global Times, China Daily, Japan Times, The Hindu, Korea Herald, CNA)
-  · 🌎 LATAM + 🇪🇺 EUROPA: 1 pieza (LATAM Infobae/El Tiempo/El Espectador + Europa Le Monde/Politico Europe)
+⭐⭐⭐ CUPO POR TEMA — TOTAL 10 PIEZAS (organiza por TEMA, no por región · RESUMEN SEMANAL) ⭐⭐⭐
+Reparte las 10 piezas así (la región es criterio secundario para dar pluralidad dentro de cada tema):
+  · 📊 ECONOMÍA / MERCADOS GLOBALES: 3 piezas (mercados, comercio, tipos, energía, empresas)
+  · 🌐 GEOPOLÍTICA / CONFLICTOS: 2 piezas (Ucrania, Oriente Medio, tensiones)
+  · 🤖 IA / TECNOLOGÍA: 2 piezas (inteligencia artificial, big tech, innovación)
+  · 📖 LECTURAS INTERESANTES: 1 pieza (grandes reportajes, ensayo, ideas, ciencia)
+  · 🎤 ENTREVISTAS: 1 pieza FLEXIBLE (si no hay, el hueco va a IA o ECONOMÍA)
+  · 🌏 ASIA / CHINA + 🌎 LATAM/EUROPA: 1 pieza (rota entre Asia y LATAM/Europa)
 
 REGLAS:
 - Cupos = OBJETIVO. Si un tema no tiene material fresco free en toda la semana, rellena con ECONOMÍA o
   GEOPOLÍTICA (entrevistas → IA/Economía). NUNCA inventes ni uses paywall duro.
 - Solo medios FREE o muro parcial. USA limitado a máx 4 (no abuses de la sobrecobertura anglo).
 - Al ser SEMANAL: prioriza las historias con recorrido de los 7 días y los mejores reportajes de la semana.
-- Prioriza DIVERSIDAD: 12 temas/enfoques distintos, evita repetir el mismo asunto.
+- Prioriza DIVERSIDAD: 10 temas/enfoques distintos, evita repetir el mismo asunto.
 
 🚫 NO empieces el JSON hasta confirmar mentalmente el reparto temático y que NINGUNA pieza es de paywall duro.
 
@@ -2958,11 +2957,15 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
       // maxDuration (5 min) → evita el 504 FUNCTION_INVOCATION_TIMEOUT.
       // Reintenta 529 (overloaded) / 429 (rate limit) con backoff antes de rendirse.
       const buildFallback = (reason) => {
-        const fallbackItems = candidates.slice(0, 25).map((c, i) => ({
+        // Filtro anti-basura reforzado también en el fallback (deporte/podcast/farándula)
+        const FB_JUNK = /\b(f[uú]tbol|copa del mundo|mundial|laliga|la liga|champions|selecci[oó]n|goleó|gol|messi|cucurella|dani olmo|baloncesto|nba|tenis|f1|motogp|ciclismo|jugador|entrenador|fichaje|podcast|eurovisi[oó]n|gran hermano)\b/i;
+        const clean = candidates.filter(c => !FB_JUNK.test(String(c.title || '')));
+        const fallbackItems = clean.slice(0, 25).map((c, i) => ({
           rank: i + 1,
           title: c.title || '(sin título)',
           summary: String(c.description || '').slice(0, 300),
           source: c.source || '',
+          topic: 'País', // genérico: evita que el fallback caiga todo en "Otros"
           url: c.url || '',
           publishedDate: c.publishedDate || todayShort,
         }));
@@ -3287,7 +3290,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
     // Instrucción de sub-modo: si es worldNews/worldOpinion, generar SOLO esa parte
     let subModeInstruction = '';
     if (intlSubMode === 'worldNews') {
-      subModeInstruction = '\n\n🎯 MODO SOLO-NOTICIAS: Genera ÚNICAMENTE el array "worldNews" (12 piezas). Devuelve "worldOpinion" como array VACÍO []. No pierdas tiempo ni búsquedas en columnas de opinión.';
+      subModeInstruction = '\n\n🎯 MODO SOLO-NOTICIAS: Genera ÚNICAMENTE el array "worldNews" (10 piezas). Devuelve "worldOpinion" como array VACÍO []. No pierdas tiempo ni búsquedas en columnas de opinión.';
     } else if (intlSubMode === 'worldOpinion') {
       subModeInstruction = '\n\n🎯 MODO SOLO-OPINIÓN: Genera ÚNICAMENTE el array "worldOpinion" (8 columnas). Devuelve "worldNews" como array VACÍO []. Concentra todas las búsquedas en columnas de opinión firmadas.';
     }
@@ -3444,7 +3447,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
 
       briefing._meta = {
         ...briefing._meta,
-        sectionTarget: { worldNews: 12, worldOpinion: 8 },
+        sectionTarget: { worldNews: 10, worldOpinion: 8 },
         subMode: intlSubMode || 'both',
         intlOpinionCandidatesCount: intlOpinionCandidates.length,
         feedDiagnostic: intlOpinionDiagnostic,
