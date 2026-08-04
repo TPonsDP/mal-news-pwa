@@ -2292,7 +2292,7 @@ Si hay candidatas válidas de estos medios, INCLÚYELAS en este orden de prefere
 REGLAS DE SELECCIÓN (en orden de prioridad):
 1. Selecciona piezas con autor real cuando sea posible. Si las piezas no tienen autor pero la URL contiene "/opinion/" "/comentario/" "/tribuna/" "/blog/" "/elsubjetivo/" o similar, también CUENTAN como columna válida. EXCEPCIÓN: items con source "Agenda Pública" o "Artículo 14" pueden incluirse aunque no aparezca autor (Google News no expone el autor, pero los artículos originales son análisis firmados de calidad).
 2. HARD CAPS INVIOLABLES por medio (NO se pueden superar):
-   - Vozpópuli: MÁX 6 columnas ⭐⭐⭐ MÍN 5 OBLIGATORIO si hay ≥6 candidatos en RSS (ver diagnóstico)
+   - Vozpópuli: MÁX 5 columnas ⭐⭐⭐ prioritario si hay ≥6 candidatos en RSS (ver diagnóstico)
      · Vozpópuli es el medio #1 del usuario · si el diagnóstico muestra ≥5 piezas en 48h, ES OBLIGATORIO incluir ≥4 columnas
      · ACEPTA piezas SIN campo author si la URL contiene "/opinion/" o "/firmas/" o "/tribuna/" o "/blog/"
      · Si Google News RSS devuelve URL redirect tipo news.google.com/articles/, ASUME que es columna de opinión (el feed solo trae /opinion/)
@@ -2357,26 +2357,24 @@ Este chequeo NO ES OPCIONAL.
 REGLA CLAVE: estos mínimos SOLO aplican si hay candidatos suficientes en los RSS. Si Vozpópuli ese día solo tiene 1 columna (o ninguna) en CANDIDATAS, no fuerzas un mínimo de 2.
 
 ESTAS PREFERENCIAS DEL USUARIO TIENEN PRIORIDAD sobre tu criterio editorial de "qué es más relevante". Si una columna de Vozpópuli existe y es válida, va dentro, aunque encuentres otras 3 que te parezcan más interesantes. El usuario quiere SUS medios, no los que tú prefieras.
-3. Selecciona EXACTAMENTE 16 columnas en total — menos SOLO si no hay material fresco suficiente.
+3. Selecciona EXACTAMENTE 25 columnas en total — menos SOLO si no hay material fresco suficiente.
 4. MÍNIMO 5 medios distintos en el resultado (si hay material para ello).
 5. PREFIERE: piezas con autor real (descartar solo "Redacción anónima" o "Editorial sin firma").
 6. Prioriza diversidad ideológica/temática entre medios.
 
-⭐⭐ CUPO POR BLOQUE — TOTAL 16 COLUMNAS ⭐⭐
-Clasifica cada columna por el medio que la firma:
-- ⚪ CENTRO — 6 columnas (Vozpópuli, The Objective, Libertad Digital, Crónica Global, Artículo 14) · VOZPÓPULI 4 (líder del usuario)
-- 🔴 IZQUIERDA — 4 columnas (El País, elDiario.es, Huffington Post, Público, El Salto, CTXT)
-- 🔵 DERECHA — 3 columnas (La Gaceta, OK Diario, El Debate)
-- 📰 EL MUNDO — 2 columnas (suscripción del usuario, bloque propio)
-- 🏛️ CATALUÑA/OTROS — 1 columna (La Vanguardia, Letras Libres, Ethic, El Blog Salmón, Agenda Pública)
+⭐⭐ SELECCIÓN — 25 COLUMNAS (SIN cupos por bloque ideológico) ⭐⭐
+Elige las 25 MEJORES columnas del material disponible, por CALIDAD y relevancia. No hay cuota por sesgo.
+MÁXIMOS POR MEDIO (no superar):
+- Vozpópuli 5 (medio #1 del usuario, prioritario) · The Objective 4 · El Mundo 4 · El País 4
+- elDiario.es 3 · Libertad Digital 3 · La Gaceta 3 · Artículo 14 3
+- El Debate 2 · La Vanguardia 2 · Huffington Post 1 · Público 1
+- Resto (Ethic, Letras Libres, El Blog Salmón, CTXT, El Salto, Agenda Pública, Crónica Global, OK Diario): 1 cada uno
+REGLAS:
+- MÍN 5 medios distintos. Prioriza pluralidad de temas y firmas; evita dos columnas casi idénticas.
+- Vozpópuli PRIMERO en preferencia cuando la calidad sea comparable.
+- Si no hay 25 columnas frescas de calidad, devuelve las que haya. Mejor 12 buenas que 20 con relleno.
 
-REGLAS de los cupos:
-- HARD CAP: máx 3 columnas por medio, EXCEPTO Vozpópuli que llega a 4 y El Mundo a 2.
-- Si un bloque no tiene material fresco suficiente, rellena el hueco con Centro (Vozpópuli primero) o Izquierda.
-- Reparte dentro de cada bloque entre los medios disponibles; no cargues todo el cupo en uno solo.
-- Prioridad si falta para 16: Centro (Vozpópuli) → Izquierda → El Mundo → Derecha → Cataluña/otros.
-
-Si un medio preferido no tiene candidatas, completa con los siguientes en orden de preferencia.
+Si un medio preferido no tiene candidatas, completa con los siguientes disponibles.
 
 Para cada columna seleccionada, escribe un "summary" propio de 2 frases (no copies el resumen del feed, redáctalo tú).
 
@@ -2636,55 +2634,43 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         briefing.spainOpinion = items;
         // ============ FIN ENFORCEMENT ============
 
-        // ⭐⭐ RECORTE FINAL POR CUPO DE BLOQUE — cierra opinión en 25 columnas ⭐⭐
+        // ⭐⭐ TOPE SIMPLE — opinión España máx 20 columnas, SIN cupos por bloque ⭐⭐
+        // Cap por medio suave (máx 4/medio, Vozpópuli 5) para que ninguno copado la sección,
+        // pero sin rejilla ideológica. Se queda con las mejores por orden del modelo.
         {
-          const OPI_BLOCK_OF = (src) => {
-            if (['Vozpópuli','The Objective','Libertad Digital','Crónica Global','Artículo 14'].includes(src)) return 'centro';
-            if (['El País','elDiario.es','Huffington Post','Público','El Salto','CTXT'].includes(src)) return 'izq';
-            if (['La Gaceta','OK Diario','El Debate'].includes(src)) return 'der';
-            if (src === 'El Mundo') return 'mundo';
-            if (['La Vanguardia','Letras Libres','Ethic','El Blog Salmón','Agenda Pública'].includes(src)) return 'otros';
-            return 'resto';
+          const OPI_TARGET = 25;
+          // Máximos por medio según preferencias del usuario. Los no listados usan OPI_DEFAULT_MAX.
+          const OPI_MAX_MEDIO = {
+            'Vozpópuli': 5,
+            'The Objective': 4,
+            'El Mundo': 4,
+            'El País': 4,
+            'elDiario.es': 3,
+            'Libertad Digital': 3,
+            'La Gaceta': 3,
+            'Artículo 14': 3,
+            'El Debate': 2,
+            'La Vanguardia': 2,
+            'Huffington Post': 1,
+            'Público': 1,
           };
-          const OPI_QUOTA = { centro: 6, izq: 4, der: 3, mundo: 2, otros: 1 };
-          const OPI_TARGET = 16;
-          const OPI_MAX_MEDIO = { 'Vozpópuli': 4, 'El Mundo': 2 };
-          const OPI_DEFAULT_MAX = 3;
+          const OPI_DEFAULT_MAX = 1; // resto: Ethic, Letras Libres, El Blog Salmón, CTXT, El Salto, Agenda Pública, Crónica Global, OK Diario
           const pool = (briefing.spainOpinion || []).slice();
-          if (pool.length > OPI_TARGET) {
-            const picked = [];
-            const perBlock = { centro:0, izq:0, der:0, mundo:0, otros:0, resto:0 };
-            const perMedio = {};
-            for (const item of pool) {
-              const b = OPI_BLOCK_OF(item.source);
-              const quota = OPI_QUOTA[b] || 0;
-              const maxMedio = OPI_MAX_MEDIO[item.source] || OPI_DEFAULT_MAX;
-              const mc = perMedio[item.source] || 0;
-              if (picked.length >= OPI_TARGET) break;
-              if (mc >= maxMedio) continue;
-              if (b === 'resto') continue;
-              if (perBlock[b] >= quota) continue;
-              picked.push(item); perBlock[b]++; perMedio[item.source] = mc + 1;
-            }
-            if (picked.length < OPI_TARGET) {
-              const pu = new Set(picked.map(p => p.url));
-              const rest = pool.filter(p => !pu.has(p.url));
-              const rank = { centro:0, izq:1, mundo:2, der:3, otros:4, resto:5 };
-              rest.sort((a,b) => rank[OPI_BLOCK_OF(a.source)] - rank[OPI_BLOCK_OF(b.source)]);
-              for (const item of rest) {
-                if (picked.length >= OPI_TARGET) break;
-                const maxMedio = OPI_MAX_MEDIO[item.source] || OPI_DEFAULT_MAX;
-                const mc = perMedio[item.source] || 0;
-                if (mc >= maxMedio) continue;
-                picked.push(item); perMedio[item.source] = mc + 1;
-                const fb = OPI_BLOCK_OF(item.source); if (perBlock[fb] !== undefined) perBlock[fb]++;
-              }
-            }
-            picked.forEach((it, i) => { it.rank = i + 1; });
-            const cut = briefing.spainOpinion.length - picked.length;
-            briefing.spainOpinion = picked;
-            if (cut > 0) console.log(`✂️ Opinión recorte a 25 por bloque: ${cut} fuera. Reparto: centro${perBlock.centro} izq${perBlock.izq} der${perBlock.der} mundo${perBlock.mundo} otros${perBlock.otros}`);
+          const picked = [];
+          const perMedio = {};
+          for (const item of pool) {
+            if (picked.length >= OPI_TARGET) break;
+            const maxMedio = OPI_MAX_MEDIO[item.source] || OPI_DEFAULT_MAX;
+            const mc = perMedio[item.source] || 0;
+            if (mc >= maxMedio) continue;
+            picked.push(item); perMedio[item.source] = mc + 1;
           }
+          // Sin relleno que ignore caps: si con los topes por medio no se llega a 20,
+          // se devuelven las que haya (respetar los máximos por medio del usuario manda).
+          picked.forEach((it, i) => { it.rank = i + 1; });
+          const cut = briefing.spainOpinion.length - picked.length;
+          briefing.spainOpinion = picked;
+          if (cut > 0) console.log(`✂️ Opinión tope 20 (máx 4/medio): ${cut} fuera de ${picked.length + cut}`);
         }
 
         // ============ RESÚMENES IA (Enfoque B) para columnas forzadas/sin resumen ============
@@ -2723,7 +2709,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           return acc;
         }, {});
         briefing._meta = {
-          sectionTarget: 16,
+          sectionTarget: 25,
           totalCandidates: candidates.length,
           selectedCount,
           mediumsAvailable: [...new Set(candidates.map(c => c.source))].length,
