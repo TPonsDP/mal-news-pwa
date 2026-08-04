@@ -318,10 +318,33 @@ function DiagonalHeader({ dateObj }) {
     }} xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="hdrMalBg" cx="38%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#5685BD" />
-          <stop offset="45%" stopColor="#1A365D" />
+          <stop offset="0%" stopColor="#1E3A5F" />
+          <stop offset="45%" stopColor="#0D2340" />
           <stop offset="100%" stopColor="#04101F" />
         </radialGradient>
+        {/* Anillo arcoíris */}
+        <linearGradient id="malRing" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FA4E3F" />
+          <stop offset="25%" stopColor="#FFCD00" />
+          <stop offset="50%" stopColor="#00FA8C" />
+          <stop offset="75%" stopColor="#2DD4FF" />
+          <stop offset="100%" stopColor="#B14BFF" />
+        </linearGradient>
+        {/* Disco verde radial (fondo del logo B) */}
+        <radialGradient id="malDisc" cx="35%" cy="30%" r="85%">
+          <stop offset="0%" stopColor="#5EFFB0" />
+          <stop offset="45%" stopColor="#00E88C" />
+          <stop offset="100%" stopColor="#0AA890" />
+        </radialGradient>
+        {/* Picos de la M (montañas de colores) */}
+        <linearGradient id="malPeakL" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#1A6FE0" />
+          <stop offset="100%" stopColor="#0D2340" />
+        </linearGradient>
+        <linearGradient id="malPeakR" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#FA4E3F" />
+          <stop offset="100%" stopColor="#B31500" />
+        </linearGradient>
       </defs>
 
       {/* Fondo gris humo con esquinas redondeadas */}
@@ -333,15 +356,20 @@ function DiagonalHeader({ dateObj }) {
       {/* Línea naranja siguiendo el corte diagonal */}
       <line x1="280" y1="0" x2="200" y2="210" stroke="#FADD00" strokeWidth="4" />
 
-      {/* Logo circular dentro del bloque azul */}
+      {/* Logo B — disco verde + M de montañas de colores */}
       <g transform="translate(110, 105)">
-        <circle r="50" fill="url(#hdrMalBg)" stroke="#5EEAD4" strokeWidth="1.5" />
-        <g transform="scale(0.21) translate(-256, -256)">
-          <rect x="154" y="80" width="58" height="198" rx="6" fill="#60A5FA" />
-          <polygon points="212,80 256,263 301,80 275,80 256,195 237,80" fill="#A3E635" />
-          <rect x="301" y="80" width="58" height="198" rx="6" fill="#FB923C" />
-          <text x="256" y="400" textAnchor="middle" fontFamily="Verdana, Geneva, sans-serif" fontWeight="800" fontSize="58" fill="#A3E635" letterSpacing="14">NEWS</text>
+        {/* Anillo arcoíris exterior */}
+        <circle r="52" fill="none" stroke="url(#malRing)" strokeWidth="4" strokeLinecap="round" />
+        {/* Disco verde radial */}
+        <circle r="47" fill="url(#malDisc)" />
+        {/* M de montañas: pico izquierdo azul, derecho coral, centro oscuro */}
+        <g transform="scale(0.16) translate(-256, -256)">
+          <polygon points="150,300 150,120 256,300" fill="url(#malPeakL)" />
+          <polygon points="256,300 256,120 362,300" fill="url(#malPeakR)" />
+          <polygon points="150,120 256,300 256,120" fill="#0D2340" opacity="0.9" />
         </g>
+        {/* Sol/punto amarillo */}
+        <circle cx="-30" cy="-26" r="7" fill="#FFCD00" />
       </g>
 
       {/* Zona derecha: día en serif Georgia */}
@@ -1489,10 +1517,11 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
             </div>
           ))
         ) : (() => {
-          // Si las piezas no traen topic (ej: briefing de emergencia/fallback), agrupar
-          // por MEDIO en vez de tirar todo a "Otros".
+          // OPINIÓN: siempre por MEDIO (agrupar opinión por "tema" ideológico queda raro
+          // y genera un grupo "Otros" feo). El agrupado por TEMA es solo para NOTICIAS.
+          // NOTICIAS: por tema si las piezas traen topic; si no (fallback), por medio.
           const withTopic = items.filter(it => it && it.topic && String(it.topic).trim()).length;
-          const useTopics = withTopic >= Math.ceil(items.length / 2);
+          const useTopics = type !== 'opinion' && withTopic >= Math.ceil(items.length / 2);
           if (!useTopics) {
             return groupBySource(items, type === 'opinion' ? OPINION_SOURCE_PRIORITY : null).map((mediaGroup, mgi) => (
               <MediaGroup key={mediaGroup.source} source={mediaGroup.source} items={mediaGroup.items} sectionColor={color} type={type} groupIndex={mgi} />
@@ -1509,7 +1538,7 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
                 fontFamily: "'Verdana', 'Geneva', sans-serif",
                 fontSize: '12px',
                 fontWeight: '700',
-                color: color,
+                color: '#16140F',
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 display: 'flex',
@@ -1878,13 +1907,14 @@ export default function App() {
         6: { hour: 12, minute: 0, label: 'Sábado · mañana relajada · Maite Rico, Victoria Carvajal' },
       },
       international: {
-        0: { hour: 18, minute: 30, label: 'Domingo · NYT Sunday Review · WSJ Weekend · análisis dominical US' },
-        1: { hour: 21, minute: 30, label: 'Lunes · pico US business · LATAM activo · Europa cerrada' },
-        2: { hour: 21, minute: 30, label: 'Martes · pico US business · LATAM activo' },
-        3: { hour: 21, minute: 30, label: 'Miércoles · pico US business · LATAM activo' },
-        4: { hour: 21, minute: 30, label: 'Jueves · pico US business · LATAM activo' },
-        5: { hour: 21, minute: 30, label: 'Viernes · cierre semana US · análisis del finde' },
-        6: { hour: 18, minute: 0, label: 'Sábado · US Saturday news · LATAM despertando' },
+        // SEMANAL: resumen de los últimos 7 días, se genera los DOMINGOS a las 21:00.
+        0: { hour: 21, minute: 0, label: 'Domingo · RESUMEN SEMANAL · lo mejor de los últimos 7 días' },
+        1: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
+        2: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
+        3: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
+        4: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
+        5: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
+        6: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
       },
     };
 
@@ -2049,7 +2079,7 @@ export default function App() {
       const itemsHtml = items.map(i => card(i, color, isOpinion)).join('');
       return `
         <div style="margin-bottom:28px;">
-          <div style="background:${color};color:#FFFCF2;padding:16px 20px;border:3px solid #16140F;border-radius:0;box-shadow:5px 5px 0 #16140F;font-family:'Space Mono',monospace;">
+          <div style="background:${color};color:#011142;padding:16px 20px;border:3px solid #011142;border-radius:0;box-shadow:5px 5px 0 #011142;font-family:'Space Mono',monospace;">
             <div style="font-size:15px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">
               ${icon} ${escape(title)} &middot; ${items.length} ${itemLabel}
             </div>
@@ -2118,6 +2148,17 @@ export default function App() {
         section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true);
     }
 
+    // Fondo de cabecera con tonalidad suave según la sección (opción A · tonos pastel)
+    const HEADER_BG = {
+      spainNews:     { bg: '#FBE3DC', border: '#F86040' },
+      spainOpinion:  { bg: '#F2FBC4', border: '#A8CC00' },
+      worldNews:     { bg: '#D4FBEA', border: '#00B368' },
+      worldOpinion:  { bg: '#D4F0EE', border: '#0FA69D' },
+      spain:         { bg: '#FBE3DC', border: '#F86040' },
+      international: { bg: '#D4FBEA', border: '#00B368' },
+    };
+    const headerTone = HEADER_BG[mode] || { bg: '#FFFCF2', border: '#011142' };
+
     // ID único por modo para aislar CSS cuando se pegan varios HTMLs en el mismo email
     const wrapperId =
       mode === 'spainNews' ? 'mal-news-esp-news'
@@ -2139,12 +2180,12 @@ export default function App() {
   ${W} { margin:0; padding:24px; background:#F4ECD4; font-family:'Crimson Pro',Georgia,serif; color:#16140F; box-sizing:border-box; }
   ${W} * { box-sizing:border-box; }
   ${W} .container { max-width:820px; margin:0 auto; }
-  ${W} .header { text-align:center; margin-bottom:28px; padding:24px; background:#FFFCF2; border:3px solid #16140F; border-radius:0; box-shadow:6px 6px 0 #1A3FE6; }
-  ${W} .logo { font-family:'Space Mono',monospace; font-size:28px; font-weight:700; color:#16140F; letter-spacing:2px; margin:0; text-transform:uppercase; }
-  ${W} .subtitle { font-size:14px; font-style:italic; color:#E50E5C; margin:6px 0 0; }
-  ${W} .date { font-family:'Space Mono',monospace; font-size:12px; letter-spacing:0.3em; color:#0028C2; text-transform:uppercase; font-weight:700; margin:10px 0 0; }
-  ${W} .total { font-family:'Space Mono',monospace; font-size:11px; color:#16140F; background:#FF2D7A; display:inline-block; padding:3px 10px; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
-  ${W} .footer { text-align:center; margin-top:32px; padding:18px; font-family:'Space Mono',monospace; font-size:10px; color:rgba(22,20,15,0.6); letter-spacing:0.15em; border-top:3px double #1A3FE6; }
+  ${W} .header { text-align:center; margin-bottom:28px; padding:24px; background:#FFFCF2; border:3px solid #011142; border-radius:0; box-shadow:6px 6px 0 #F86040; }
+  ${W} .logo { font-family:'Space Mono',monospace; font-size:28px; font-weight:700; color:#011142; letter-spacing:2px; margin:0; text-transform:uppercase; }
+  ${W} .subtitle { font-size:14px; font-style:italic; color:#F86040; margin:6px 0 0; }
+  ${W} .date { font-family:'Space Mono',monospace; font-size:12px; letter-spacing:0.3em; color:#011142; text-transform:uppercase; font-weight:700; margin:10px 0 0; }
+  ${W} .total { font-family:'Space Mono',monospace; font-size:11px; color:#011142; background:#FADD00; display:inline-block; padding:3px 10px; letter-spacing:0.15em; font-weight:700; margin-top:12px; }
+  ${W} .footer { text-align:center; margin-top:32px; padding:18px; font-family:'Space Mono',monospace; font-size:10px; color:rgba(1,17,66,0.6); letter-spacing:0.15em; border-top:3px double #011142; }
   ${W} .next-briefing { background:#FFFCF2; border:3px solid #011142; border-radius:0; padding:20px 22px; margin:32px 0 0; box-shadow:6px 6px 0 #011142; }
   ${W} .next-briefing-label { text-align:center; font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.18em; color:#011142; margin-bottom:14px; }
   ${W} .schedule-card { display:flex; gap:14px; align-items:center; padding:14px 16px; border-radius:0; margin-bottom:10px; background:#FFFCF2; }
@@ -2167,13 +2208,13 @@ export default function App() {
   ${W} .schedule-row:last-child { border-bottom:none; }
   ${W} .copy-hint { background:#1A3FE6; border:3px solid #16140F; border-radius:0; padding:14px 18px; margin-bottom:20px; font-size:13px; color:#FFFCF2; text-align:center; box-shadow:4px 4px 0 #FF2D7A; }
   ${W} .copy-hint strong { color:#FFFCF2; }
-  ${W} .next-brief { margin-top:36px; padding:22px 26px; background:#FFFCF2; border:3px solid #16140F; border-radius:0; box-shadow:6px 6px 0 #FF6B00; }
-  ${W} .next-brief-label { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; letter-spacing:0.22em; color:#D45500; text-transform:uppercase; margin-bottom:8px; }
-  ${W} .next-brief-day { font-style:italic; font-size:22px; color:#16140F; font-weight:700; margin-bottom:4px; }
-  ${W} .next-brief-time { font-family:'Space Mono',monospace; font-size:32px; font-weight:700; color:#FF6B00; letter-spacing:0.02em; margin-bottom:8px; line-height:1; }
-  ${W} .next-brief-reason { font-size:13px; color:rgba(22,20,15,0.7); font-style:italic; line-height:1.5; }
-  ${W} .next-brief-table { margin-top:16px; padding-top:14px; border-top:2px dashed rgba(255,107,0,0.4); font-family:'Space Mono',monospace; font-size:10px; color:rgba(22,20,15,0.65); line-height:1.7; }
-  ${W} .next-brief-table strong { color:#16140F; font-weight:700; letter-spacing:0.05em; }
+  ${W} .next-brief { margin-top:36px; padding:22px 26px; background:#FFFCF2; border:3px solid #011142; border-radius:0; box-shadow:6px 6px 0 #F86040; }
+  ${W} .next-brief-label { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; letter-spacing:0.22em; color:#F86040; text-transform:uppercase; margin-bottom:8px; }
+  ${W} .next-brief-day { font-style:italic; font-size:22px; color:#011142; font-weight:700; margin-bottom:4px; }
+  ${W} .next-brief-time { font-family:'Space Mono',monospace; font-size:32px; font-weight:700; color:#F86040; letter-spacing:0.02em; margin-bottom:8px; line-height:1; }
+  ${W} .next-brief-reason { font-size:13px; color:rgba(1,17,66,0.7); font-style:italic; line-height:1.5; }
+  ${W} .next-brief-table { margin-top:16px; padding-top:14px; border-top:2px dashed rgba(248,96,64,0.4); font-family:'Space Mono',monospace; font-size:10px; color:rgba(1,17,66,0.65); line-height:1.7; }
+  ${W} .next-brief-table strong { color:#011142; font-weight:700; letter-spacing:0.05em; }
   @media print { ${W} .copy-hint { display:none; } ${W} { background:white; } }
 </style>
 </head>
@@ -2183,7 +2224,7 @@ export default function App() {
     <div class="copy-hint">
       💡 <strong>Copia para email:</strong> Ctrl+A &rarr; Ctrl+C &rarr; pega en Gmail (conserva formato). O imprime con Ctrl+P para PDF.
     </div>
-    <div class="header">
+    <div class="header" style="background:${headerTone.bg};box-shadow:6px 6px 0 ${headerTone.border};border-color:${headerTone.border};">
       <h1 class="logo">${escape(headerTitle)}</h1>
       <p class="subtitle">${escape(pageSubtitle)}</p>
       <p class="date">${escape(b.date || todayShort)}</p>
@@ -2204,7 +2245,7 @@ export default function App() {
       <div class="next-brief-table">
         ${mode === 'spain'
           ? '<strong>Horario semanal España:</strong> Lun-Vie 19:00 &middot; Sábado 12:00 &middot; Domingo 19:00'
-          : '<strong>Horario semanal Internacional:</strong> Lun-Vie 21:30 &middot; Sábado 18:00 &middot; Domingo 18:30'}
+          : '<strong>Horario Internacional:</strong> SEMANAL &middot; Domingos 21:00 &middot; resumen de los últimos 7 días'}
       </div>
     </div>`;
     })()}
@@ -2240,9 +2281,9 @@ export default function App() {
           </div>
           <div class="schedule-col">
             <div class="schedule-col-title intl-title">🌍 INTERNACIONAL</div>
-            <div class="schedule-row"><span>Lun-Vie</span><span>21:30</span></div>
-            <div class="schedule-row"><span>Sábado</span><span>18:00</span></div>
-            <div class="schedule-row"><span>Domingo</span><span>18:30</span></div>
+            <div class="schedule-row"><span>📅 SEMANAL</span><span>Domingo 21:00</span></div>
+            <div class="schedule-row"><span>Resumen</span><span>últimos 7 días</span></div>
+            <div class="schedule-row"><span>Generación</span><span>manual</span></div>
           </div>
         </div>
       </div>
@@ -2323,7 +2364,7 @@ export default function App() {
   ] : [];
 
   const spainOpinionSections = spainOpinionData ? [
-    { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 16, type: 'opinion',
+    { title: 'Opinión España', icon: '✍️', items: spainOpinionData.spainOpinion, color: SECTION_COLORS.spainOpinion, gradient: SECTION_GRADIENTS.spainOpinion, count: 25, type: 'opinion',
       descriptor: 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer',
       note: spainOpinionData._note,
       meta: spainOpinionData._meta , historyKey: 'spainOpinion' },
@@ -2369,21 +2410,21 @@ export default function App() {
     if (intlStatus === 'loading') return 'Buscando internacional...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (intlStatus === 'done') return `🔄 Recargar internacional (${realIntlCount})`;
-    return '🌍 Internacional (hasta 28)';
+    return '🌍 Internacional (10+8)';
   })();
 
   const spainOpinionBtnLabel = (() => {
     if (spainOpinionStatus === 'loading') return 'Buscando opinión España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainOpinionStatus === 'done') return `🔄 Recargar opinión España (${realSpainOpinionCount})`;
-    return '✍️ Opinión España (hasta 36)';
+    return '✍️ Opinión España (hasta 25)';
   })();
 
   const spainNewsBtnLabel = (() => {
     if (spainNewsStatus === 'loading') return 'Buscando noticias España...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (spainNewsStatus === 'done') return `🔄 Recargar noticias España (${realSpainNewsCount})`;
-    return '🇪🇸 Noticias España (hasta 28)';
+    return '🇪🇸 Noticias España (hasta 25)';
   })();
 
   const hasAnyData = intlData || spainNewsData || spainOpinionData;
@@ -2772,7 +2813,7 @@ export default function App() {
               textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
-            🌍 Noticias Internacional
+            🌍 Noticias Internacional (10)
           </button>
 
           <button
@@ -2794,7 +2835,7 @@ export default function App() {
               textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
-            ✍️ Opinión Internacional
+            ✍️ Opinión Internacional (8)
           </button>
         </div>
 
@@ -3170,13 +3211,13 @@ export default function App() {
                       🌍 INTERNACIONAL
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
-                      <span>Lun-Vie</span><span>21:30</span>
+                      <span>📅 SEMANAL</span><span>Domingo 21:00</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
-                      <span>Sábado</span><span>18:00</span>
+                      <span>Resumen</span><span>últimos 7 días</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px' }}>
-                      <span>Domingo</span><span>18:30</span>
+                      <span>Generación</span><span>manual</span>
                     </div>
                   </div>
                 </div>
