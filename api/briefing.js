@@ -2372,7 +2372,8 @@ MÁXIMOS POR MEDIO (no superar):
 REGLAS:
 - MÍN 5 medios distintos. Prioriza pluralidad de temas y firmas; evita dos columnas casi idénticas.
 - Vozpópuli PRIMERO en preferencia cuando la calidad sea comparable.
-- Si no hay 25 columnas frescas de calidad, devuelve las que haya. Mejor 12 buenas que 20 con relleno.
+- Si no hay 25 columnas frescas de calidad, devuelve TODAS las que haya (no rellenes con basura, pero tampoco te quedes corto a propósito: si hay 30 buenas, devuelve 30 y el sistema recorta; si solo hay 12 buenas, devuelve 12).
+- IMPORTANTE: es mejor devolver de más (28-30) y que el sistema recorte, que quedarse corto. Aprovecha TODO el material de calidad disponible en las candidatas.
 
 Si un medio preferido no tiene candidatas, completa con los siguientes disponibles.
 
@@ -2658,6 +2659,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           const pool = (briefing.spainOpinion || []).slice();
           const picked = [];
           const perMedio = {};
+          // 1ª pasada: respeta los caps estrictos por medio
           for (const item of pool) {
             if (picked.length >= OPI_TARGET) break;
             const maxMedio = OPI_MAX_MEDIO[item.source] || OPI_DEFAULT_MAX;
@@ -2665,12 +2667,25 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
             if (mc >= maxMedio) continue;
             picked.push(item); perMedio[item.source] = mc + 1;
           }
-          // Sin relleno que ignore caps: si con los topes por medio no se llega a 20,
-          // se devuelven las que haya (respetar los máximos por medio del usuario manda).
+          // 2ª pasada: si NO se llegó al objetivo pero AÚN HAY material disponible,
+          // rellena con las columnas que el cap dejó fuera. Así no desperdiciamos material.
+          // Se permite hasta el DOBLE del cap por medio (Vozpópuli 10, etc.) para que
+          // ningún medio monopolice del todo, pero aprovechando lo que haya.
+          if (picked.length < OPI_TARGET) {
+            const pickedUrls = new Set(picked.map(p => p.url));
+            for (const item of pool) {
+              if (picked.length >= OPI_TARGET) break;
+              if (pickedUrls.has(item.url)) continue;
+              const maxMedio = (OPI_MAX_MEDIO[item.source] || OPI_DEFAULT_MAX) * 2;
+              const mc = perMedio[item.source] || 0;
+              if (mc >= maxMedio) continue;
+              picked.push(item); perMedio[item.source] = mc + 1; pickedUrls.add(item.url);
+            }
+          }
           picked.forEach((it, i) => { it.rank = i + 1; });
           const cut = briefing.spainOpinion.length - picked.length;
           briefing.spainOpinion = picked;
-          if (cut > 0) console.log(`✂️ Opinión tope 20 (máx 4/medio): ${cut} fuera de ${picked.length + cut}`);
+          if (cut > 0) console.log(`✂️ Opinión: ${picked.length} incluidas de ${picked.length + cut} (objetivo ${OPI_TARGET})`);
         }
 
         // ============ RESÚMENES IA (Enfoque B) para columnas forzadas/sin resumen ============
