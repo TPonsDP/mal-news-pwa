@@ -279,7 +279,6 @@ const BRAND = {
   worldOpinionGrad: 'linear-gradient(90deg, #0FA69D, #0A7A73)', // Opinión Internacional: teal
   opinionGrad: 'linear-gradient(90deg, #D6FF00, #A8CC00)',     // Opinión España: amarillo lima flúor
   newsGrad: 'linear-gradient(90deg, #F86040, #D63E1E)',        // Noticias España: coral
-  worldOpinionGrad: 'linear-gradient(90deg, #0FA69D, #0A7A73)',// Opinión Internacional: teal
   // Colores sólidos para bordes/badges (start de cada gradiente)
   intlColor: '#00A896',        // teal
   opinionColor: '#D6FF00',     // amarillo lima flúor
