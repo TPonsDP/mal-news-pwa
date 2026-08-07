@@ -263,7 +263,7 @@ function clearHistory() {
 // ============ FIN CACHE LOCALSTORAGE ============
 
 const RECIPIENT = 'tonipons91@gmail.com';
-const COOLDOWN_MS = 150 * 1000; // 150 segundos entre llamadas para no saturar Anthropic Tier 2
+const COOLDOWN_MS = 180 * 1000; // 180 segundos entre llamadas para no saturar el rate limit de Anthropic
 
 const BRAND = {
   // ============ PALETA: RISOGRAPH VIBRANT (marfil + 4 tintas saturadas por sección) ============
@@ -275,7 +275,7 @@ const BRAND = {
   shadowLg: '6px 6px 0 rgba(22, 20, 15, 0.22)',
   // Gradientes oficiales por bucket (Riso: tinta sólida → deep, sin blend modes)
   intlGrad: 'linear-gradient(90deg, #00A896, #007F70)',       // Noticias Internacional: teal
-  worldNewsGrad: 'linear-gradient(90deg, #00FA8C, #00B368)',  // Noticias Internacional: verde menta brillante
+  worldNewsGrad: 'linear-gradient(90deg, #DB2777, #9D174D)',  // Noticias Internacional: fucsia/magenta
   worldOpinionGrad: 'linear-gradient(90deg, #0FA69D, #0A7A73)', // Opinión Internacional: teal
   opinionGrad: 'linear-gradient(90deg, #D6FF00, #A8CC00)',     // Opinión España: amarillo lima flúor
   newsGrad: 'linear-gradient(90deg, #F86040, #D63E1E)',        // Noticias España: coral
@@ -293,8 +293,8 @@ const BRAND = {
   ink: '#16140F',
   inkSoft: 'rgba(22, 20, 15, 0.65)',
   orange: '#FF6B00',           // Naranja Riso vivo (usado en decoraciones y botón HOY)
-  limeLight: '#F4ECD4',        // bgGray alias usado en gradientes decorativos
-  limeDark: '#ECE2C4',         // bgGrayDeep alias
+  limeLight: '#C5CBA5',        // Fondo oliva/musgo (claro suave)
+  limeDark: '#B2B98D',         // Fondo oliva/musgo (claro)
   // Lean badges (IZQ/DER indicador ideológico en algunas tarjetas)
   leftBlue: '#1A3FE6',
   rightRed: '#FF2D7A',
@@ -347,10 +347,10 @@ function DiagonalHeader({ dateObj }) {
       </defs>
 
       {/* Fondo gris humo con esquinas redondeadas */}
-      <rect x="0" y="0" width="600" height="210" fill="#ADD0FF" rx="10" />
+      <rect x="0" y="0" width="600" height="210" fill="#5B57A8" rx="10" />
 
-      {/* Bloque azul Oxford con corte diagonal */}
-      <path d="M 0 0 L 280 0 L 200 210 L 0 210 Z" fill="#FA4E3F" />
+      {/* Bloque índigo con corte diagonal */}
+      <path d="M 0 0 L 280 0 L 200 210 L 0 210 Z" fill="#312E81" />
 
       {/* Línea naranja siguiendo el corte diagonal */}
       <line x1="280" y1="0" x2="200" y2="210" stroke="#FADD00" strokeWidth="4" />
@@ -372,25 +372,25 @@ function DiagonalHeader({ dateObj }) {
       </g>
 
       {/* Zona derecha: día en serif Georgia */}
-      <text x="305" y="70" fontFamily="Georgia, 'Times New Roman', serif" fontStyle="italic" fontSize="42" fill="#011142">
+      <text x="305" y="70" fontFamily="Georgia, 'Times New Roman', serif" fontStyle="italic" fontSize="42" fill="#FFFFFF">
         {dayName}
       </text>
 
       {/* Día número grande naranja + mes en azul */}
       <text x="320" y="108" fontFamily="'Verdana', 'Geneva', sans-serif" fontWeight="900" fontSize="34" fill="#FA4E3F" letterSpacing="-0.02em">
         {dayNumber}
-        <tspan fontSize="17" fill="#011142" fontWeight="700" dx="8">{month}</tspan>
+        <tspan fontSize="17" fill="#FFFFFF" fontWeight="700" dx="8">{month}</tspan>
       </text>
 
       {/* Año con letterspacing amplio */}
-      <text x="320" y="134" fontFamily="'Verdana', sans-serif" fontWeight="700" fontSize="13" fill="#5A6B7C" letterSpacing="0.32em">{year}</text>
+      <text x="320" y="134" fontFamily="'Verdana', sans-serif" fontWeight="700" fontSize="13" fill="#C7C4E8" letterSpacing="0.32em">{year}</text>
 
       {/* Separador sutil */}
-      <line x1="320" y1="156" x2="575" y2="156" stroke="#1A365D" strokeWidth="0.5" opacity="0.25" />
+      <line x1="320" y1="156" x2="575" y2="156" stroke="#FFFFFF" strokeWidth="0.5" opacity="0.3" />
 
       {/* Sub-etiquetas en dos líneas con color diferenciado */}
-      <text x="320" y="176" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#3D737A" letterSpacing="0.16em">ESPAÑA · OPINIÓN</text>
-      <text x="320" y="194" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#3D737A" letterSpacing="0.16em">MUNDO · INTERNACIONAL</text>
+      <text x="320" y="176" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#D4D2F0" letterSpacing="0.16em">ESPAÑA · OPINIÓN</text>
+      <text x="320" y="194" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#D4D2F0" letterSpacing="0.16em">MUNDO · INTERNACIONAL</text>
     </svg>
   );
 }
@@ -2023,7 +2023,7 @@ export default function App() {
     // Mapeo de colores y gradientes por sección (debe coincidir con SECTION_COLORS/SECTION_GRADIENTS de la PWA)
     const SECTION_STYLES = {
       worldOpinion: { color: '#0FA69D', gradient: 'linear-gradient(90deg, #0FA69D, #0A7A73)' },
-      worldNews:    { color: '#00FA8C', gradient: 'linear-gradient(90deg, #00FA8C, #00B368)' },
+      worldNews:    { color: '#DB2777', gradient: 'linear-gradient(90deg, #DB2777, #9D174D)' },
       spainOpinion: { color: '#D6FF00', gradient: 'linear-gradient(90deg, #D6FF00, #A8CC00)' },
       spainNews:    { color: '#F86040', gradient: 'linear-gradient(90deg, #F86040, #D63E1E)' },
     };
@@ -2151,10 +2151,10 @@ export default function App() {
     const HEADER_BG = {
       spainNews:     { bg: '#FBE3DC', border: '#F86040' },
       spainOpinion:  { bg: '#F2FBC4', border: '#A8CC00' },
-      worldNews:     { bg: '#D4FBEA', border: '#00B368' },
+      worldNews:     { bg: '#FBE0EE', border: '#DB2777' },
       worldOpinion:  { bg: '#D4F0EE', border: '#0FA69D' },
       spain:         { bg: '#FBE3DC', border: '#F86040' },
-      international: { bg: '#D4FBEA', border: '#00B368' },
+      international: { bg: '#FBE0EE', border: '#DB2777' },
     };
     const headerTone = HEADER_BG[mode] || { bg: '#FFFCF2', border: '#011142' };
 
@@ -2189,12 +2189,12 @@ export default function App() {
   ${W} .next-briefing-label { text-align:center; font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.18em; color:#011142; margin-bottom:14px; }
   ${W} .schedule-card { display:flex; gap:14px; align-items:center; padding:14px 16px; border-radius:0; margin-bottom:10px; background:#FFFCF2; }
   ${W} .spain-card { border:2px solid #011142; box-shadow:4px 4px 0 #F86040; }
-  ${W} .intl-card { border:2px solid #011142; box-shadow:4px 4px 0 #00FA8C; }
+  ${W} .intl-card { border:2px solid #011142; box-shadow:4px 4px 0 #DB2777; }
   ${W} .card-icon { font-size:32px; flex-shrink:0; }
   ${W} .card-body { flex:1; }
   ${W} .card-title { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.16em; color:#011142; margin-bottom:3px; }
   ${W} .spain-card .card-title { color:#F86040; }
-  ${W} .intl-card .card-title { color:#00B368; }
+  ${W} .intl-card .card-title { color:#DB2777; }
   ${W} .card-time { font-style:italic; font-size:18px; font-weight:700; color:#011142; margin-bottom:3px; line-height:1.2; }
   ${W} .card-reason { font-size:12px; font-style:italic; color:rgba(1,17,66,0.7); line-height:1.3; }
   ${W} .next-briefing-schedule { border-top:2px dashed #FADD00; padding-top:14px; margin-top:8px; }
@@ -2202,7 +2202,7 @@ export default function App() {
   ${W} .schedule-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   ${W} .schedule-col-title { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; letter-spacing:0.14em; padding:5px 0; margin-bottom:4px; text-align:center; border-radius:0; color:#FFFCF2; }
   ${W} .spain-title { background:#F86040; color:#FFFCF2; }
-  ${W} .intl-title { background:#00B368; color:#FFFCF2; }
+  ${W} .intl-title { background:#DB2777; color:#FFFCF2; }
   ${W} .schedule-row { display:flex; justify-content:space-between; font-size:12px; color:#011142; padding:3px 6px; border-bottom:1px dashed rgba(1,17,66,0.15); }
   ${W} .schedule-row:last-child { border-bottom:none; }
   ${W} .copy-hint { background:#1A3FE6; border:3px solid #16140F; border-radius:0; padding:14px 18px; margin-bottom:20px; font-size:13px; color:#FFFCF2; text-align:center; box-shadow:4px 4px 0 #FF2D7A; }
@@ -2803,16 +2803,16 @@ export default function App() {
               cursor: (intlStatus === 'loading' || isInCooldown) ? 'wait' : 'pointer',
               transition: 'all 0.25s ease', fontFamily: "'Verdana', 'Geneva', sans-serif",
               background: intlStatus === 'loading'
-                ? `linear-gradient(90deg, #00B368, #5EFFB0, #00B368)`
+                ? `linear-gradient(90deg, #9D174D, #F472B6, #9D174D)`
                 : BRAND.worldNewsGrad || BRAND.intlGrad,
               backgroundSize: intlStatus === 'loading' ? '200% 100%' : '100% 100%',
               animation: intlStatus === 'loading' ? 'shimmer 2s linear infinite' : 'none',
               color: 'white', opacity: (intlStatus === 'loading' || isInCooldown) ? 0.65 : 1,
-              boxShadow: '0 6px 20px rgba(0,250,140,0.40)', textTransform: 'uppercase',
+              boxShadow: '0 6px 20px rgba(219,39,119,0.42)', textTransform: 'uppercase',
               textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
-            🌍 Noticias Internacional (10)
+            {intlStatus === 'loading' ? 'Buscando noticias internacional...' : isInCooldown ? `⏳ Espera ${cooldownLeft}s` : '🌍 Noticias Internacional (10)'}
           </button>
 
           <button
@@ -2834,7 +2834,7 @@ export default function App() {
               textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
-            ✍️ Opinión Internacional (8)
+            {intlStatus === 'loading' ? 'Buscando opinión internacional...' : isInCooldown ? `⏳ Espera ${cooldownLeft}s` : '✍️ Opinión Internacional (8)'}
           </button>
         </div>
 
@@ -3034,8 +3034,8 @@ export default function App() {
             <p style={{ fontSize: '13px', margin: 0, fontFamily: "'Verdana', 'Geneva', sans-serif", fontStyle: 'italic' }}>
               Pulsa los botones para generar cada sección
             </p>
-            <p style={{ fontSize: '14px', margin: '12px 0 0', color: '#65A30D', fontWeight: '700', letterSpacing: '0.02em', fontFamily: "'Verdana', 'Geneva', sans-serif" }}>
-              Internacional: 8 opinión + 20 mundo · Opinión España: 16 · Noticias España: 25
+            <p style={{ fontSize: '14px', margin: '12px 0 0', color: '#011142', fontWeight: '700', letterSpacing: '0.02em', fontFamily: "'Verdana', 'Geneva', sans-serif" }}>
+              Noticias España 25 · Opinión España 25 · Noticias Mundo 10 · Opinión Mundo 8
             </p>
           </div>
         )}
