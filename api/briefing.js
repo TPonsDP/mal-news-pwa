@@ -2174,7 +2174,17 @@ export default async function handler(req, res) {
     let currentStep = 'init';
     try {
       currentStep = 'fetch-rss';
-      const { candidates, diagnostic } = await fetchSpainOpinionRss(allowedISODates, excludeUrlsSet);
+      let { candidates, diagnostic } = await fetchSpainOpinionRss(allowedISODates, excludeUrlsSet);
+
+      // Pre-filtro anti-deporte: quita crónicas/columnas de fútbol ANTES de curar o hacer fallback.
+      // Evita que se cuelen "Rodri rechaza al Barcelona", "Liga F", "Mourinho/Endrick", etc.
+      const OPI_SPORT = /\b(f[uú]tbol|liga f|laliga|la liga|champions|copa del mundo|mundial|selecci[oó]n española|goleó|messi|cristiano|cucurella|dani olmo|\brodri\b|endrick|mourinho|barça|bar[cç]a|real madrid|atl[eé]tico|baloncesto|nba|acb|tenis|f1|f[oó]rmula 1|motogp|ciclismo|la vuelta|fichaje|traspaso|centrocampista|delantero|portero|pádel|padel)\b/i;
+      if (Array.isArray(candidates)) {
+        const before = candidates.length;
+        candidates = candidates.filter(c => !OPI_SPORT.test(String(c.title || '')));
+        const dropped = before - candidates.length;
+        if (dropped > 0) console.log(`🛡️ Pre-filtro opinión: descartadas ${dropped} columnas de deporte`);
+      }
 
       if (!candidates || candidates.length === 0) {
         // Diagnóstico detallado: qué devolvió cada feed
@@ -2389,7 +2399,10 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
       // Fallback de opinión: si el modelo falla/timeout, devolvemos las columnas CRUDAS
       // de los feeds (ya pre-cargadas en candidates) en vez de un error. Mejor pocas que nada.
       const buildOpinionFallback = (reason) => {
-        const items = (candidates || []).slice(0, 25).map((c, i) => ({
+        // Filtro anti-deporte también en el fallback de opinión (crónicas de fútbol se colaban)
+        const OPI_JUNK = /\b(f[uú]tbol|liga f|laliga|la liga|champions|copa del mundo|mundial|selecci[oó]n|goleó|gol\b|messi|cristiano|cucurella|dani olmo|rodri|endrick|mourinho|barcelona|real madrid|atl[eé]tico|baloncesto|nba|tenis|f1|f[oó]rmula 1|motogp|ciclismo|jugador|entrenador|fichaje|traspaso|centrocampista|delantero|podcast|eurovisi[oó]n|gran hermano)\b/i;
+        const clean = (candidates || []).filter(c => !OPI_JUNK.test(String(c.title || '')));
+        const items = clean.slice(0, 25).map((c, i) => ({
           rank: i + 1,
           title: c.title || '(sin título)',
           summary: String(c.description || c.summary || 'Columna de opinión. Pulsa para leer el texto completo.').slice(0, 300),
@@ -2404,7 +2417,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
             spainOpinion: items,
             _fallback: true,
             _fallbackReason: reason,
-            _meta: { candidatesFound: candidates.length, degraded: true, sectionTarget: 25 },
+            _meta: { candidatesFound: candidates.length, degraded: true, sectionTarget: 25, feedDiagnostic: diagnostic },
           },
           section,
         });
@@ -3008,7 +3021,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
             spainNews: fallbackItems,
             _fallback: true,
             _fallbackReason: reason,
-            _meta: { candidatesFound: candidates.length, degraded: true },
+            _meta: { candidatesFound: candidates.length, degraded: true, feedDiagnostic: diagnostic },
           },
           section,
         });
