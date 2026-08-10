@@ -2239,9 +2239,9 @@ Tienes a continuación una lista de ${candidates.length} piezas de medios españ
 - ✅ COLUMNA = pieza con autor humano real → CANDIDATA VÁLIDA
 - ❌ NOTICIA/EDITORIAL = sin autor real, autor = nombre del medio, "Sumario", "Editorial", etc → NO INCLUIR EN OPINIÓN
 
-REGLA INELUDIBLE: Las piezas marcadas con ❌ son NOTICIAS o EDITORIALES institucionales. NUNCA las incluyas en spainOpinion. Solo las piezas marcadas con ✅ pueden formar parte del briefing de opinión. Si tras filtrar quedan menos de 20 columnas válidas, devuelve menos pero TODAS deben ser ✅.
+REGLA INELUDIBLE: Las piezas marcadas con ❌ son NOTICIAS o EDITORIALES institucionales. NUNCA las incluyas en spainOpinion. Solo las piezas marcadas con ✅ pueden formar parte del briefing de opinión. Si tras filtrar quedan menos de 25 columnas válidas, devuelve menos pero TODAS deben ser ✅.
 
-✅ PERMITIDO devolver MENOS columnas si no hay material fresco suficiente. Mejor 10-12 columnas de calidad fresca que 20 mediocres o de hace 36+ horas. Objetivo ideal: 20 columnas.
+✅ PERMITIDO devolver MENOS columnas si no hay material fresco suficiente. Mejor 10-12 columnas de calidad fresca que 25 mediocres o de hace 36+ horas. Objetivo ideal: 25 columnas.
 
 ⭐⭐⭐ COLUMNISTAS PRIORITARIOS A SEGUIR ⭐⭐⭐
 Si en CANDIDATAS aparece una columna firmada por uno de estos autores, DEBES INCLUIRLA (siempre respetando los hard caps por medio). Son los referentes que el usuario quiere ver en su briefing diario:
@@ -2386,6 +2386,29 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
 {"date":"${todayShort}","spainOpinion":[{"rank":1,"title":"...","summary":"...","author":"...","source":"...","topic":"Centro|Izquierda|Derecha|El Mundo|Cataluña","url":"...","publishedDate":"YYYY-MM-DD"}]}`;
 
       currentStep = 'call-anthropic';
+      // Fallback de opinión: si el modelo falla/timeout, devolvemos las columnas CRUDAS
+      // de los feeds (ya pre-cargadas en candidates) en vez de un error. Mejor pocas que nada.
+      const buildOpinionFallback = (reason) => {
+        const items = (candidates || []).slice(0, 25).map((c, i) => ({
+          rank: i + 1,
+          title: c.title || '(sin título)',
+          summary: String(c.description || c.summary || 'Columna de opinión. Pulsa para leer el texto completo.').slice(0, 300),
+          author: c.author || '',
+          source: c.source || '',
+          url: c.url || '',
+          publishedDate: c.publishedDate || todayShort,
+        }));
+        return res.status(200).json({
+          briefing: {
+            date: todayShort,
+            spainOpinion: items,
+            _fallback: true,
+            _fallbackReason: reason,
+            _meta: { candidatesFound: candidates.length, degraded: true, sectionTarget: 25 },
+          },
+          section,
+        });
+      };
       let upstream;
       try {
         upstream = await callAnthropicWithRetry({
@@ -2394,6 +2417,10 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
           messages: [{ role: 'user', content: userPrompt }],
         }, apiKey, { timeoutMs: 90000, maxRetries: 3 });
       } catch (e) {
+        // En vez de error 504: devolver las columnas crudas disponibles
+        if (candidates && candidates.length > 0) {
+          return buildOpinionFallback(e.name === 'AbortError' ? 'model_timeout' : `model_error: ${String(e.message || e).slice(0, 150)}`);
+        }
         return res.status(504).json({
           error: `La generación de opinión España falló tras reintentos: ${String(e.message || e).slice(0, 200)}. Reintenta en 1-2 minutos.`,
           step: 'anthropic-timeout',
@@ -2402,6 +2429,10 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
       }
 
       if (!upstream.ok) {
+        // Anthropic devolvió error (429/529/etc): también usar fallback si hay material
+        if (candidates && candidates.length > 0) {
+          return buildOpinionFallback(`anthropic_${upstream.status}`);
+        }
         const errText = await upstream.text();
         return res.status(upstream.status).json({
           error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
@@ -2635,8 +2666,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         briefing.spainOpinion = items;
         // ============ FIN ENFORCEMENT ============
 
-        // ⭐⭐ TOPE SIMPLE — opinión España máx 20 columnas, SIN cupos por bloque ⭐⭐
-        // Cap por medio suave (máx 4/medio, Vozpópuli 5) para que ninguno copado la sección,
+        // ⭐⭐ TOPE SIMPLE — opinión España máx 25 columnas, SIN cupos por bloque ⭐⭐
+        // Cap por medio según preferencias del usuario (Vozpópuli 5, suscripciones 4, etc.),
         // pero sin rejilla ideológica. Se queda con las mejores por orden del modelo.
         {
           const OPI_TARGET = 25;
@@ -3296,6 +3327,35 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
       subModeInstruction = '\n\n🎯 MODO SOLO-OPINIÓN: Genera ÚNICAMENTE el array "worldOpinion" (8 columnas). Devuelve "worldNews" como array VACÍO []. Concentra todas las búsquedas en columnas de opinión firmadas.';
     }
 
+    // Fallback internacional: si el modelo falla pero hay candidatas de OPINIÓN pre-cargadas
+    // (worldOpinion pre-fetchea RSS), devolvemos esas columnas crudas en vez de solo error.
+    // worldNews usa solo web_search, así que ahí no hay material crudo de reserva.
+    const buildIntlFallback = (reason) => {
+      if (willGenerateOpinion && intlOpinionCandidates.length > 0) {
+        const cols = intlOpinionCandidates.slice(0, 8).map((c, i) => ({
+          rank: i + 1,
+          title: c.title || '(sin título)',
+          summary: String(c.description || 'Columna de opinión internacional. Pulsa para leer.').slice(0, 300),
+          author: c.author || '',
+          source: c.source || '',
+          url: c.url || '',
+          publishedDate: c.publishedDate || todayShort,
+        }));
+        return res.status(200).json({
+          briefing: {
+            date: todayShort,
+            worldNews: [],
+            worldOpinion: cols,
+            _fallback: true,
+            _fallbackReason: reason,
+            _meta: { degraded: true, subMode: intlSubMode || 'both' },
+          },
+          section,
+        });
+      }
+      return null; // no hay material de reserva (worldNews solo web_search)
+    };
+
     let upstream;
     try {
       upstream = await callAnthropicWithRetry({
@@ -3309,12 +3369,16 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         }],
       }, apiKey, { timeoutMs: 150000, maxRetries: 3 });
     } catch (e) {
+      const fb = buildIntlFallback(e.name === 'AbortError' ? 'model_timeout' : `model_error: ${String(e.message || e).slice(0, 150)}`);
+      if (fb) return fb;
       return res.status(504).json({
         error: `La generación internacional falló tras reintentos: ${String(e.message || e).slice(0, 200)}. Reintenta en 1-2 minutos.`,
       });
     }
 
     if (!upstream.ok) {
+      const fb = buildIntlFallback(`anthropic_${upstream.status}`);
+      if (fb) return fb;
       const errText = await upstream.text();
       return res.status(upstream.status).json({
         error: `Anthropic API error (${upstream.status}): ${errText.slice(0, 500)}`,
