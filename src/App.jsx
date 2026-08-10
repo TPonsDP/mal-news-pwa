@@ -2920,12 +2920,12 @@ export default function App() {
         {/* Mensajes de loading individuales */}
         {intlStatus === 'loading' && (
           <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            🌍 Buscando 28 piezas internacionales...
+            🌍 Buscando piezas internacionales...
           </p>
         )}
         {spainOpinionStatus === 'loading' && (
           <p style={{ textAlign: 'center', color: BRAND.orange, fontSize: '12px', animation: 'pulse 1.5s infinite', marginBottom: '8px', fontStyle: 'italic' }}>
-            ✍️ Buscando 16 columnas de opinión España...
+            ✍️ Buscando 25 columnas de opinión España...
           </p>
         )}
         {spainNewsStatus === 'loading' && (
