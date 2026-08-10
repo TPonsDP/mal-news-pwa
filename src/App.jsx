@@ -2173,7 +2173,7 @@ export default function App() {
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>${escape(headerTitle)} - ${escape(b.date || todayShort)}</title>
+<title>${escape(headerTitle)} - ${escape(todayShort)}</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap');
   ${W} { margin:0; padding:24px; background:#F4ECD4; font-family:'Crimson Pro',Georgia,serif; color:#16140F; box-sizing:border-box; }
@@ -2226,7 +2226,7 @@ export default function App() {
     <div class="header" style="background:${headerTone.bg};box-shadow:6px 6px 0 ${headerTone.border};border-color:${headerTone.border};">
       <h1 class="logo">${escape(headerTitle)}</h1>
       <p class="subtitle">${escape(pageSubtitle)}</p>
-      <p class="date">${escape(b.date || todayShort)}</p>
+      <p class="date">${escape(todayShort)}</p>
       <p class="total">${total} PIEZAS</p>
     </div>
     ${sectionsHtml}
@@ -2318,7 +2318,7 @@ export default function App() {
     };
 
     return [
-      `MAL NEWS - Briefing ${b.date || todayShort}`,
+      `MAL NEWS - Briefing ${todayShort}`,
       `Tu briefing diario · ${totalPieces} piezas`,
       dsep,
       section('🇪🇸 España', b.spainNews),
