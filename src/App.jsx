@@ -191,13 +191,14 @@ function loadHistory() {
 
 // Registra un briefing. `section`: 'world' | 'spainOpinion' | 'spainNews'. `count`: nº de piezas.
 // `breakdown`: objeto opcional { 'Medio': nº, ... } con el desglose por medio de ese briefing.
-function recordHistory(section, count, breakdown) {
+function recordHistory(section, count, breakdown, topics) {
   if (!section || typeof count !== 'number' || count <= 0) return;
   try {
     const hist = loadHistory();
     const list = Array.isArray(hist[section]) ? hist[section] : [];
     const entry = { count, at: new Date().toISOString() };
     if (breakdown && typeof breakdown === 'object') entry.sources = breakdown;
+    if (topics && typeof topics === 'object') entry.topics = topics;
     list.push(entry);
     // Conserva solo los últimos HISTORY_MAX
     hist[section] = list.slice(-HISTORY_MAX);
@@ -258,6 +259,58 @@ function getSourceTotals(section, days = 30) {
 
 function clearHistory() {
   try { localStorage.removeItem(HISTORY_KEY); } catch (_) { /* silencioso */ }
+}
+
+// Igual que getSourceTotals pero agrupando por TEMÁTICA (campo topics de cada briefing).
+function getTopicTotals(section, days = 30) {
+  try {
+    const hist = loadHistory();
+    const list = Array.isArray(hist[section]) ? hist[section] : [];
+    if (list.length === 0) return null;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const recent = list.filter(x => (x.at ? new Date(x.at).getTime() : 0) >= cutoff);
+    if (recent.length === 0) return null;
+    const acc = {};
+    let withBreakdown = 0;
+    for (const e of recent) {
+      if (e.topics && typeof e.topics === 'object') {
+        withBreakdown++;
+        for (const [t, n] of Object.entries(e.topics)) acc[t] = (acc[t] || 0) + (Number(n) || 0);
+      }
+    }
+    if (withBreakdown === 0) return { briefings: 0, days, totals: [], noTopicData: true };
+    const totals = Object.entries(acc)
+      .map(([topic, total]) => ({ source: topic, total, avg: Math.round((total / withBreakdown) * 10) / 10 }))
+      .sort((a, b) => b.total - a.total || a.source.localeCompare(b.source));
+    return { briefings: withBreakdown, days, totals };
+  } catch (_) { return null; }
+}
+
+// Agrupa el histórico por DÍA (cuántas piezas por fecha).
+function getDailyTotals(section, days = 30) {
+  try {
+    const hist = loadHistory();
+    const list = Array.isArray(hist[section]) ? hist[section] : [];
+    if (list.length === 0) return null;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const recent = list.filter(x => (x.at ? new Date(x.at).getTime() : 0) >= cutoff);
+    if (recent.length === 0) return null;
+    const byDay = {};
+    for (const e of recent) {
+      if (!e.at) continue;
+      const d = new Date(e.at);
+      const key = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+      byDay[key] = (byDay[key] || 0) + (Number(e.count) || 0);
+    }
+    const totals = Object.entries(byDay)
+      .map(([day, total]) => ({ source: day, total, avg: null }))
+      .sort((a, b) => {
+        const [da, ma] = a.source.split('/').map(Number);
+        const [db, mb] = b.source.split('/').map(Number);
+        return (mb - ma) || (db - da); // más reciente primero
+      });
+    return { briefings: recent.length, days, totals, isDaily: true };
+  } catch (_) { return null; }
 }
 
 // ============ FIN CACHE LOCALSTORAGE ============
@@ -1314,8 +1367,8 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
           <details style={{
             marginTop: '12px',
             padding: '10px 14px',
-            background: 'rgba(255,255,255,0.18)',
-            border: '1px solid rgba(255,255,255,0.35)',
+            background: 'rgba(11,32,51,0.82)',
+            border: '1px solid rgba(127,255,212,0.4)',
             borderRadius: '8px',
             fontSize: '11px',
             fontFamily: "'Verdana', sans-serif",
@@ -1325,7 +1378,7 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
             <summary style={{
               cursor: 'pointer',
               fontWeight: '800',
-              color: 'white',
+              color: '#7FFFD4',
               letterSpacing: '0.06em',
               fontSize: '11.5px',
               listStyle: 'none',
@@ -1343,7 +1396,7 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
                     <details key={i} style={{
                       padding: '6px 8px',
                       marginBottom: '4px',
-                      background: included === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.14)',
+                      background: included === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(127,255,212,0.12)',
                       borderRadius: '5px',
                       fontSize: '10.5px',
                     }}>
@@ -1356,12 +1409,12 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
                         flexWrap: 'wrap',
                         listStyle: 'none',
                       }}>
-                        <strong style={{ color: 'white', fontSize: '11px', minWidth: '105px', fontWeight: '700' }}>
+                        <strong style={{ color: '#7FFFD4', fontSize: '11px', minWidth: '105px', fontWeight: '700' }}>
                           {statusIcon} {d.source} {d.urlsCount > 1 && <em style={{ opacity: 0.6, fontSize: '9.5px', fontWeight: '600' }}>· {d.urlsCount} URLs</em>}
                         </strong>
                         <span style={{ color: 'rgba(255,255,255,0.92)', fontSize: '10px', flex: 1, textAlign: 'right' }}>
                           {d.rawCount === 0
-                            ? <em style={{ color: 'rgba(255,255,255,0.65)' }}>⚠️ todas las URLs vacías ▼</em>
+                            ? <em style={{ color: 'rgba(127,255,212,0.75)' }}>⚠️ todas las URLs vacías ▼</em>
                             : <>
                                 <span style={{ fontWeight: '800' }}>{included} incluidas</span>
                                 {' · '}
@@ -1601,6 +1654,7 @@ export default function App() {
   const [changelogQuery, setChangelogQuery] = useState('');
   const [showStats, setShowStats] = useState(false);
   const [statsSection, setStatsSection] = useState('spainOpinion');
+  const [statsView, setStatsView] = useState('medio'); // 'medio' | 'tematica' | 'dia'
 
   // Sincronizar a window para que NewsCard/MediaGroup puedan acceder sin prop drilling
   useEffect(() => {
@@ -1779,11 +1833,14 @@ export default function App() {
         const n = arr.length;
         if (n > 0) {
           const breakdown = {};
+          const topicBreakdown = {};
           for (const p of arr) {
             const s = (p && p.source) ? String(p.source).trim() : 'Sin medio';
             breakdown[s] = (breakdown[s] || 0) + 1;
+            const tp = (p && p.topic) ? String(p.topic).trim() : 'Otros';
+            topicBreakdown[tp] = (topicBreakdown[tp] || 0) + 1;
           }
-          recordHistory(histKey, n, breakdown);
+          recordHistory(histKey, n, breakdown, topicBreakdown);
         }
       } catch (_) { /* no-op */ }
     } catch (err) {
@@ -3272,7 +3329,12 @@ export default function App() {
           spainOpinion: '✍️ Opinión España',
           world: '🌍 Internacional',
         };
-        const stats = getSourceTotals(statsSection, 30);
+        const stats = statsView === 'tematica' ? getTopicTotals(statsSection, 30)
+                    : statsView === 'dia' ? getDailyTotals(statsSection, 30)
+                    : getSourceTotals(statsSection, 30);
+        const viewTitle = statsView === 'tematica' ? 'Piezas por temática'
+                        : statsView === 'dia' ? 'Piezas por día'
+                        : 'Piezas por medio';
         return (
           <div
             onClick={() => setShowStats(false)}
@@ -3294,7 +3356,7 @@ export default function App() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <h2 style={{ margin: 0, fontFamily: "'Space Mono', monospace", fontSize: '17px', letterSpacing: '0.04em' }}>
-                  📊 Piezas por medio · últimos 30 días
+                  📊 {viewTitle} · últimos 30 días
                 </h2>
                 <button
                   onClick={() => setShowStats(false)}
@@ -3323,19 +3385,43 @@ export default function App() {
                 ))}
               </div>
 
-              {!stats ? (
+              {/* Selector de vista: por medio / temática / día */}
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                {[['medio', '📰 Por medio'], ['tematica', '🏷️ Por temática'], ['dia', '📅 Por día']].map(([key, label]) => (
+                  <button
+                    key={key}
+                    onClick={() => setStatsView(key)}
+                    style={{
+                      padding: '5px 10px', borderRadius: '6px', cursor: 'pointer',
+                      fontSize: '11.5px', fontFamily: "'Verdana', sans-serif",
+                      border: '2px solid #0FA69D',
+                      background: statsView === key ? '#0FA69D' : 'transparent',
+                      color: statsView === key ? '#FFFFFF' : '#0A5B55',
+                      fontWeight: statsView === key ? '700' : '400',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {!stats || (stats.noTopicData) ? (
                 <p style={{ opacity: 0.7, fontStyle: 'italic', lineHeight: 1.5 }}>
-                  Aún no hay datos para esta sección. Los datos se acumulan cada vez que generas un briefing — vuelve tras unos días de uso.
+                  {stats && stats.noTopicData
+                    ? 'Aún no hay datos por temática para esta sección. Se empiezan a guardar desde ahora, cada vez que generes un briefing.'
+                    : 'Aún no hay datos para esta sección. Los datos se acumulan cada vez que generas un briefing — vuelve tras unos días de uso.'}
                 </p>
               ) : (
                 <>
                   <div style={{ fontSize: '11px', fontFamily: "'Space Mono', monospace", opacity: 0.65, marginBottom: '10px' }}>
-                    {stats.briefings} briefings registrados · {stats.totals.length} medios
+                    {stats.isDaily
+                      ? `${stats.briefings} briefings registrados · ${stats.totals.length} días`
+                      : `${stats.briefings} briefings registrados · ${stats.totals.length} ${statsView === 'tematica' ? 'temas' : 'medios'}`}
                   </div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                     <thead>
                       <tr style={{ borderBottom: '2px solid #16140F', textAlign: 'left' }}>
-                        <th style={{ padding: '6px 4px', fontFamily: "'Space Mono', monospace", fontSize: '11px' }}>MEDIO</th>
+                        <th style={{ padding: '6px 4px', fontFamily: "'Space Mono', monospace", fontSize: '11px' }}>{statsView === 'tematica' ? 'TEMA' : statsView === 'dia' ? 'DÍA' : 'MEDIO'}</th>
                         <th style={{ padding: '6px 4px', fontFamily: "'Space Mono', monospace", fontSize: '11px', textAlign: 'right' }}>TOTAL</th>
                         <th style={{ padding: '6px 4px', fontFamily: "'Space Mono', monospace", fontSize: '11px', textAlign: 'right' }}>MEDIA/DÍA</th>
                       </tr>
@@ -3345,7 +3431,7 @@ export default function App() {
                         <tr key={i} style={{ borderBottom: '1px solid rgba(22,20,15,0.12)' }}>
                           <td style={{ padding: '6px 4px' }}>{r.source}</td>
                           <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 700 }}>{r.total}</td>
-                          <td style={{ padding: '6px 4px', textAlign: 'right', opacity: 0.7 }}>{r.avg}</td>
+                          <td style={{ padding: '6px 4px', textAlign: 'right', opacity: 0.7 }}>{r.avg === null ? '—' : r.avg}</td>
                         </tr>
                       ))}
                     </tbody>
