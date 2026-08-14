@@ -51,8 +51,7 @@ const SPAIN_OPINION_FEEDS = [
   { source: 'Huffington Post', url: 'https://www.huffingtonpost.es/seccion/opinion/feed/', tier: 'main' },
   { source: 'Huffington Post', url: 'https://news.google.com/rss/search?q=site:huffingtonpost.es&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-main' },
   { source: 'Huffington Post', url: 'https://news.google.com/rss/search?q=site:huffingtonpost.es/opinion&hl=es-ES&gl=ES&ceid=ES:es', tier: 'gn-fallback' },
-  { source: 'Público', url: 'https://www.publico.es/opinion/rss', tier: 'main' },
-  { source: 'Público', url: 'https://blogs.publico.es/feed/', tier: 'blogs' },
+  // Público eliminado: ambas URLs devuelven 404 (publico.es/opinion/rss y blogs.publico.es/feed/)
 
   // 📰 CTXT - Revista Contexto (izquierda · análisis/opinión de formato largo · semanal · feed nativo + GN)
   { source: 'CTXT', url: 'https://ctxt.es/es/rss/', tier: 'main' },
@@ -1912,7 +1911,7 @@ Búsqueda recomendada: site:[dominio]/opinion ${today} para columnas firmadas, s
 OUTPUT: solo JSON, sin texto antes ni después:
 {"date":"DD/MM/YYYY","worldOpinion":[...],"worldNews":[...]}`;
     },
-    maxUses: 6,
+    maxUses: 4, // bajado de 6: web_search es lento; 6 búsquedas superaban 2m30s y crasheaban la función
   },
   // spainNews y spainOpinion usan flujo Plan B (RSS pre-fetch + prompts inline)
   // No necesitan system/user aquí, solo label para validación de section válida
@@ -2842,7 +2841,9 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
       // falle (ej: el "Podcast | Zapatero..." que se coló el 19/06).
       const PODCAST_RE = /^\s*(podcast|audio|v[ií]deo|escucha|en directo|streaming|newsletter|bolet[ií]n|el sal[oó]n de)\b|\bpodcast\b|\|\s*podcast|#\d+\s+lo que hay que leer/i;
       const EDITORIAL_TITLE_RE = /^\s*(editorial|sumario|portadas?|la foto del d[ií]a)\b/i;
-      const SPORT_RE = /\b(f[uú]tbol|laliga|la liga|champions|mundial|eurocopa|baloncesto|nba|acb|f1|f[oó]rmula 1|motogp|tenis|ciclismo|atletismo|golf|p[aá]del|goleó|goleada|empat[oó]|ascenso a primera|dieciseisavos|octavos de final|cuartos de final|semifinal)\b/i;
+      const SPORT_RE = /\b(f[uú]tbol|laliga|la liga|champions|mundial|eurocopa|baloncesto|nba|acb|f1|f[oó]rmula 1|motogp|tenis|ciclismo|atletismo|golf|p[aá]del|paddle|surf|windsurf|pádel|vela|regata|deporte acu[aá]tico|goleó|goleada|empat[oó]|ascenso a primera|dieciseisavos|octavos de final|cuartos de final|semifinal|la vuelta|giro de italia)\b/i;
+      // Sucesos locales triviales y fiestas patronales (sobre todo Baleares) que no son noticia de calado
+      const LOCAL_TRIVIAL_RE = /\b(fiestas? de|fiestas? patronales|se viste de gala|verbena|mare de d[eé]u|sant |santa |revetlla|empleada dom[eé]stica|robó joyas|riña|reyerta|vecino denuncia|okupa|desahucio en|atropello en|cae una? |detenido por robar|hurto en|amenaza bast[oó]n)/i;
       const PODCAST_URL_RE = /\/(podcast|audios?|videos?|en-directo|directo)\//i;
       const isJunkForNews = (c) => {
         const t = String(c.title || '');
@@ -2850,6 +2851,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         if (PODCAST_RE.test(t) || PODCAST_URL_RE.test(u)) return true;
         if (EDITORIAL_TITLE_RE.test(t)) return true;
         if (SPORT_RE.test(t)) return true;
+        if (LOCAL_TRIVIAL_RE.test(t)) return true;
         return false;
       };
       const droppedJunk = candidates.filter(isJunkForNews);
@@ -3380,7 +3382,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           role: 'user',
           content: cfg.user(todayShort, todayFull, nowTime, allowedISODates) + candidatesText + subModeInstruction,
         }],
-      }, apiKey, { timeoutMs: 150000, maxRetries: 3 });
+      }, apiKey, { timeoutMs: 200000, maxRetries: 0 });
     } catch (e) {
       const fb = buildIntlFallback(e.name === 'AbortError' ? 'model_timeout' : `model_error: ${String(e.message || e).slice(0, 150)}`);
       if (fb) return fb;
