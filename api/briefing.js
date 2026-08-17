@@ -2177,12 +2177,25 @@ export default async function handler(req, res) {
 
       // Pre-filtro anti-deporte: quita crónicas/columnas de fútbol ANTES de curar o hacer fallback.
       // Evita que se cuelen "Rodri rechaza al Barcelona", "Liga F", "Mourinho/Endrick", etc.
-      const OPI_SPORT = /\b(f[uú]tbol|liga f|laliga|la liga|champions|copa del mundo|mundial|selecci[oó]n española|goleó|messi|cristiano|cucurella|dani olmo|\brodri\b|endrick|mourinho|barça|bar[cç]a|real madrid|atl[eé]tico|baloncesto|nba|acb|tenis|f1|f[oó]rmula 1|motogp|ciclismo|la vuelta|fichaje|traspaso|centrocampista|delantero|portero|pádel|padel)\b/i;
+      const OPI_SPORT = /\b(f[uú]tbol|liga f|laliga|la liga|champions|copa del mundo|mundial|selecci[oó]n española|goleó|messi|cristiano|cucurella|dani olmo|\brodri\b|endrick|mourinho|barça|bar[cç]a|real madrid|atl[eé]tico|baloncesto|nba|acb|tenis|f1|f[oó]rmula 1|motogp|ciclismo|la vuelta|fichaje|traspaso|centrocampista|delantero|portero|pádel|padel|lamine yamal|raphinha|gavi|cumpleaños)\b/i;
+      // Prensa rosa, TV/famoseo y realities (no es opinión política)
+      const OPI_GOSSIP = /\b(cr[oó]nica rosa|prensa rosa|corazón|supervivientes|gran hermano|telecinco|antena 3|tve|isla de las tentaciones|realiti|reality|concursante|dulceida|famoso|celebrity|boda de|divorcio de|posa en bikini|en bañador)\b/i;
+      // Viñetas de humor gráfico: título = solo el nombre del viñetista, cuerpo vacío ("Leer")
+      const CARTOONISTS = /^(id[ií]goras y pachi|ulises culebro|ricardo|gallego y rey|peridis|forges|jm nieto|puebla|padylla|malagón|ferran mart[ií]n)$/i;
+      const isCartoon = (c) => {
+        const t = String(c.title || '').trim();
+        const body = String(c.description || c.summary || '').trim().toLowerCase();
+        // viñeta si el título es solo un nombre de viñetista, o si el cuerpo es solo "leer"/vacío y el título es muy corto
+        return CARTOONISTS.test(t) || (t.split(/\s+/).length <= 3 && (body === 'leer' || body === '' || body.length < 6));
+      };
       if (Array.isArray(candidates)) {
         const before = candidates.length;
-        candidates = candidates.filter(c => !OPI_SPORT.test(String(c.title || '')));
+        candidates = candidates.filter(c => {
+          const t = String(c.title || '');
+          return !OPI_SPORT.test(t) && !OPI_GOSSIP.test(t) && !isCartoon(c);
+        });
         const dropped = before - candidates.length;
-        if (dropped > 0) console.log(`🛡️ Pre-filtro opinión: descartadas ${dropped} columnas de deporte`);
+        if (dropped > 0) console.log(`🛡️ Pre-filtro opinión: descartadas ${dropped} (deporte/rosa/viñetas)`);
       }
 
       if (!candidates || candidates.length === 0) {
@@ -2699,7 +2712,14 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
             'Público': 1,
           };
           const OPI_DEFAULT_MAX = 1; // resto: Ethic, Letras Libres, El Blog Salmón, CTXT, El Salto, Agenda Pública, Crónica Global, OK Diario
-          const pool = (briefing.spainOpinion || []).slice();
+          // Orden de prioridad: Vozpópuli (medio #1) y las suscripciones del usuario primero,
+          // para que sus columnas entren antes del corte de 25 y no se queden fuera.
+          const OPI_PRIORITY = { 'Vozpópuli': 0, 'The Objective': 1, 'El Mundo': 2, 'El País': 2, 'elDiario.es': 2 };
+          const pool = (briefing.spainOpinion || []).slice().sort((a, b) => {
+            const pa = OPI_PRIORITY[a.source] ?? 9;
+            const pb = OPI_PRIORITY[b.source] ?? 9;
+            return pa - pb; // estable: mantiene orden original dentro del mismo medio
+          });
           const picked = [];
           const perMedio = {};
           // 1ª pasada: respeta los caps estrictos por medio
