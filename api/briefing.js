@@ -1119,6 +1119,8 @@ const KNOWN_NEWS_REPORTERS_GLOBAL = {
     'miguel ángel pérez', 'miguel angel perez',
     'miguel puga', 'álvaro nieto', 'alvaro nieto',
     'carlos cuesta', 'daniel basteiro',
+    'carla castejón rico', 'carla castejon rico', 'sofía lajarín', 'sofia lajarin',
+    'ana mateu cifre', 'teresa de la cierva', 'antonio poveda', 'carlos pérez gimeno', 'carlos perez gimeno',
   ],
   'elDiario.es': [
     'javier lillo', 'elena herrera', 'pedro águeda', 'pedro agueda',
@@ -1151,6 +1153,12 @@ const NEWS_TITLE_PATTERNS = [
   /\b(gana|pierde|empata|vence|cae|sube|baja) \d/i,
   /^(resultados|clasificación|directo):/i,
   /\b(se corona|campeón|campeona|medalla|título) /i,
+  // Estilo de vida / lifestyle / consumo / famoseo (no es opinión política)
+  /\b(belleza|protector solar|cosm[eé]tica|skincare|maquillaje|s[aá]banas|colch[oó]n|almohada|pijama|horóscopo|signos del zodiaco)\b/i,
+  /^(belleza|lifestyle|estilo de vida|bienestar|salud|consumo|viajes?|gastronom[ií]a|moda)\s*[:·]/i,
+  /\b(trucos? para|c[oó]mo limpiar|c[oó]mo elegir|el mejor truco|estos son los|estos errores|graves errores que cometes|lo que tardan|por qué tu)\b/i,
+  /\b(influencer|creador[a]? de contenido|youtuber|tiktoker|reality|realiti|concursante|supervivientes|gran hermano)\b/i,
+  /\b(confiesa|desvela|revela|presume de|reaparece|rompe su silencio|habla por primera vez)\b.*\b(supermercado|instagram|redes|boda|novi[oa]|embarazo)\b/i,
 ];
 
 function isOpinionRSSItem(item) {
@@ -2179,7 +2187,9 @@ export default async function handler(req, res) {
       // Evita que se cuelen "Rodri rechaza al Barcelona", "Liga F", "Mourinho/Endrick", etc.
       const OPI_SPORT = /\b(f[uú]tbol|liga f|laliga|la liga|champions|copa del mundo|mundial|selecci[oó]n española|goleó|messi|cristiano|cucurella|dani olmo|\brodri\b|endrick|mourinho|barça|bar[cç]a|real madrid|atl[eé]tico|baloncesto|nba|acb|tenis|f1|f[oó]rmula 1|motogp|ciclismo|la vuelta|fichaje|traspaso|centrocampista|delantero|portero|pádel|padel|lamine yamal|raphinha|gavi|cumpleaños)\b/i;
       // Prensa rosa, TV/famoseo y realities (no es opinión política)
-      const OPI_GOSSIP = /\b(cr[oó]nica rosa|prensa rosa|corazón|supervivientes|gran hermano|telecinco|antena 3|tve|isla de las tentaciones|realiti|reality|concursante|dulceida|famoso|celebrity|boda de|divorcio de|posa en bikini|en bañador)\b/i;
+      const OPI_GOSSIP = /\b(cr[oó]nica rosa|prensa rosa|corazón|supervivientes|gran hermano|telecinco|antena 3|tve|isla de las tentaciones|realiti|reality|concursante|dulceida|famoso|celebrity|boda de|divorcio de|posa en bikini|en bañador|maría pombo|maria pombo|influencer|creador[a]? de contenido|brian may|guitarrista de)\b/i;
+      // Estilo de vida / lifestyle / salud blanda / consumo — no es opinión política
+      const OPI_LIFESTYLE = /\b(belleza|protector solar|cosm[eé]tica|skincare|maquillaje|s[aá]banas|colch[oó]n|almohada|nido de bacterias|dormir|pijama|rutina de|trucos? para|c[oó]mo limpiar|estos son los|el mejor truco|adelgazar|dieta|receta|horóscopo|signos del zodiaco|estos alimentos|lo que tardan|por qué tu|c[oó]mo elegir|estos errores|graves errores que cometes|lesi[oó]n en la córnea|eclipse|pueblos abandonados|los? m[aá]s espectacular)\b/i;
       // Viñetas de humor gráfico: título = solo el nombre del viñetista, cuerpo vacío ("Leer")
       const CARTOONISTS = /^(id[ií]goras y pachi|ulises culebro|ricardo|gallego y rey|peridis|forges|jm nieto|puebla|padylla|malagón|ferran mart[ií]n)$/i;
       const isCartoon = (c) => {
@@ -2192,7 +2202,10 @@ export default async function handler(req, res) {
         const before = candidates.length;
         candidates = candidates.filter(c => {
           const t = String(c.title || '');
-          return !OPI_SPORT.test(t) && !OPI_GOSSIP.test(t) && !isCartoon(c);
+          // Los columnistas favoritos NUNCA se filtran, aunque el título tenga una palabra sospechosa
+          const authorLow = String(c.author || '').trim().toLowerCase();
+          if (authorLow && KNOWN_OPINION_COLUMNISTS_GLOBAL.includes(authorLow)) return true;
+          return !OPI_SPORT.test(t) && !OPI_GOSSIP.test(t) && !OPI_LIFESTYLE.test(t) && !isCartoon(c);
         });
         const dropped = before - candidates.length;
         if (dropped > 0) console.log(`🛡️ Pre-filtro opinión: descartadas ${dropped} (deporte/rosa/viñetas)`);
@@ -2412,8 +2425,12 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
       // de los feeds (ya pre-cargadas en candidates) en vez de un error. Mejor pocas que nada.
       const buildOpinionFallback = (reason) => {
         // Filtro anti-deporte también en el fallback de opinión (crónicas de fútbol se colaban)
-        const OPI_JUNK = /\b(f[uú]tbol|liga f|laliga|la liga|champions|copa del mundo|mundial|selecci[oó]n|goleó|gol\b|messi|cristiano|cucurella|dani olmo|rodri|endrick|mourinho|barcelona|real madrid|atl[eé]tico|baloncesto|nba|tenis|f1|f[oó]rmula 1|motogp|ciclismo|jugador|entrenador|fichaje|traspaso|centrocampista|delantero|podcast|eurovisi[oó]n|gran hermano)\b/i;
-        const clean = (candidates || []).filter(c => !OPI_JUNK.test(String(c.title || '')));
+        const OPI_JUNK = /\b(f[uú]tbol|liga f|laliga|la liga|champions|copa del mundo|mundial|selecci[oó]n|goleó|gol\b|messi|cristiano|cucurella|dani olmo|rodri|endrick|mourinho|barcelona|real madrid|atl[eé]tico|baloncesto|nba|tenis|f1|f[oó]rmula 1|motogp|ciclismo|jugador|entrenador|fichaje|traspaso|centrocampista|delantero|podcast|eurovisi[oó]n|gran hermano|cr[oó]nica rosa|supervivientes|telecinco|concursante)\b/i;
+        const clean = (candidates || []).filter(c => {
+          const authorLow = String(c.author || '').trim().toLowerCase();
+          if (authorLow && KNOWN_OPINION_COLUMNISTS_GLOBAL.includes(authorLow)) return true; // favorito: nunca se filtra
+          return !OPI_JUNK.test(String(c.title || ''));
+        });
         const items = clean.slice(0, 25).map((c, i) => ({
           rank: i + 1,
           title: c.title || '(sin título)',
@@ -2712,14 +2729,15 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
             'Público': 1,
           };
           const OPI_DEFAULT_MAX = 1; // resto: Ethic, Letras Libres, El Blog Salmón, CTXT, El Salto, Agenda Pública, Crónica Global, OK Diario
-          // Orden de prioridad: Vozpópuli (medio #1) y las suscripciones del usuario primero,
-          // para que sus columnas entren antes del corte de 25 y no se queden fuera.
-          const OPI_PRIORITY = { 'Vozpópuli': 0, 'The Objective': 1, 'El Mundo': 2, 'El País': 2, 'elDiario.es': 2 };
-          const pool = (briefing.spainOpinion || []).slice().sort((a, b) => {
-            const pa = OPI_PRIORITY[a.source] ?? 9;
-            const pb = OPI_PRIORITY[b.source] ?? 9;
-            return pa - pb; // estable: mantiene orden original dentro del mismo medio
-          });
+          // Orden de prioridad: columnistas favoritos primero, luego Vozpópuli (medio #1)
+          // y las suscripciones del usuario, para que entren antes del corte de 25.
+          const OPI_PRIORITY = { 'Vozpópuli': 1, 'The Objective': 2, 'El Mundo': 3, 'El País': 3, 'elDiario.es': 3 };
+          const prioOf = (item) => {
+            const authorLow = String(item.author || '').trim().toLowerCase();
+            if (authorLow && KNOWN_OPINION_COLUMNISTS_GLOBAL.includes(authorLow)) return 0; // favorito: máxima prioridad
+            return OPI_PRIORITY[item.source] ?? 9;
+          };
+          const pool = (briefing.spainOpinion || []).slice().sort((a, b) => prioOf(a) - prioOf(b));
           const picked = [];
           const perMedio = {};
           // 1ª pasada: respeta los caps estrictos por medio
