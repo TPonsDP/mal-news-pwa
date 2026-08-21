@@ -346,8 +346,8 @@ const BRAND = {
   ink: '#16140F',
   inkSoft: 'rgba(22, 20, 15, 0.65)',
   orange: '#FF6B00',           // Naranja Riso vivo (usado en decoraciones y botón HOY)
-  limeLight: '#C5CBA5',        // Fondo oliva/musgo (claro suave)
-  limeDark: '#B2B98D',         // Fondo oliva/musgo (claro)
+  limeLight: '#DCDCE2',        // Fondo gris perla (claro)
+  limeDark: '#CDCDD6',         // Fondo gris perla (medio)
   // Lean badges (IZQ/DER indicador ideológico en algunas tarjetas)
   leftBlue: '#1A3FE6',
   rightRed: '#FF2D7A',
@@ -397,53 +397,46 @@ function DiagonalHeader({ dateObj }) {
           <stop offset="0%" stopColor="#FA4E3F" />
           <stop offset="100%" stopColor="#B31500" />
         </linearGradient>
+        {/* Degradado naranja→teal de la cabecera */}
+        <linearGradient id="hdrGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#EA4B0C" />
+          <stop offset="55%" stopColor="#C2510C" />
+          <stop offset="100%" stopColor="#0D9488" />
+        </linearGradient>
       </defs>
 
-      {/* Fondo gris humo con esquinas redondeadas */}
-      <rect x="0" y="0" width="600" height="210" fill="#5B57A8" rx="10" />
+      {/* Fondo con degradado naranja→teal */}
+      <rect x="0" y="0" width="600" height="210" fill="url(#hdrGrad)" rx="10" />
 
-      {/* Bloque índigo con corte diagonal */}
-      <path d="M 0 0 L 280 0 L 200 210 L 0 210 Z" fill="#312E81" />
-
-      {/* Línea naranja siguiendo el corte diagonal */}
-      <line x1="280" y1="0" x2="200" y2="210" stroke="#FADD00" strokeWidth="4" />
-
-      {/* Logo B — disco verde + M de montañas de colores */}
-      <g transform="translate(110, 105)">
-        {/* Anillo arcoíris exterior */}
-        <circle r="52" fill="none" stroke="url(#malRing)" strokeWidth="4" strokeLinecap="round" />
-        {/* Disco verde radial */}
-        <circle r="47" fill="url(#malDisc)" />
-        {/* M de montañas: pico izquierdo azul, derecho coral, centro oscuro */}
-        <g transform="scale(0.16) translate(-256, -256)">
+      {/* Logo B centrado arriba */}
+      <g transform="translate(300, 58)">
+        <circle r="42" fill="none" stroke="url(#malRing)" strokeWidth="4" strokeLinecap="round" />
+        <circle r="37" fill="url(#malDisc)" />
+        <g transform="scale(0.125) translate(-256, -256)">
           <polygon points="150,300 150,120 256,300" fill="url(#malPeakL)" />
           <polygon points="256,300 256,120 362,300" fill="url(#malPeakR)" />
           <polygon points="150,120 256,300 256,120" fill="#0D2340" opacity="0.9" />
         </g>
-        {/* Sol/punto amarillo */}
-        <circle cx="-30" cy="-26" r="7" fill="#FFCD00" />
+        <circle cx="-24" cy="-21" r="6" fill="#FFCD00" />
       </g>
 
-      {/* Zona derecha: día en serif Georgia */}
-      <text x="305" y="70" fontFamily="Georgia, 'Times New Roman', serif" fontStyle="italic" fontSize="42" fill="#FFFFFF">
+      {/* Día en serif Georgia, centrado */}
+      <text x="300" y="118" textAnchor="middle" fontFamily="Georgia, 'Times New Roman', serif" fontStyle="italic" fontSize="38" fill="#FFFFFF">
         {dayName}
       </text>
 
-      {/* Día número grande naranja + mes en azul */}
-      <text x="320" y="108" fontFamily="'Verdana', 'Geneva', sans-serif" fontWeight="900" fontSize="34" fill="#FA4E3F" letterSpacing="-0.02em">
+      {/* Día número + mes, centrado */}
+      <text x="300" y="152" textAnchor="middle" fontFamily="'Verdana', 'Geneva', sans-serif" fontWeight="900" fontSize="28" fill="#FFE08A">
         {dayNumber}
-        <tspan fontSize="17" fill="#FFFFFF" fontWeight="700" dx="8">{month}</tspan>
+        <tspan fontSize="16" fill="#FFFFFF" fontWeight="700" dx="6">{month}</tspan>
       </text>
 
-      {/* Año con letterspacing amplio */}
-      <text x="320" y="134" fontFamily="'Verdana', sans-serif" fontWeight="700" fontSize="13" fill="#C7C4E8" letterSpacing="0.32em">{year}</text>
+      {/* Raya amarilla centrada */}
+      <line x1="215" y1="164" x2="385" y2="164" stroke="#FADD00" strokeWidth="3" />
 
-      {/* Separador sutil */}
-      <line x1="320" y1="156" x2="575" y2="156" stroke="#FFFFFF" strokeWidth="0.5" opacity="0.3" />
-
-      {/* Sub-etiquetas en dos líneas con color diferenciado */}
-      <text x="320" y="176" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#D4D2F0" letterSpacing="0.16em">ESPAÑA · OPINIÓN</text>
-      <text x="320" y="194" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="11" fill="#D4D2F0" letterSpacing="0.16em">MUNDO · INTERNACIONAL</text>
+      {/* Año + sub-etiquetas, centrado */}
+      <text x="300" y="184" textAnchor="middle" fontFamily="'Verdana', sans-serif" fontWeight="700" fontSize="11" fill="#FFFFFF" letterSpacing="0.28em" opacity="0.9">{year}</text>
+      <text x="300" y="201" textAnchor="middle" fontFamily="'Verdana', sans-serif" fontStyle="italic" fontSize="10" fill="#FFFFFF" letterSpacing="0.12em" opacity="0.9">ESPAÑA · OPINIÓN · MUNDO · INTERNACIONAL</text>
     </svg>
   );
 }
@@ -1963,14 +1956,14 @@ export default function App() {
         6: { hour: 12, minute: 0, label: 'Sábado · mañana relajada · Maite Rico, Victoria Carvajal' },
       },
       international: {
-        // SEMANAL: resumen de los últimos 7 días, se genera los DOMINGOS a las 21:00.
-        0: { hour: 21, minute: 0, label: 'Domingo · RESUMEN SEMANAL · lo mejor de los últimos 7 días' },
-        1: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
-        2: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
-        3: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
-        4: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
-        5: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
-        6: { hour: 21, minute: 0, label: 'Semanal · próximo domingo 21:00' },
+        // SEMANAL: resumen de los últimos 7 días, se genera los SÁBADOS a las 21:00.
+        0: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
+        1: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
+        2: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
+        3: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
+        4: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
+        5: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
+        6: { hour: 21, minute: 0, label: 'Sábado · RESUMEN SEMANAL · lo mejor de los últimos 7 días' },
       },
     };
 
@@ -2025,20 +2018,43 @@ export default function App() {
   };
 
   const SCHEDULE_INTL = {
-    1: { hour: 21, minute: 30, label: 'Pico US business · LATAM activo' },
-    2: { hour: 21, minute: 30, label: 'Pico US business · LATAM activo' },
-    3: { hour: 21, minute: 30, label: 'Pico US business · LATAM activo' },
-    4: { hour: 21, minute: 30, label: 'US tarde · Europa cerrada · LATAM peak' },
-    5: { hour: 21, minute: 30, label: 'Cierre semanal · setup de fin de semana US' },
-    6: { hour: 22, minute: 0,  label: 'Sábado noche · US weekend cycle · LATAM activo' },
-    0: { hour: 22, minute: 0,  label: 'Domingo noche · NYT Sunday Review · WSJ Weekend' },
+    // SEMANAL: se genera los SÁBADOS a las 21:00 (resumen de los últimos 7 días)
+    1: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
+    2: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
+    3: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
+    4: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
+    5: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
+    6: { hour: 21, minute: 0, label: 'Sábado · RESUMEN SEMANAL · últimos 7 días' },
+    0: { hour: 21, minute: 0, label: 'Semanal · próximo sábado 21:00' },
   };
 
-  function calculateNextBriefingForSchedule(schedule) {
+  function calculateNextBriefingForSchedule(schedule, weeklyTargetDay = null) {
     const now = new Date();
     const currentDay = now.getDay();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
+    const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+    // Modo SEMANAL: encuentra el próximo día objetivo (ej: sábado = 6)
+    if (weeklyTargetDay !== null) {
+      const targetSched = schedule[weeklyTargetDay];
+      const targetMinutes = targetSched.hour * 60 + targetSched.minute;
+      const nowMinutes = currentHour * 60 + currentMinute;
+      let daysUntil = (weeklyTargetDay - currentDay + 7) % 7;
+      // Si es hoy el día objetivo pero ya pasó la hora, salta a la semana siguiente
+      if (daysUntil === 0 && nowMinutes >= targetMinutes) daysUntil = 7;
+      const targetDate = new Date(now);
+      targetDate.setDate(targetDate.getDate() + daysUntil);
+      return {
+        dayName: dayNames[weeklyTargetDay],
+        dayNumber: targetDate.getDate(),
+        monthName: monthNames[targetDate.getMonth()],
+        hour: String(targetSched.hour).padStart(2, '0'),
+        minute: String(targetSched.minute).padStart(2, '0'),
+        label: targetSched.label,
+      };
+    }
 
     const todaySchedule = schedule[currentDay];
     const todayMinutes = todaySchedule.hour * 60 + todaySchedule.minute;
@@ -2053,8 +2069,6 @@ export default function App() {
     }
 
     const targetSchedule = schedule[targetDay];
-    const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-    const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
     return {
       dayName: dayNames[targetDay],
@@ -2069,7 +2083,7 @@ export default function App() {
   function calculateNextBriefing() {
     return {
       spain: calculateNextBriefingForSchedule(SCHEDULE_SPAIN),
-      international: calculateNextBriefingForSchedule(SCHEDULE_INTL),
+      international: calculateNextBriefingForSchedule(SCHEDULE_INTL, 6),
     };
   }
 
@@ -2301,7 +2315,7 @@ export default function App() {
       <div class="next-brief-table">
         ${mode === 'spain'
           ? '<strong>Horario semanal España:</strong> Lun-Vie 19:00 &middot; Sábado 12:00 &middot; Domingo 19:00'
-          : '<strong>Horario Internacional:</strong> SEMANAL &middot; Domingos 21:00 &middot; resumen de los últimos 7 días'}
+          : '<strong>Horario Internacional:</strong> SEMANAL &middot; Sábados 21:00 &middot; resumen de los últimos 7 días'}
       </div>
     </div>`;
     })()}
@@ -2337,7 +2351,7 @@ export default function App() {
           </div>
           <div class="schedule-col">
             <div class="schedule-col-title intl-title">🌍 INTERNACIONAL</div>
-            <div class="schedule-row"><span>📅 SEMANAL</span><span>Domingo 21:00</span></div>
+            <div class="schedule-row"><span>📅 SEMANAL</span><span>Sábado 21:00</span></div>
             <div class="schedule-row"><span>Resumen</span><span>últimos 7 días</span></div>
             <div class="schedule-row"><span>Generación</span><span>manual</span></div>
           </div>
@@ -3097,184 +3111,73 @@ export default function App() {
           </div>
         )}
 
-        {/* Bloque "próximos briefings recomendados" — 2 horarios separados con colores de sección */}
+        {/* Bloque "próximos briefings recomendados" — diseño diagonal tricolor + píldoras */}
         {(() => {
           const next = calculateNextBriefing();
+          const ORANGE = 'linear-gradient(90deg, #EA4B0C, #FB8C3E)';
+          const TEAL = 'linear-gradient(90deg, #0D9488, #5EEAD4)';
+          const TRICOLOR = 'linear-gradient(90deg, #EA4B0C 0%, #D6FF00 50%, #0D9488 100%)';
+          const NAVY = '#0A1F3C';
           return (
             <div style={{
               marginTop: '32px',
-              padding: '20px 22px',
-              background: '#FAFBFC',
-              border: '1px solid rgba(26,54,93,0.08)',
-              borderRadius: '14px',
-              boxShadow: '0 4px 16px rgba(0,0,0,0.05)',
+              padding: '0 0 20px',
+              background: '#FDFCF0',
+              border: '3px solid #2F2B23',
+              borderRadius: '20px',
+              boxShadow: '6px 6px 0 rgba(47,43,35,0.8)',
               fontFamily: "'Verdana', 'Geneva', sans-serif",
+              overflow: 'hidden',
             }}>
-              <div style={{
-                textAlign: 'center',
-                fontSize: '10px',
-                fontWeight: '800',
-                letterSpacing: '0.18em',
-                color: '#1A365D',
-                opacity: 0.75,
-                marginBottom: '14px',
-              }}>
-                🔔 PRÓXIMOS BRIEFINGS RECOMENDADOS
+              {/* Cabecera diagonal 3 franjas: naranja / lima / teal */}
+              <div style={{ position: 'relative', height: '40px', marginBottom: '18px' }}>
+                <div style={{ position: 'absolute', inset: 0, background: '#EA4B0C' }} />
+                <div style={{ position: 'absolute', inset: 0, background: '#D6FF00', clipPath: 'polygon(38% 0, 100% 0, 100% 100%, 26% 100%)' }} />
+                <div style={{ position: 'absolute', inset: 0, background: '#0D9488', clipPath: 'polygon(68% 0, 100% 0, 100% 100%, 57% 100%)' }} />
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800', letterSpacing: '0.14em', color: '#2F2B23' }}>
+                  🔔 PRÓXIMOS BRIEFINGS RECOMENDADOS
+                </div>
               </div>
 
-              {/* Card ESPAÑA · gradiente lima-dorado + naranja */}
-              <div style={{
-                display: 'flex',
-                gap: '14px',
-                alignItems: 'center',
-                padding: '14px 16px',
-                borderRadius: '10px',
-                marginBottom: '10px',
-                background: 'linear-gradient(135deg, rgba(101,163,13,0.10), rgba(250,204,21,0.15))',
-                borderLeft: `4px solid ${BRAND.newsColor}`,
-              }}>
-                <div style={{ fontSize: '32px', flexShrink: 0 }}>🇪🇸</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontSize: '10px',
-                    fontWeight: '800',
-                    letterSpacing: '0.16em',
-                    color: BRAND.newsColor,
-                    marginBottom: '3px',
-                  }}>
-                    ESPAÑA
-                  </div>
-                  <div style={{
-                    fontFamily: 'Georgia, serif',
-                    fontStyle: 'italic',
-                    fontSize: '17px',
-                    fontWeight: '700',
-                    color: '#1A365D',
-                    marginBottom: '3px',
-                    lineHeight: 1.2,
-                  }}>
+              <div style={{ padding: '0 18px' }}>
+                {/* Píldora ESPAÑA · degradado naranja */}
+                <div style={{ background: ORANGE, borderRadius: '26px', padding: '12px 20px', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '800', letterSpacing: '0.16em', color: '#FFF', marginBottom: '2px' }}>🇪🇸 ESPAÑA</div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '16px', fontWeight: '700', color: '#FFF', lineHeight: 1.2 }}>
                     {next.spain.dayName} {next.spain.dayNumber} {next.spain.monthName} · {next.spain.hour}:{next.spain.minute}
                   </div>
-                  <div style={{
-                    fontSize: '10.5px',
-                    fontStyle: 'italic',
-                    color: 'rgba(26,54,93,0.65)',
-                    lineHeight: 1.3,
-                  }}>
-                    "{next.spain.label}"
-                  </div>
+                  <div style={{ fontSize: '10px', fontStyle: 'italic', color: 'rgba(255,255,255,0.85)', marginTop: '2px' }}>"{next.spain.label}"</div>
                 </div>
-              </div>
 
-              {/* Card INTERNACIONAL · gradiente teal */}
-              <div style={{
-                display: 'flex',
-                gap: '14px',
-                alignItems: 'center',
-                padding: '14px 16px',
-                borderRadius: '10px',
-                marginBottom: '14px',
-                background: 'linear-gradient(135deg, rgba(15,118,110,0.10), rgba(94,234,212,0.15))',
-                borderLeft: `4px solid ${BRAND.intlColor}`,
-              }}>
-                <div style={{ fontSize: '32px', flexShrink: 0 }}>🌍</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontSize: '10px',
-                    fontWeight: '800',
-                    letterSpacing: '0.16em',
-                    color: BRAND.intlColor,
-                    marginBottom: '3px',
-                  }}>
-                    INTERNACIONAL
-                  </div>
-                  <div style={{
-                    fontFamily: 'Georgia, serif',
-                    fontStyle: 'italic',
-                    fontSize: '17px',
-                    fontWeight: '700',
-                    color: '#1A365D',
-                    marginBottom: '3px',
-                    lineHeight: 1.2,
-                  }}>
+                {/* Píldora INTERNACIONAL · degradado teal */}
+                <div style={{ background: TEAL, borderRadius: '26px', padding: '12px 20px', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '800', letterSpacing: '0.16em', color: '#FFF', marginBottom: '2px' }}>🌍 INTERNACIONAL</div>
+                  <div style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '16px', fontWeight: '700', color: '#FFF', lineHeight: 1.2 }}>
                     {next.international.dayName} {next.international.dayNumber} {next.international.monthName} · {next.international.hour}:{next.international.minute}
                   </div>
-                  <div style={{
-                    fontSize: '10.5px',
-                    fontStyle: 'italic',
-                    color: 'rgba(26,54,93,0.65)',
-                    lineHeight: 1.3,
-                  }}>
-                    "{next.international.label}"
-                  </div>
+                  <div style={{ fontSize: '10px', fontStyle: 'italic', color: 'rgba(255,255,255,0.85)', marginTop: '2px' }}>"{next.international.label}"</div>
                 </div>
-              </div>
 
-              {/* Horario semanal · 2 columnas */}
-              <div style={{
-                borderTop: '1px dashed rgba(26,54,93,0.12)',
-                paddingTop: '14px',
-                marginTop: '4px',
-              }}>
-                <div style={{
-                  textAlign: 'center',
-                  fontSize: '10px',
-                  fontWeight: '800',
-                  letterSpacing: '0.12em',
-                  color: '#1A365D',
-                  opacity: 0.7,
-                  marginBottom: '10px',
-                }}>
+                {/* Horario semanal · 2 píldoras de color pleno */}
+                <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: '800', letterSpacing: '0.12em', color: '#2F2B23', marginBottom: '10px' }}>
                   📅 HORARIO SEMANAL
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                  <div>
-                    <div style={{
-                      fontSize: '9px',
-                      fontWeight: '800',
-                      letterSpacing: '0.14em',
-                      padding: '4px 0',
-                      marginBottom: '4px',
-                      textAlign: 'center',
-                      borderRadius: '4px',
-                      background: 'linear-gradient(90deg, rgba(101,163,13,0.12), rgba(250,204,21,0.15))',
-                      color: BRAND.newsColor,
-                    }}>
-                      🇪🇸 ESPAÑA
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
-                      <span>Lun-Vie</span><span>19:00</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
-                      <span>Sábado</span><span>12:00</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px' }}>
-                      <span>Domingo</span><span>19:00</span>
-                    </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                  <div style={{ background: ORANGE, borderRadius: '22px', padding: '10px 12px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '9px', fontWeight: '800', color: '#FFF', marginBottom: '4px' }}>🇪🇸 ESPAÑA</div>
+                    <div style={{ fontSize: '10px', color: '#FFF', lineHeight: 1.5 }}>Lun-Vie 19:00 · Sáb 12:00 · Dom 19:00</div>
                   </div>
-                  <div>
-                    <div style={{
-                      fontSize: '9px',
-                      fontWeight: '800',
-                      letterSpacing: '0.14em',
-                      padding: '4px 0',
-                      marginBottom: '4px',
-                      textAlign: 'center',
-                      borderRadius: '4px',
-                      background: 'linear-gradient(90deg, rgba(15,118,110,0.12), rgba(94,234,212,0.15))',
-                      color: BRAND.intlColor,
-                    }}>
-                      🌍 INTERNACIONAL
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
-                      <span>📅 SEMANAL</span><span>Domingo 21:00</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px', borderBottom: '1px dashed rgba(26,54,93,0.06)' }}>
-                      <span>Resumen</span><span>últimos 7 días</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#1A365D', padding: '3px 6px' }}>
-                      <span>Generación</span><span>manual</span>
-                    </div>
+                  <div style={{ background: TEAL, borderRadius: '22px', padding: '10px 12px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '9px', fontWeight: '800', color: '#FFF', marginBottom: '4px' }}>🌍 INTERNACIONAL</div>
+                    <div style={{ fontSize: '10px', color: '#FFF', lineHeight: 1.5 }}>📅 SEMANAL · Sábado 21:00</div>
+                  </div>
+                </div>
+
+                {/* Añadir a mano · degradado tricolor + texto azul oscuro */}
+                <div style={{ background: TRICOLOR, borderRadius: '28px', padding: '13px 20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '800', letterSpacing: '0.06em', color: NAVY, marginBottom: '4px' }}>📌 AÑADIR A MANO</div>
+                  <div style={{ fontSize: '11px', color: NAVY, fontWeight: '700', lineHeight: 1.4 }}>
+                    Vozpópuli · Artículo 14 · Crónica Global · El Debate
                   </div>
                 </div>
               </div>
