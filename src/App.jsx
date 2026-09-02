@@ -7,12 +7,11 @@ import { useState, useEffect } from 'react';
 // queda guardada hasta que regeneres ese botón o pulses "limpiar".
 
 const CACHE_KEY = 'mal-news-briefing-v1';
-const PRESSREADER_KEY = 'mal-news-pressreader-enabled';
 
 // ============ MIS SUSCRIPCIONES DIRECTAS ============
 // Medios con acceso directo del usuario (suscripción propia).
-// Aparecen con badge verde "✓ ACCESO" en lugar de "🔒 PAGO" o "📚 PRESSREADER".
-// Prioridad de badges:  ACCESO  >  PRESSREADER  >  PAGO
+// Aparecen con badge verde "✓ ACCESO" en lugar de "🔒 PAGO".
+// Prioridad de badges:  ACCESO  >  PAGO
 const USER_SUBSCRIPTIONS = new Set([
   'El País', 'elpais.com',
   'El Mundo', 'elmundo.es',
@@ -24,22 +23,6 @@ const USER_SUBSCRIPTIONS = new Set([
 function isUserSubscribed(sourceName) {
   if (!sourceName) return false;
   return USER_SUBSCRIPTIONS.has(sourceName) || USER_SUBSCRIPTIONS.has(String(sourceName).toLowerCase());
-}
-
-// ============ PRESSREADER · Acceso del usuario ============
-// El usuario puede activar este toggle si tiene PressReader (vía biblioteca o
-// suscripción €9.99/mes). Cuando está activo, los medios disponibles en
-// PressReader se marcan con 📚 verde en lugar de 🔒 rojo PAGO.
-function loadPressReaderEnabled() {
-  try {
-    return localStorage.getItem(PRESSREADER_KEY) === 'true';
-  } catch (_) { return false; }
-}
-
-function savePressReaderEnabled(enabled) {
-  try {
-    localStorage.setItem(PRESSREADER_KEY, enabled ? 'true' : 'false');
-  } catch (_) { /* no-op */ }
 }
 
 function loadBriefingCache() {
@@ -84,6 +67,10 @@ function formatCacheAge(timestamp) {
 // Panel buscable dentro de la PWA. Para añadir un cambio nuevo, agrega un objeto
 // al principio del array (los más recientes arriba). Campos: fecha, área, texto.
 const CHANGELOG = [
+  { fecha: '2026-09', area: 'Opinión · La Vanguardia', texto: 'La Vanguardia eliminada como medio: fuera de los paywall, del set de disponibilidad y de la lista de columnistas favoritos (Enric Juliana, Pilar Rahola).' },
+  { fecha: '2026-09', area: 'UI · PressReader', texto: 'Retirado el toggle "Tengo PressReader" y el badge 📚. Los medios de pago vuelven a mostrar solo ✓ ACCESO (suscripción propia) o 🔒 PAGO.' },
+  { fecha: '2026-09', area: 'UI · Contraste', texto: 'Píldoras Internacional del panel: degradado #2A9DB8→#6FD0DC sustituido por #0B6B62→#0F8074. El texto blanco sobre el turquesa claro anterior daba 1.9:1, ilegible al sol; ahora 4.8:1.' },
+  { fecha: '2026-09', area: 'UI · Panel', texto: 'Panel de próximos briefings con paleta océano oscuro y texto lima #D6FF00 en la cabecera y en el bloque "añadir a mano". Marcado de manuales por calendario (se puede elegir un día pasado), con día de la semana y "hace N días".' },
   { fecha: '2026-06', area: 'Noticias · Vozpópuli', texto: 'Arreglado el feed de noticias de Vozpópuli: la query con exclusión por subruta (-site:.../opinion) rompía Google News y devolvía cero. Simplificada a site:vozpopuli.com limpio.' },
   { fecha: '2026-06', area: 'UI · Contadores', texto: 'Corregidos los contadores de los botones: Opinión España (hasta 36) y Noticias España (hasta 28), que estaban desactualizados (22 y 25).' },
   { fecha: '2026-06', area: 'Opinión · La Vanguardia', texto: 'Restaurado el mínimo 2 de La Vanguardia, que se había descolgado.' },
@@ -313,6 +300,72 @@ function getDailyTotals(section, days = 30) {
   } catch (_) { return null; }
 }
 
+// Fecha del último "añadido manual" (Vozpópuli, Artículo 14, Crónica Global, El Debate).
+// La marca el usuario con el botón, porque la app no puede saber cuándo lo hace.
+const MANUAL_KEY = 'mal-news-manual-date-v1';
+function getManualDate() {
+  try {
+    const v = localStorage.getItem(MANUAL_KEY);
+    return v || '2026-08-10'; // preinicializado al 10 de agosto
+  } catch (_) { return '2026-08-10'; }
+}
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+// Guarda cualquier fecha marcada por el usuario (hoy o un día pasado, vía calendario).
+function saveManualDate(iso) {
+  try {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return null;
+    localStorage.setItem(MANUAL_KEY, iso);
+    return iso;
+  } catch (_) { return null; }
+}
+// Fecha (ISO corto) del último briefing ejecutado, leída del histórico global.
+function getLastExecutedDate() {
+  try {
+    const hist = loadHistory();
+    let latest = null;
+    for (const section of Object.keys(hist)) {
+      const list = Array.isArray(hist[section]) ? hist[section] : [];
+      for (const e of list) {
+        if (e.at) {
+          const t = new Date(e.at).getTime();
+          if (!latest || t > latest) latest = t;
+        }
+      }
+    }
+    if (!latest) return null;
+    const d = new Date(latest);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  } catch (_) { return null; }
+}
+function fmtShortDate(iso) {
+  if (!iso) return '—';
+  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} ${meses[m - 1]}`;
+}
+// Igual que fmtShortDate pero con día de la semana: "sáb 10 ago".
+function fmtDayDate(iso) {
+  if (!iso) return '—';
+  const dias = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${dias[new Date(y, m - 1, d).getDay()]} ${fmtShortDate(iso)}`;
+}
+// "hoy" / "ayer" / "hace N días" a partir de una fecha ISO corta.
+function fmtDaysAgo(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  const then = new Date(y, m - 1, d);
+  const now = new Date();
+  const diff = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - then) / 86400000);
+  if (diff === 0) return 'hoy';
+  if (diff === 1) return 'ayer';
+  if (diff < 0) return 'en el futuro';
+  return `hace ${diff} días`;
+}
+
 // ============ FIN CACHE LOCALSTORAGE ============
 
 const RECIPIENT = 'tonipons91@gmail.com';
@@ -346,8 +399,8 @@ const BRAND = {
   ink: '#16140F',
   inkSoft: 'rgba(22, 20, 15, 0.65)',
   orange: '#FF6B00',           // Naranja Riso vivo (usado en decoraciones y botón HOY)
-  limeLight: '#DCDCE2',        // Fondo gris perla (claro)
-  limeDark: '#CDCDD6',         // Fondo gris perla (medio)
+  limeLight: '#E0EBF0',        // Fondo azul marino claro (océano)
+  limeDark: '#CEDDE6',         // Fondo azul marino (medio)
   // Lean badges (IZQ/DER indicador ideológico en algunas tarjetas)
   leftBlue: '#1A3FE6',
   rightRed: '#FF2D7A',
@@ -397,11 +450,11 @@ function DiagonalHeader({ dateObj }) {
           <stop offset="0%" stopColor="#FA4E3F" />
           <stop offset="100%" stopColor="#B31500" />
         </linearGradient>
-        {/* Degradado naranja→teal de la cabecera */}
+        {/* Degradado océano→turquesa de la cabecera */}
         <linearGradient id="hdrGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#EA4B0C" />
-          <stop offset="55%" stopColor="#C2510C" />
-          <stop offset="100%" stopColor="#0D9488" />
+          <stop offset="0%" stopColor="#0A4B6E" />
+          <stop offset="55%" stopColor="#157FA0" />
+          <stop offset="100%" stopColor="#2A9DB8" />
         </linearGradient>
       </defs>
 
@@ -426,13 +479,13 @@ function DiagonalHeader({ dateObj }) {
       </text>
 
       {/* Día número + mes, centrado */}
-      <text x="300" y="152" textAnchor="middle" fontFamily="'Verdana', 'Geneva', sans-serif" fontWeight="900" fontSize="28" fill="#FFE08A">
+      <text x="300" y="152" textAnchor="middle" fontFamily="'Verdana', 'Geneva', sans-serif" fontWeight="900" fontSize="28" fill="#9EE8D4">
         {dayNumber}
         <tspan fontSize="16" fill="#FFFFFF" fontWeight="700" dx="6">{month}</tspan>
       </text>
 
-      {/* Raya amarilla centrada */}
-      <line x1="215" y1="164" x2="385" y2="164" stroke="#FADD00" strokeWidth="3" />
+      {/* Raya turquesa centrada */}
+      <line x1="215" y1="164" x2="385" y2="164" stroke="#9EE8D4" strokeWidth="3" />
 
       {/* Año + sub-etiquetas, centrado */}
       <text x="300" y="184" textAnchor="middle" fontFamily="'Verdana', sans-serif" fontWeight="700" fontSize="11" fill="#FFFFFF" letterSpacing="0.28em" opacity="0.9">{year}</text>
@@ -708,17 +761,17 @@ function groupBySource(items, priorityOrder = null) {
 // Orden fijo de temas por sección (para que los grupos salgan siempre en el mismo orden)
 const TOPIC_ORDER = {
   spainNews:    ['Economía', 'Entrevistas', 'País', 'Política', 'Tecnología', 'Cultura', 'Baleares'],
-  spainOpinion: ['Centro', 'Izquierda', 'Derecha', 'El Mundo', 'Cataluña'],
-  worldNews:    ['Economía', 'Geopolítica', 'Tecnología', 'Lecturas', 'Entrevistas', 'Asia', 'LATAM/Europa'],
-  worldOpinion: ['Economía/IA', 'Geopolítica', 'Anglo', 'LATAM', 'Europa/Asia'],
+  spainOpinion: [],  // opinión España se agrupa POR MEDIO (OPINION_SOURCE_PRIORITY), no por tema
+  worldNews:    ['Economía', 'Geopolítica', 'Tecnología', 'Sociedad/Cultura', 'Lecturas', 'Entrevistas', 'Asia', 'LATAM/Europa'],
+  vecinos:      ['Economía', 'Tecnología', 'Política'],
+  worldOpinion: ['Economía/IA', 'Geopolítica', 'LATAM', 'Europa/Asia', 'África', 'Oriente Medio'],
 };
 // Iconos por tema
 const TOPIC_ICONS = {
   'Economía': '💰', 'Entrevistas': '🎤', 'País': '🇪🇸', 'Política': '🏛️',
   'Tecnología': '🔬', 'Cultura': '🎭', 'Baleares': '🏝️', 'Geopolítica': '🌐',
   'Lecturas': '📖', 'Asia': '🌏', 'LATAM/Europa': '🌎', 'Economía/IA': '📊',
-  'Anglo': '🗽', 'LATAM': '🌎', 'Europa/Asia': '🇪🇺',
-  'Centro': '⚪', 'Izquierda': '🔴', 'Derecha': '🔵', 'El Mundo': '📰', 'Cataluña': '🏛️',
+  'LATAM': '🌎', 'Europa/Asia': '🇪🇺', 'África': '🌍', 'Oriente Medio': '🕌', 'Sociedad/Cultura': '🎭',
 };
 
 // Agrupa piezas por su campo `topic`. Si una pieza no trae topic, cae en "Otros".
@@ -827,17 +880,6 @@ function MediaGroup({ source, items, sectionColor, type, groupIndex }) {
                     fontWeight: '700',
                   }}>
                     ✓ ACCESO
-                  </span>
-                ) : item._isPaywall && item._isPressReader && (typeof window !== 'undefined' && window.__pressReaderEnabled) ? (
-                  <span style={{
-                    fontSize: '9px',
-                    color: '#0891B2',
-                    background: 'rgba(8,145,178,0.10)',
-                    padding: '1px 5px',
-                    borderRadius: '2px',
-                    fontWeight: '700',
-                  }}>
-                    📚 PRESSREADER
                   </span>
                 ) : item._isPaywall && (
                   <span style={{
@@ -1035,16 +1077,6 @@ function NewsCard({ item, index, sectionColor, type, isLead }) {
                 fontFamily: "'Verdana', 'Geneva', sans-serif",
               }}>
                 ✓
-              </span>
-            ) : item._isPaywall && item._isPressReader && (typeof window !== 'undefined' && window.__pressReaderEnabled) ? (
-              <span title="Disponible en PressReader" style={{
-                background: 'rgba(8,145,178,0.12)', color: '#0891B2',
-                border: '1px solid rgba(8,145,178,0.30)',
-                fontSize: '9px', fontWeight: '700',
-                padding: '2px 5px', borderRadius: '3px',
-                fontFamily: "'Verdana', 'Geneva', sans-serif",
-              }}>
-                📚
               </span>
             ) : item._isPaywall && (
               <span title="Requiere suscripción" style={{
@@ -1640,29 +1672,12 @@ export default function App() {
   // Timestamp de la última hidratación / guardado (para mostrar "hace Xh")
   const [cacheTimestamp, setCacheTimestamp] = useState(null);
 
-  // PressReader: si el usuario tiene acceso (vía biblioteca o suscripción)
-  // hace que los medios disponibles allí se marquen con 📚 verde en vez de 🔒 PAGO
-  const [pressReaderEnabled, setPressReaderEnabled] = useState(loadPressReaderEnabled());
   const [showChangelog, setShowChangelog] = useState(false);
   const [changelogQuery, setChangelogQuery] = useState('');
   const [showStats, setShowStats] = useState(false);
   const [statsSection, setStatsSection] = useState('spainOpinion');
   const [statsView, setStatsView] = useState('medio'); // 'medio' | 'tematica' | 'dia'
-
-  // Sincronizar a window para que NewsCard/MediaGroup puedan acceder sin prop drilling
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.__pressReaderEnabled = pressReaderEnabled;
-    }
-  }, [pressReaderEnabled]);
-
-  const togglePressReader = () => {
-    setPressReaderEnabled(prev => {
-      const next = !prev;
-      savePressReaderEnabled(next);
-      return next;
-    });
-  };
+  const [manualDate, setManualDate] = useState(getManualDate());
 
   // Sembrar el histórico con los datos de junio ya recopilados (solo si está vacío)
   useEffect(() => {
@@ -1834,6 +1849,18 @@ export default function App() {
             topicBreakdown[tp] = (topicBreakdown[tp] || 0) + 1;
           }
           recordHistory(histKey, n, breakdown, topicBreakdown);
+        }
+        // 🌍 Registrar el bloque VECINOS por separado (por país/medio y por tema)
+        if (section === 'spainNews' && Array.isArray(b.vecinos) && b.vecinos.length > 0) {
+          const vBreak = {};
+          const vTopic = {};
+          for (const p of b.vecinos) {
+            const s = (p && p.source) ? String(p.source).trim() : 'Sin país';
+            vBreak[s] = (vBreak[s] || 0) + 1;
+            const tp = (p && p.topic) ? String(p.topic).trim() : 'Otros';
+            vTopic[tp] = (vTopic[tp] || 0) + 1;
+          }
+          recordHistory('vecinos', b.vecinos.length, vBreak, vTopic);
         }
       } catch (_) { /* no-op */ }
     } catch (err) {
@@ -2172,7 +2199,7 @@ export default function App() {
       headerTitle = 'MAL NEWS · ESPAÑA';
       pageSubtitle = 'Noticias nacionales';
       sectionsHtml =
-        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimas 48h', false);
+        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimos 5 días', false);
     } else if (mode === 'spainOpinion') {
       total = (b.spainOpinion?.length || 0);
       headerTitle = 'MAL NEWS · OPINIÓN ESPAÑA';
@@ -2184,27 +2211,27 @@ export default function App() {
       headerTitle = 'MAL NEWS · INTERNACIONAL';
       pageSubtitle = 'Cobertura global';
       sectionsHtml =
-        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · publicadas en últimas 48h · incluye sentencias relevantes', false);
+        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · resumen semanal (7 días) · incluye sentencias relevantes', false);
     } else if (mode === 'worldOpinion') {
       total = (b.worldOpinion?.length || 0);
       headerTitle = 'MAL NEWS · OPINIÓN INTERNACIONAL';
       pageSubtitle = 'Columnas de opinión global';
       sectionsHtml =
-        section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true);
+        section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · resumen semanal (7 días)', true);
     } else if (mode === 'spain') {
       total = (b.spainNews?.length || 0) + (b.spainOpinion?.length || 0);
       headerTitle = 'MAL NEWS · ESPAÑA';
       pageSubtitle = 'Noticias y opinión nacional';
       sectionsHtml =
-        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimas 48h', false) +
+        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimos 5 días', false) +
         section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true);
     } else if (mode === 'international') {
       total = (b.worldNews?.length || 0) + (b.worldOpinion?.length || 0);
       headerTitle = 'MAL NEWS · INTERNACIONAL';
       pageSubtitle = 'Mundo y opinión global';
       sectionsHtml =
-        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · publicadas en últimas 48h · incluye sentencias relevantes', false) +
-        section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true);
+        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · resumen semanal (7 días) · incluye sentencias relevantes', false) +
+        section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · resumen semanal (7 días)', true);
     } else {
       // mode = 'all' (briefing completo - solo para Vista HTML)
       total = (b.worldOpinion?.length || 0) + (b.worldNews?.length || 0)
@@ -2212,10 +2239,10 @@ export default function App() {
       headerTitle = 'MAL NEWS';
       pageSubtitle = 'Briefing completo del día';
       sectionsHtml =
-        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimas 48h', false) +
+        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimos 5 días', false) +
         section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true) +
-        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · publicadas en últimas 48h · incluye sentencias relevantes', false) +
-        section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · 48h previas', true);
+        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · resumen semanal (7 días) · incluye sentencias relevantes', false) +
+        section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · resumen semanal (7 días)', true);
     }
 
     // Fondo de cabecera con tonalidad suave según la sección (opción A · tonos pastel)
@@ -2453,7 +2480,7 @@ export default function App() {
     const seenUrls = new Set(base.filter(i => i && i.url).map(i => i.url));
     const extras = opinionExtraItems.filter(i => i && i.url && !seenUrls.has(i.url));
     const allItems = [...base, ...extras];
-    return [{
+    const sections = [{
       title: 'España',
       icon: '🇪🇸',
       items: allItems,
@@ -2462,13 +2489,29 @@ export default function App() {
       count: 25,
       type: 'news',
       descriptor: extras.length > 0
-        ? `Eventos concretos · prensa española · 48h · +${extras.length} reclasificadas de opinión`
-        : 'Eventos concretos · prensa española · publicadas últimas 48h',
+        ? `Eventos concretos · prensa española · 5 días · +${extras.length} reclasificadas de opinión`
+        : 'Eventos concretos · prensa española · publicadas últimos 5 días',
       note: hasNewsData ? spainNewsData._note : null,
       meta: hasNewsData ? spainNewsData._meta : null,
       historyKey: 'spainNews',
       editorNote: hasNewsData ? spainNewsData.editorNote : null,
     }];
+    // 🌍 Apartado VECINOS (países fronterizos + Italia), si el briefing lo trae
+    const vecinos = (hasNewsData && Array.isArray(spainNewsData.vecinos)) ? spainNewsData.vecinos : [];
+    if (vecinos.length > 0) {
+      sections.push({
+        title: 'Vecinos',
+        icon: '🌍',
+        items: vecinos,
+        color: '#0F8074',
+        gradient: 'linear-gradient(90deg, #0F8074, #5EC9BC)',
+        count: vecinos.length,
+        type: 'news',
+        descriptor: 'Visión de los vecinos fronterizos · Portugal · Francia · Andorra · Marruecos · Argelia · Gibraltar · Italia',
+        historyKey: 'vecinos',
+      });
+    }
+    return sections;
   })();
 
   // Contadores reales devueltos por el API tras cada fetch
@@ -2480,7 +2523,7 @@ export default function App() {
     if (intlStatus === 'loading') return 'Buscando internacional...';
     if (isInCooldown) return `⏳ Espera ${cooldownLeft}s`;
     if (intlStatus === 'done') return `🔄 Recargar internacional (${realIntlCount})`;
-    return '🌍 Internacional (10+8)';
+    return '🌍 Internacional (20+20)';
   })();
 
   const spainOpinionBtnLabel = (() => {
@@ -2794,30 +2837,6 @@ export default function App() {
           </div>
         )}
 
-        {/* TOGGLE PRESSREADER · marca medios disponibles en PressReader */}
-        <div style={{
-          textAlign: 'center', fontSize: '10px', color: BRAND.inkSoft,
-          marginBottom: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px',
-        }}>
-          <span>📚 Tengo PressReader:</span>
-          <button
-            onClick={togglePressReader}
-            style={{
-              fontSize: '10px',
-              padding: '3px 10px',
-              borderRadius: '12px',
-              border: `1px solid ${pressReaderEnabled ? '#0891B2' : BRAND.inkSoft}`,
-              background: pressReaderEnabled ? 'rgba(8,145,178,0.10)' : 'transparent',
-              color: pressReaderEnabled ? '#0891B2' : BRAND.inkSoft,
-              cursor: 'pointer',
-              fontWeight: '700',
-            }}
-            title="Activa si tienes acceso a PressReader. Los paywalls disponibles ahí se marcarán con 📚 en vez de 🔒"
-          >
-            {pressReaderEnabled ? '✓ ACTIVADO' : 'desactivado'}
-          </button>
-        </div>
-
         {/* TRES BOTONES: cada uno con su gradiente identitario y texto blanco */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
           <button
@@ -2883,7 +2902,7 @@ export default function App() {
               textShadow: '0 1px 2px rgba(0,0,0,0.15)',
             }}
           >
-            {intlStatus === 'loading' ? 'Buscando noticias internacional...' : isInCooldown ? `⏳ Espera ${cooldownLeft}s` : '🌍 Noticias Internacional (10)'}
+            {intlStatus === 'loading' ? 'Buscando noticias internacional...' : isInCooldown ? `⏳ Espera ${cooldownLeft}s` : '🌍 Noticias Internacional (20)'}
           </button>
 
           <button
@@ -3114,34 +3133,35 @@ export default function App() {
         {/* Bloque "próximos briefings recomendados" — diseño diagonal tricolor + píldoras */}
         {(() => {
           const next = calculateNextBriefing();
-          const ORANGE = 'linear-gradient(90deg, #EA4B0C, #FB8C3E)';
-          const TEAL = 'linear-gradient(90deg, #0D9488, #5EEAD4)';
-          const TRICOLOR = 'linear-gradient(90deg, #EA4B0C 0%, #D6FF00 50%, #0D9488 100%)';
-          const NAVY = '#0A1F3C';
+          const OCEAN = 'linear-gradient(90deg, #0A4B6E, #157FA0)';
+          const TEAL = 'linear-gradient(90deg, #0B6B62, #0F8074)';
+          const TRICOLOR = 'linear-gradient(90deg, #063850 0%, #10658A 50%, #0F8074 100%)';
+          const NAVY = '#063850';
+          const LIMA = '#D6FF00';
           return (
             <div style={{
               marginTop: '32px',
               padding: '0 0 20px',
-              background: '#FDFCF0',
-              border: '3px solid #2F2B23',
+              background: '#F2F8FB',
+              border: '3px solid #0A3550',
               borderRadius: '20px',
-              boxShadow: '6px 6px 0 rgba(47,43,35,0.8)',
+              boxShadow: '6px 6px 0 rgba(10,53,80,0.75)',
               fontFamily: "'Verdana', 'Geneva', sans-serif",
               overflow: 'hidden',
             }}>
-              {/* Cabecera diagonal 3 franjas: naranja / lima / teal */}
+              {/* Cabecera diagonal 3 franjas · paleta D2 "océano oscuro + lima" · texto #D6FF00 (4.2:1 mínimo) */}
               <div style={{ position: 'relative', height: '40px', marginBottom: '18px' }}>
-                <div style={{ position: 'absolute', inset: 0, background: '#EA4B0C' }} />
-                <div style={{ position: 'absolute', inset: 0, background: '#D6FF00', clipPath: 'polygon(38% 0, 100% 0, 100% 100%, 26% 100%)' }} />
-                <div style={{ position: 'absolute', inset: 0, background: '#0D9488', clipPath: 'polygon(68% 0, 100% 0, 100% 100%, 57% 100%)' }} />
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800', letterSpacing: '0.14em', color: '#2F2B23' }}>
+                <div style={{ position: 'absolute', inset: 0, background: '#063850' }} />
+                <div style={{ position: 'absolute', inset: 0, background: '#10658A', clipPath: 'polygon(38% 0, 100% 0, 100% 100%, 26% 100%)' }} />
+                <div style={{ position: 'absolute', inset: 0, background: '#0F8074', clipPath: 'polygon(68% 0, 100% 0, 100% 100%, 57% 100%)' }} />
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800', letterSpacing: '0.14em', color: '#D6FF00' }}>
                   🔔 PRÓXIMOS BRIEFINGS RECOMENDADOS
                 </div>
               </div>
 
               <div style={{ padding: '0 18px' }}>
-                {/* Píldora ESPAÑA · degradado naranja */}
-                <div style={{ background: ORANGE, borderRadius: '26px', padding: '12px 20px', marginBottom: '10px' }}>
+                {/* Píldora ESPAÑA · degradado océano */}
+                <div style={{ background: OCEAN, borderRadius: '26px', padding: '12px 20px', marginBottom: '10px' }}>
                   <div style={{ fontSize: '10px', fontWeight: '800', letterSpacing: '0.16em', color: '#FFF', marginBottom: '2px' }}>🇪🇸 ESPAÑA</div>
                   <div style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '16px', fontWeight: '700', color: '#FFF', lineHeight: 1.2 }}>
                     {next.spain.dayName} {next.spain.dayNumber} {next.spain.monthName} · {next.spain.hour}:{next.spain.minute}
@@ -3149,7 +3169,7 @@ export default function App() {
                   <div style={{ fontSize: '10px', fontStyle: 'italic', color: 'rgba(255,255,255,0.85)', marginTop: '2px' }}>"{next.spain.label}"</div>
                 </div>
 
-                {/* Píldora INTERNACIONAL · degradado teal */}
+                {/* Píldora INTERNACIONAL · degradado esmeralda (blanco 4.8:1; el turquesa claro anterior daba 1.9:1) */}
                 <div style={{ background: TEAL, borderRadius: '26px', padding: '12px 20px', marginBottom: '16px' }}>
                   <div style={{ fontSize: '10px', fontWeight: '800', letterSpacing: '0.16em', color: '#FFF', marginBottom: '2px' }}>🌍 INTERNACIONAL</div>
                   <div style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '16px', fontWeight: '700', color: '#FFF', lineHeight: 1.2 }}>
@@ -3159,11 +3179,11 @@ export default function App() {
                 </div>
 
                 {/* Horario semanal · 2 píldoras de color pleno */}
-                <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: '800', letterSpacing: '0.12em', color: '#2F2B23', marginBottom: '10px' }}>
+                <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: '800', letterSpacing: '0.12em', color: '#0A4B6E', marginBottom: '10px' }}>
                   📅 HORARIO SEMANAL
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                  <div style={{ background: ORANGE, borderRadius: '22px', padding: '10px 12px', textAlign: 'center' }}>
+                  <div style={{ background: OCEAN, borderRadius: '22px', padding: '10px 12px', textAlign: 'center' }}>
                     <div style={{ fontSize: '9px', fontWeight: '800', color: '#FFF', marginBottom: '4px' }}>🇪🇸 ESPAÑA</div>
                     <div style={{ fontSize: '10px', color: '#FFF', lineHeight: 1.5 }}>Lun-Vie 19:00 · Sáb 12:00 · Dom 19:00</div>
                   </div>
@@ -3173,11 +3193,58 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Añadir a mano · degradado tricolor + texto azul oscuro */}
+                {/* Añadir a mano · degradado océano oscuro + texto lima (paleta D2) */}
                 <div style={{ background: TRICOLOR, borderRadius: '28px', padding: '13px 20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '800', letterSpacing: '0.06em', color: NAVY, marginBottom: '4px' }}>📌 AÑADIR A MANO</div>
-                  <div style={{ fontSize: '11px', color: NAVY, fontWeight: '700', lineHeight: 1.4 }}>
+                  <div style={{ fontSize: '11px', fontWeight: '800', letterSpacing: '0.06em', color: LIMA, marginBottom: '4px' }}>📌 AÑADIR A MANO</div>
+                  <div style={{ fontSize: '11px', color: LIMA, fontWeight: '700', lineHeight: 1.4 }}>
                     Vozpópuli · Artículo 14 · Crónica Global · El Debate
+                  </div>
+                  {/* Fechas: últimos manuales vs último briefing ejecutado */}
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginTop: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '10px', color: NAVY, fontWeight: '700', background: 'rgba(255,255,255,0.55)', borderRadius: '10px', padding: '2px 9px' }}>
+                      ✍️ Manuales: {fmtDayDate(manualDate)}{manualDate ? ` · ${fmtDaysAgo(manualDate)}` : ''}
+                    </span>
+                    <span style={{ fontSize: '10px', color: NAVY, fontWeight: '700', background: 'rgba(255,255,255,0.55)', borderRadius: '10px', padding: '2px 9px' }}>
+                      🤖 Último briefing: {fmtShortDate(getLastExecutedDate())}
+                    </span>
+                  </div>
+                  {/* Marcar la fecha en la que se hicieron los manuales (calendario, no solo hoy) */}
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '9px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '10px', color: LIMA, fontWeight: '700' }}>✍️ Marcar día:</span>
+                    <input
+                      type="date"
+                      value={manualDate || ''}
+                      max={todayISO()}
+                      onChange={(e) => { const iso = saveManualDate(e.target.value); if (iso) setManualDate(iso); }}
+                      style={{
+                        background: 'rgba(255,255,255,0.85)',
+                        color: NAVY,
+                        border: `2px solid ${LIMA}`,
+                        borderRadius: '12px',
+                        padding: '4px 9px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        fontFamily: "'Verdana', sans-serif",
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <button
+                      onClick={() => { const iso = saveManualDate(todayISO()); if (iso) setManualDate(iso); }}
+                      style={{
+                        background: LIMA,
+                        color: NAVY,
+                        border: 'none',
+                        borderRadius: '12px',
+                        padding: '6px 14px',
+                        fontSize: '10px',
+                        fontWeight: '800',
+                        letterSpacing: '0.04em',
+                        cursor: 'pointer',
+                        fontFamily: "'Verdana', sans-serif",
+                      }}
+                    >
+                      ✓ Hoy
+                    </button>
                   </div>
                 </div>
               </div>
@@ -3229,6 +3296,7 @@ export default function App() {
       {showStats && (() => {
         const SECTION_LABELS = {
           spainNews: '🇪🇸 Noticias España',
+          vecinos: '🌍 Vecinos',
           spainOpinion: '✍️ Opinión España',
           world: '🌍 Internacional',
         };
