@@ -776,6 +776,164 @@ const TOPIC_ICONS = {
 
 // Agrupa piezas por su campo `topic`. Si una pieza no trae topic, cae en "Otros".
 // Ordena los grupos según TOPIC_ORDER[historyKey]; los temas no listados van al final.
+// Una fila del diagnóstico de feeds: un medio, su recuento y el detalle por URL.
+// Extraída a componente para poder pintarla tanto en la lista plana (España) como
+// dentro de los paneles por continente (internacional, ~93 medios).
+function FeedDiagRow({ d }) {
+      const included = d.includedAfterCap || 0;
+      const statusIcon = included === 0 ? '⚪' : included >= 2 ? '✅' : '⚠️';
+      return (
+        <details style={{
+          padding: '6px 8px',
+          marginBottom: '4px',
+          background: included === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(127,255,212,0.12)',
+          borderRadius: '5px',
+          fontSize: '10.5px',
+        }}>
+          <summary style={{
+            cursor: 'pointer',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            gap: '8px',
+            flexWrap: 'wrap',
+            listStyle: 'none',
+          }}>
+            <strong style={{ color: '#7FFFD4', fontSize: '11px', minWidth: '105px', fontWeight: '700' }}>
+              {statusIcon} {d.source} {d.urlsCount > 1 && <em style={{ opacity: 0.6, fontSize: '9.5px', fontWeight: '600' }}>· {d.urlsCount} URLs</em>}
+            </strong>
+            <span style={{ color: 'rgba(255,255,255,0.92)', fontSize: '10px', flex: 1, textAlign: 'right' }}>
+              {d.rawCount === 0
+                ? <em style={{ color: 'rgba(127,255,212,0.75)' }}>⚠️ todas las URLs vacías ▼</em>
+                : <>
+                    <span style={{ fontWeight: '800' }}>{included} incluidas</span>
+                    {' · '}
+                    <span>{d.rawCount} en RSS</span>
+                    {' · '}
+                    <span>{d.passedDateFilter} en ventana</span>
+                    {d.hoursAgo !== null && d.hoursAgo !== undefined && (
+                      <em style={{ opacity: 0.7, marginLeft: '4px' }}>· hace {d.hoursAgo}h</em>
+                    )}
+                  </>
+              }
+            </span>
+          </summary>
+
+          {/* SUGERENCIA AUTOMÁTICA */}
+          {d.suggestion && (
+            <div style={{
+              marginTop: '6px',
+              padding: '4px 8px',
+              background: 'rgba(252,204,21,0.15)',
+              border: '1px solid rgba(252,204,21,0.4)',
+              borderRadius: '4px',
+              color: '#FACC15',
+              fontSize: '9.5px',
+              fontWeight: '700',
+            }}>
+              {d.suggestion}
+            </div>
+          )}
+
+          {/* DETALLE POR URL */}
+          {d.urlDetails && d.urlDetails.length > 0 && (
+            <div style={{ marginTop: '6px' }}>
+              {d.urlDetails.map((u, j) => {
+                const statusColor =
+                  u.status === 'ok' && u.itemCount > 0 ? '#4ADE80' :
+                  u.status === 'empty' || u.itemCount === 0 ? '#FACC15' :
+                  '#FCA5A5';
+                const statusEmoji =
+                  u.status === 'ok' && u.itemCount > 0 ? '🟢' :
+                  u.status === 'empty' || u.itemCount === 0 ? '🟡' :
+                  '🔴';
+                return (
+                  <div key={j} style={{
+                    marginBottom: '3px',
+                    padding: '4px 6px',
+                    background: 'rgba(0,0,0,0.15)',
+                    borderRadius: '3px',
+                    fontSize: '9.5px',
+                    lineHeight: 1.4,
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
+                      gap: '6px',
+                    }}>
+                      <span style={{ color: statusColor, fontWeight: '700' }}>
+                        {statusEmoji} {u.tier}
+                      </span>
+                      <span style={{ opacity: 0.85 }}>
+                        {u.itemCount} items · {u.status}{u.httpCode && ` ${u.httpCode}`}
+                      </span>
+                    </div>
+                    <div style={{ opacity: 0.55, fontSize: '9px', marginTop: '2px', wordBreak: 'break-all' }}>
+                      {u.url}
+                    </div>
+                    {u.errorMsg && (
+                      <div style={{ opacity: 0.65, fontSize: '9px', color: '#FCA5A5', fontStyle: 'italic' }}>
+                        {u.errorMsg}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </details>
+      );
+}
+
+// ============ DIVISIÓN POR REGIONES · INTERNACIONAL ============
+// Orden fijado: USA · Europa · Asia · Oriente Medio · África, y después el resto.
+// Es el MISMO orden que el presupuesto de búsquedas y el checklist de briefing.js,
+// para que lo que se busca primero sea lo que se lee primero.
+const REGION_BLOCK_ORDER = ['USA', 'Europa', 'Asia', 'Oriente Medio', 'África', 'LATAM', 'Económico global', 'Global/Think tanks', 'Otros'];
+const REGION_TO_BLOCK = {
+  'USA': 'USA', 'EEUU': 'USA',
+  'Europa Occ': 'Europa', 'Europa Occ.': 'Europa', 'Europa Este': 'Europa', 'UK': 'Europa', 'Rusia': 'Europa',
+  'Asia': 'Asia', 'India': 'Asia', 'Turquía': 'Asia',
+  'Oriente Medio': 'Oriente Medio',
+  'África': 'África',
+  'LATAM': 'LATAM',
+  'Económico Global': 'Económico global',
+  'Multilateral': 'Global/Think tanks',
+  'Australia': 'Otros', 'Otros': 'Otros',
+};
+const REGION_BLOCK_ICONS = {
+  'USA': '🇺🇸', 'Europa': '🇪🇺', 'Asia': '🌏', 'Oriente Medio': '🕌',
+  'África': '🌍', 'LATAM': '🌎', 'Económico global': '💰',
+  'Global/Think tanks': '🏛️', 'Otros': '🌐',
+};
+// Un color por región. Ocho tonos separados en la rueda para que el bloque se reconozca
+// de un vistazo al hacer scroll. Se usan en el borde lateral y en el tinte del fondo;
+// el texto de la cabecera sigue siendo oscuro, así que no hay problema de contraste.
+const REGION_BLOCK_COLORS = {
+  'USA': '#1D4ED8',              // azul
+  'Europa': '#7C3AED',           // violeta
+  'Asia': '#DC2626',             // rojo
+  'Oriente Medio': '#A16207',    // mostaza
+  'África': '#15803D',           // verde
+  'LATAM': '#EA580C',            // naranja
+  'Económico global': '#0F766E', // teal
+  'Global/Think tanks': '#4338CA', // índigo
+  'Otros': '#57534E',            // gris piedra
+};
+// El backend escribe `_region` (classifyRegion). Se acepta `region` por compatibilidad.
+function regionBlockOf(item) {
+  return REGION_TO_BLOCK[(item && (item._region || item.region)) || ''] || 'Otros';
+}
+function groupByRegionBlock(items) {
+  if (!Array.isArray(items)) return [];
+  return REGION_BLOCK_ORDER.reduce((acc, block) => {
+    const matching = items.filter(it => regionBlockOf(it) === block);
+    if (matching.length > 0) acc.push({ block, items: matching });
+    return acc;
+  }, []);
+}
+
 function groupByTopic(items, historyKey) {
   if (!Array.isArray(items)) return [];
   const map = new Map();
@@ -1210,44 +1368,12 @@ function NewsCard({ item, index, sectionColor, type, isLead }) {
   );
 }
 
-function Section({ title, icon, items, color, gradient, count, descriptor, type, note, meta, groupByContinent, historyKey, editorNote }) {
+function Section({ title, icon, items, color, gradient, count, descriptor, type, note, meta, groupByRegion, historyKey, editorNote }) {
   const realCount = items?.length || 0;
   const itemLabel = type === 'opinion' ? (realCount === 1 ? 'COLUMNA' : 'COLUMNAS') : (realCount === 1 ? 'PIEZA' : 'PIEZAS');
 
-  // Mapeo región → continente (para sección Mundo)
-  const REGION_TO_CONTINENT = {
-    'EEUU': 'América',
-    'LATAM': 'América',
-    'UK': 'Europa',
-    'Europa Occ.': 'Europa',
-    'Europa Este': 'Europa',
-    'Rusia': 'Europa',
-    'Oriente Medio': 'Oriente Medio',
-    'India': 'Asia',
-    'Asia': 'Asia',
-    'Turquía': 'Asia',
-    'África': 'África',
-    'Australia': 'Oceanía',
-  };
-  const CONTINENT_ORDER = ['América', 'Europa', 'Oriente Medio', 'Asia', 'África', 'Oceanía', 'Otros'];
-  const CONTINENT_ICONS = {
-    'América': '🌎',
-    'Europa': '🌍',
-    'Oriente Medio': '🕌',
-    'Asia': '🌏',
-    'África': '🌍',
-    'Oceanía': '🌏',
-    'Otros': '🌐',
-  };
-
-  // Agrupar items por continente si procede
-  const groupedItems = groupByContinent && realCount > 0
-    ? CONTINENT_ORDER.reduce((acc, cont) => {
-        const matching = items.filter(it => (REGION_TO_CONTINENT[it.region] || 'Otros') === cont);
-        if (matching.length > 0) acc.push({ continent: cont, items: matching });
-        return acc;
-      }, [])
-    : null;
+  // Agrupar por bloque regional si procede (ver REGION_BLOCK_ORDER arriba)
+  const groupedItems = groupByRegion && realCount > 0 ? groupByRegionBlock(items) : null;
 
   return (
     <div style={{ marginBottom: '20px' }}>
@@ -1411,115 +1537,45 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
               📊 Diagnóstico de feeds ({meta.feedDiagnostic.length} fuentes · {meta.feedDiagnostic.filter(d => d.includedAfterCap === 0).length} sin piezas) ▼
             </summary>
             <div style={{ marginTop: '10px' }}>
-              {meta.feedDiagnostic
-                .slice()
-                .sort((a, b) => (b.includedAfterCap || 0) - (a.includedAfterCap || 0))
-                .map((d, i) => {
-                  const included = d.includedAfterCap || 0;
-                  const statusIcon = included === 0 ? '⚪' : included >= 2 ? '✅' : '⚠️';
+              {(() => {
+                const rows = meta.feedDiagnostic.slice()
+                  .sort((a, b) => (b.includedAfterCap || 0) - (a.includedAfterCap || 0));
+                // Si el backend manda `region` (internacional), partimos el diagnóstico en
+                // un panel por continente: 93 medios en una sola lista es inmanejable.
+                const hasRegions = rows.some(d => d.region);
+                if (!hasRegions) return rows.map((d, i) => <FeedDiagRow key={i} d={d} />);
+                const blocks = REGION_BLOCK_ORDER
+                  .map(block => ({ block, rows: rows.filter(d => (REGION_TO_BLOCK[d.region] || 'Otros') === block) }))
+                  .filter(g => g.rows.length > 0);
+                return blocks.map(g => {
+                  const bc = REGION_BLOCK_COLORS[g.block] || '#7FFFD4';
+                  const vacios = g.rows.filter(d => (d.includedAfterCap || 0) === 0).length;
                   return (
-                    <details key={i} style={{
+                    <details key={g.block} style={{
+                      marginBottom: '6px',
                       padding: '6px 8px',
-                      marginBottom: '4px',
-                      background: included === 0 ? 'rgba(255,255,255,0.05)' : 'rgba(127,255,212,0.12)',
+                      background: `${bc}1F`,
+                      borderLeft: `3px solid ${bc}`,
                       borderRadius: '5px',
-                      fontSize: '10.5px',
                     }}>
                       <summary style={{
                         cursor: 'pointer',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'baseline',
-                        gap: '8px',
-                        flexWrap: 'wrap',
                         listStyle: 'none',
+                        fontSize: '11px',
+                        fontWeight: '800',
+                        letterSpacing: '0.05em',
+                        color: '#FFF',
                       }}>
-                        <strong style={{ color: '#7FFFD4', fontSize: '11px', minWidth: '105px', fontWeight: '700' }}>
-                          {statusIcon} {d.source} {d.urlsCount > 1 && <em style={{ opacity: 0.6, fontSize: '9.5px', fontWeight: '600' }}>· {d.urlsCount} URLs</em>}
-                        </strong>
-                        <span style={{ color: 'rgba(255,255,255,0.92)', fontSize: '10px', flex: 1, textAlign: 'right' }}>
-                          {d.rawCount === 0
-                            ? <em style={{ color: 'rgba(127,255,212,0.75)' }}>⚠️ todas las URLs vacías ▼</em>
-                            : <>
-                                <span style={{ fontWeight: '800' }}>{included} incluidas</span>
-                                {' · '}
-                                <span>{d.rawCount} en RSS</span>
-                                {' · '}
-                                <span>{d.passedDateFilter} en 48h</span>
-                                {d.hoursAgo !== null && d.hoursAgo !== undefined && (
-                                  <em style={{ opacity: 0.7, marginLeft: '4px' }}>· hace {d.hoursAgo}h</em>
-                                )}
-                              </>
-                          }
-                        </span>
+                        {REGION_BLOCK_ICONS[g.block] || '🌐'} {g.block.toUpperCase()} · {g.rows.length} fuentes
+                        {vacios > 0 && <em style={{ opacity: 0.75, fontWeight: '600' }}> · {vacios} sin piezas</em>} ▼
                       </summary>
-
-                      {/* SUGERENCIA AUTOMÁTICA */}
-                      {d.suggestion && (
-                        <div style={{
-                          marginTop: '6px',
-                          padding: '4px 8px',
-                          background: 'rgba(252,204,21,0.15)',
-                          border: '1px solid rgba(252,204,21,0.4)',
-                          borderRadius: '4px',
-                          color: '#FACC15',
-                          fontSize: '9.5px',
-                          fontWeight: '700',
-                        }}>
-                          {d.suggestion}
-                        </div>
-                      )}
-
-                      {/* DETALLE POR URL */}
-                      {d.urlDetails && d.urlDetails.length > 0 && (
-                        <div style={{ marginTop: '6px' }}>
-                          {d.urlDetails.map((u, j) => {
-                            const statusColor =
-                              u.status === 'ok' && u.itemCount > 0 ? '#4ADE80' :
-                              u.status === 'empty' || u.itemCount === 0 ? '#FACC15' :
-                              '#FCA5A5';
-                            const statusEmoji =
-                              u.status === 'ok' && u.itemCount > 0 ? '🟢' :
-                              u.status === 'empty' || u.itemCount === 0 ? '🟡' :
-                              '🔴';
-                            return (
-                              <div key={j} style={{
-                                marginBottom: '3px',
-                                padding: '4px 6px',
-                                background: 'rgba(0,0,0,0.15)',
-                                borderRadius: '3px',
-                                fontSize: '9.5px',
-                                lineHeight: 1.4,
-                              }}>
-                                <div style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'baseline',
-                                  gap: '6px',
-                                }}>
-                                  <span style={{ color: statusColor, fontWeight: '700' }}>
-                                    {statusEmoji} {u.tier}
-                                  </span>
-                                  <span style={{ opacity: 0.85 }}>
-                                    {u.itemCount} items · {u.status}{u.httpCode && ` ${u.httpCode}`}
-                                  </span>
-                                </div>
-                                <div style={{ opacity: 0.55, fontSize: '9px', marginTop: '2px', wordBreak: 'break-all' }}>
-                                  {u.url}
-                                </div>
-                                {u.errorMsg && (
-                                  <div style={{ opacity: 0.65, fontSize: '9px', color: '#FCA5A5', fontStyle: 'italic' }}>
-                                    {u.errorMsg}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                      <div style={{ marginTop: '6px' }}>
+                        {g.rows.map((d, i) => <FeedDiagRow key={i} d={d} />)}
+                      </div>
                     </details>
                   );
-                })}
+                });
+              })()}
               <div style={{
                 marginTop: '8px', padding: '6px 8px',
                 fontSize: '9.5px', fontStyle: 'italic',
@@ -1557,33 +1613,33 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
             )}
           </div>
         ) : groupedItems ? (
-          // Render agrupado por continentes Y dentro por medio
+          // Render agrupado por REGIÓN Y dentro por medio
           groupedItems.map((group, gi) => (
-            <div key={group.continent} style={{ marginBottom: gi < groupedItems.length - 1 ? '12px' : '0' }}>
+            <div key={group.block} style={{ marginBottom: gi < groupedItems.length - 1 ? '12px' : '0' }}>
               <div style={{
                 margin: '8px 4px 6px',
                 padding: '6px 12px',
-                background: `linear-gradient(90deg, ${color}15, transparent)`,
-                borderLeft: `3px solid ${color}`,
+                background: `linear-gradient(90deg, ${REGION_BLOCK_COLORS[group.block] || color}22, transparent)`,
+                borderLeft: `3px solid ${REGION_BLOCK_COLORS[group.block] || color}`,
                 borderRadius: '4px',
                 fontFamily: "'Verdana', 'Geneva', sans-serif",
                 fontSize: '12px',
                 fontWeight: '700',
-                color: color,
+                color: REGION_BLOCK_COLORS[group.block] || color,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
               }}>
-                <span style={{ fontSize: '15px' }}>{CONTINENT_ICONS[group.continent]}</span>
-                <span>{group.continent}</span>
+                <span style={{ fontSize: '15px' }}>{REGION_BLOCK_ICONS[group.block]}</span>
+                <span>{group.block}</span>
                 <span style={{ opacity: 0.6, fontWeight: '500' }}>· {group.items.length}</span>
               </div>
-              {/* Dentro de cada continente, AGRUPAR por medio */}
+              {/* Dentro de cada región, AGRUPAR por medio */}
               {groupBySource(group.items).map((mediaGroup, mgi) => (
                 <MediaGroup
-                  key={`${group.continent}-${mediaGroup.source}`}
+                  key={`${group.block}-${mediaGroup.source}`}
                   source={mediaGroup.source}
                   items={mediaGroup.items}
                   sectionColor={color}
@@ -2188,6 +2244,34 @@ export default function App() {
         </div>`;
     };
 
+    // Igual que section() pero partiendo las piezas en bloques regionales
+    // (USA · Europa · Asia · Oriente Medio · África · resto), mismo orden que la app.
+    const sectionByRegion = (title, icon, items, colorKey, descriptor) => {
+      if (!items?.length) return '';
+      const { color } = SECTION_STYLES[colorKey];
+      const itemLabel = items.length === 1 ? 'PIEZA' : 'PIEZAS';
+      const blocksHtml = groupByRegionBlock(items).map(group => {
+        const bc = REGION_BLOCK_COLORS[group.block] || color;
+        return `
+            <div style="margin:14px 0 8px;padding:6px 12px;border-left:4px solid ${bc};background:${bc}1A;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${bc};">
+              ${REGION_BLOCK_ICONS[group.block] || '🌐'} ${escape(group.block)} &middot; ${group.items.length}
+            </div>
+            ${group.items.map(i => card(i, bc, false)).join('')}`;
+      }).join('');
+      return `
+        <div style="margin-bottom:28px;">
+          <div style="background:${color};color:#011142;padding:16px 20px;border:3px solid #011142;border-radius:0;box-shadow:5px 5px 0 #011142;font-family:'Space Mono',monospace;">
+            <div style="font-size:15px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">
+              ${icon} ${escape(title)} &middot; ${items.length} ${itemLabel}
+            </div>
+            <div style="font-size:11px;opacity:0.95;margin-top:6px;font-weight:400;">${escape(descriptor)}</div>
+          </div>
+          <div style="padding:18px 4px 4px;">
+            ${blocksHtml}
+          </div>
+        </div>`;
+    };
+
     // Calcular total según modo
     let total = 0;
     let sectionsHtml = '';
@@ -2211,7 +2295,7 @@ export default function App() {
       headerTitle = 'MAL NEWS · INTERNACIONAL';
       pageSubtitle = 'Cobertura global';
       sectionsHtml =
-        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · resumen semanal (7 días) · incluye sentencias relevantes', false);
+        sectionByRegion('Mundo', '🌍', b.worldNews, 'worldNews', 'Por regiones · USA · Europa · Asia · Oriente Medio · África · resumen semanal (7 días)');
     } else if (mode === 'worldOpinion') {
       total = (b.worldOpinion?.length || 0);
       headerTitle = 'MAL NEWS · OPINIÓN INTERNACIONAL';
@@ -2230,7 +2314,7 @@ export default function App() {
       headerTitle = 'MAL NEWS · INTERNACIONAL';
       pageSubtitle = 'Mundo y opinión global';
       sectionsHtml =
-        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · resumen semanal (7 días) · incluye sentencias relevantes', false) +
+        sectionByRegion('Mundo', '🌍', b.worldNews, 'worldNews', 'Por regiones · USA · Europa · Asia · Oriente Medio · África · resumen semanal (7 días)') +
         section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · resumen semanal (7 días)', true);
     } else {
       // mode = 'all' (briefing completo - solo para Vista HTML)
@@ -2241,7 +2325,7 @@ export default function App() {
       sectionsHtml =
         section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimos 5 días', false) +
         section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true) +
-        section('Mundo', '🌍', b.worldNews, 'worldNews', 'Cobertura global plural · resumen semanal (7 días) · incluye sentencias relevantes', false) +
+        sectionByRegion('Mundo', '🌍', b.worldNews, 'worldNews', 'Por regiones · USA · Europa · Asia · Oriente Medio · África · resumen semanal (7 días)') +
         section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · resumen semanal (7 días)', true);
     }
 
@@ -2449,12 +2533,12 @@ export default function App() {
   };
 
   const intlSections = intlData ? [
-    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 10, type: 'news',
-      descriptor: 'Cobertura global por temas · economía, geopolítica, IA, lecturas · medios free',
+    { title: 'Mundo', icon: '🌍', items: intlData.worldNews, color: SECTION_COLORS.worldNews, gradient: SECTION_GRADIENTS.worldNews, count: 20, type: 'news',
+      descriptor: 'Cobertura global por regiones · USA · Europa · Asia · Oriente Medio · África · medios free',
       note: intlData._note,
       meta: intlData._meta,
-      groupByContinent: false, historyKey: 'worldNews' },
-    { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 8, type: 'opinion',
+      groupByRegion: true, historyKey: 'worldNews' },
+    { title: 'Opinión Internacional', icon: '✍️', items: intlData.worldOpinion, color: SECTION_COLORS.worldOpinion, gradient: SECTION_GRADIENTS.worldOpinion, count: 20, type: 'opinion',
       descriptor: 'Columnas firmadas · medios internacionales free · por tema',
       note: intlData._note,
       meta: intlData._meta , historyKey: 'worldOpinion' },
@@ -3069,7 +3153,7 @@ export default function App() {
         {hasAnyData && (
           <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
             {[...spainNewsSections, ...spainOpinionSections, ...intlSections].map((s, i) => (
-              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} groupByContinent={s.groupByContinent} historyKey={s.historyKey} editorNote={s.editorNote} />
+              <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} groupByRegion={s.groupByRegion} historyKey={s.historyKey} editorNote={s.editorNote} />
             ))}
           </div>
         )}
