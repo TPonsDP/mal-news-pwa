@@ -517,12 +517,12 @@ const INTERNATIONAL_OPINION_FEEDS = [
   // 🇬🇧 UK
   { source: 'The Guardian', url: 'https://www.theguardian.com/commentisfree/rss', tier: 'opinion' },
   { source: 'UnHerd', url: 'https://unherd.com/feed/', tier: 'main' },
-  // (The Spectator: feed muerto, queda solo en set PressReader → modelo lo cita vía web_search)
+  // (The Spectator: feed muerto → el modelo lo cita vía web_search)
 
   // 💰 ECONÓMICO GLOBAL
   { source: 'MarketWatch', url: 'https://feeds.marketwatch.com/marketwatch/topstories/', tier: 'main' },
   { source: 'Forbes', url: 'https://www.forbes.com/business/feed/', tier: 'business' },
-  // (Bloomberg / Reuters / Quartz: feeds muertos; Bloomberg queda en set PressReader)
+  // (Bloomberg / Reuters / Quartz: feeds muertos)
 
   // 🇫🇷 FRANCIA
   { source: 'Le Figaro', url: 'https://www.lefigaro.fr/rss/figaro_actualites.xml', tier: 'main' },
@@ -534,11 +534,11 @@ const INTERNATIONAL_OPINION_FEEDS = [
 
   // 🇩🇪 ALEMANIA (nuevo · cubrir hueco UE)
   { source: 'Der Spiegel International', url: 'https://www.spiegel.de/international/index.rss', tier: 'main' },
-  // (Süddeutsche Zeitung y Handelsblatt: sin feed RSS gratuito fiable, solo en set PressReader)
+  // (Süddeutsche Zeitung y Handelsblatt: sin feed RSS gratuito fiable)
 
   // 🇮🇹 ITALIA (nuevo · recuperar tras quitar La Repubblica)
   { source: 'Corriere della Sera', url: 'https://xml2.corriereobjects.it/rss/homepage.xml', tier: 'main' },
-  // (La Repubblica e Il Sole 24 Ore: solo en set PressReader)
+  // (La Repubblica e Il Sole 24 Ore: sin feed nativo accesible)
   // NOTA: Politico Europe es medio de NOTICIAS (no opinión) → no va en este array de
   // opinión (el filtro isOpinionRSSItemIntl lo descartaría). Se usa en worldNews,
   // que el modelo genera vía web_search (ver lista de fuentes y búsquedas más abajo).
@@ -550,29 +550,51 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Aftonbladet', url: 'https://news.google.com/rss/search?q=site:aftonbladet.se&hl=sv&gl=SE&ceid=SE:sv', tier: 'gn-main' },
 
   // 💰 ECONÓMICO EUROPA (refuerzo Económico Global)
-  { source: 'Børsen', url: 'https://news.google.com/rss/search?q=site:borsen.dk&hl=da&gl=DK&ceid=DK:da', tier: 'gn-main' },
-  { source: 'Les Echos', url: 'https://news.google.com/rss/search?q=site:lesechos.fr&hl=fr&gl=FR&ceid=FR:fr', tier: 'gn-main' },
-  { source: 'Handelsblatt', url: 'https://news.google.com/rss/search?q=site:handelsblatt.com&hl=de&gl=DE&ceid=DE:de', tier: 'gn-main' },
-  { source: 'Il Sole 24 Ore', url: 'https://news.google.com/rss/search?q=site:ilsole24ore.com&hl=it&gl=IT&ceid=IT:it', tier: 'gn-main' },
   { source: 'El Economista', url: 'https://news.google.com/rss/search?q=site:eleconomista.com.mx&hl=es-419&gl=MX&ceid=MX:es', tier: 'gn-main' },
-  { source: 'Business Day', url: 'https://news.google.com/rss/search?q=site:businesslive.co.za&hl=en&gl=ZA&ceid=ZA:en', tier: 'gn-main' },
   { source: 'The Edge Singapore', url: 'https://news.google.com/rss/search?q=site:theedgesingapore.com&hl=en&gl=SG&ceid=SG:en', tier: 'gn-main' },
+
+  // 💰 ECONÓMICO GLOBAL · ampliación (antes solo 7 fuentes y casi todas europeas)
+  // Feeds NATIVOS sin respaldo de Google News: la cola de GN de esta lista rara vez
+  // se llega a pedir dentro de FEED_BUDGET_MS (30s). Verificar en el diagnóstico.
+  { source: 'IMF Blog', url: 'https://www.imf.org/en/Blogs/rss', tier: 'main' },
+  { source: 'World Bank Blogs', url: 'https://blogs.worldbank.org/rss.xml', tier: 'main' },
+  { source: 'Business Standard', url: 'https://www.business-standard.com/rss/economy-policy-102.rss', tier: 'main' },
+  { source: 'Semafor Business', url: 'https://www.semafor.com/rss/business.xml', tier: 'main' },
+  { source: 'Rest of World', url: 'https://restofworld.org/feed/latest/', tier: 'main' },
+  { source: 'Liberty Street Economics', url: 'https://libertystreeteconomics.newyorkfed.org/feed/', tier: 'main' },
+  { source: 'Bank Underground', url: 'https://bankunderground.co.uk/feed/', tier: 'main' },
+  // Sustitutos de los seis de muro duro (Børsen, Les Echos, Handelsblatt,
+  // Il Sole 24 Ore, Caixin, Business Day). Todos de acceso abierto:
+  { source: 'Tagesschau Wirtschaft', url: 'https://www.tagesschau.de/wirtschaft/index~rss2.xml', tier: 'main' },  // Alemania (público)
+  { source: 'lavoce.info', url: 'https://lavoce.info/feed/', tier: 'main' },                                      // Italia (economistas)
+  { source: 'Social Europe', url: 'https://www.socialeurope.eu/feed', tier: 'main' },                              // Europa (heterodoxo)
+  { source: 'East Asia Forum', url: 'https://eastasiaforum.org/feed/', tier: 'main' },                             // Asia (ANU)
+
+  // 🏛️ THINK TANKS · ampliación (antes solo Bruegel y PIIE eran think tanks de verdad)
+  { source: 'Brookings', url: 'https://www.brookings.edu/feed/', tier: 'main' },
+  { source: 'Carnegie Endowment', url: 'https://carnegieendowment.org/rss/publications', tier: 'main' },
+  { source: 'Chatham House', url: 'https://www.chathamhouse.org/rss/all', tier: 'main' },
+  { source: 'ECFR', url: 'https://ecfr.eu/feed/', tier: 'main' },
+  { source: 'Crisis Group', url: 'https://www.crisisgroup.org/rss.xml', tier: 'main' },
+  { source: 'Lowy Interpreter', url: 'https://www.lowyinstitute.org/the-interpreter/rss.xml', tier: 'main' },
+  { source: 'ORF', url: 'https://www.orfonline.org/feed', tier: 'main' },
+  { source: 'ISS Africa', url: 'https://issafrica.org/rss/', tier: 'main' },
+  // 🌎 LATAM · análisis regional
+  { source: 'Latinoamérica21', url: 'https://latinoamerica21.com/feed/', tier: 'main' },
 
   // 🌐 MULTILATERAL OPINIÓN
   { source: 'Project Syndicate', url: 'https://www.project-syndicate.org/rss', tier: 'main' },
   { source: 'Project Syndicate', url: 'https://www.project-syndicate.org/rss/columnist', tier: 'columnist' },
   { source: 'Foreign Policy', url: 'https://foreignpolicy.com/feed/', tier: 'main' },
-  { source: 'Foreign Affairs', url: 'https://www.foreignaffairs.com/rss.xml', tier: 'main' },
 
   // 📊 ANÁLISIS ECONÓMICO (think tanks · complemento a Project Syndicate)
   { source: 'Bruegel', url: 'https://www.bruegel.org/rss.xml', tier: 'opinion' },
-  { source: 'PIIE', url: 'https://www.piie.com/rss/update.xml', tier: 'opinion' },
   { source: 'VoxEU', url: 'https://cepr.org/voxeu/columns/feed', tier: 'opinion' },
 
   // 🇷🇺 RUSIA (independiente)
   { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/opinion', tier: 'opinion' },
   { source: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/news', tier: 'news' },
-  // (Kyiv Independent: feed muerto y NO disponible en PressReader — hueco aceptado)
+  // (Kyiv Independent: feed muerto — hueco aceptado)
 
   // 🌍 EUROPA ESTE / CENTRAL (cerrar hueco · vía Google News, ceid por país)
   { source: 'Gazeta Wyborcza', url: 'https://news.google.com/rss/search?q=site:wyborcza.pl&hl=pl&gl=PL&ceid=PL:pl', tier: 'gn-main' },
@@ -598,7 +620,16 @@ const INTERNATIONAL_OPINION_FEEDS = [
   // OPINIÓN real Oriente Medio (feeds /opinion confirmados)
   { source: 'Al Jazeera Opinion', url: 'https://news.google.com/rss/search?q=site:aljazeera.com/opinion&hl=en&gl=US&ceid=US:en', tier: 'gn-opinion' },
   { source: 'Al-Monitor', url: 'https://www.al-monitor.com/rss', tier: 'opinion' },
-  // (Haaretz: solo en set PressReader, sin feed nativo accesible)
+  // Ampliación Oriente Medio: el bloque eran 5 medios oficialistas del Golfo y
+  // 2 israelíes del mismo lado. Estas 4 abren Israel por la izquierda, Líbano y Egipto.
+  { source: 'Middle East Eye', url: 'https://www.middleeasteye.net/rss', tier: 'main' },
+  { source: '+972 Magazine', url: 'https://www.972mag.com/feed/', tier: 'opinion' },
+  { source: "L'Orient Today", url: 'https://today.lorientlejour.com/feed', tier: 'main' },
+  { source: 'Mada Masr', url: 'https://www.madamasr.com/en/feed/', tier: 'main' },
+  // Análisis de Oriente Medio, los dos lados. Van al bloque 🏛️ Global/Think tanks.
+  { source: 'Middle East Institute', url: 'https://www.mei.edu/rss.xml', tier: 'opinion' },
+  { source: 'Washington Institute', url: 'https://www.washingtoninstitute.org/rss.xml', tier: 'opinion' },
+  // (Haaretz: sin feed nativo accesible)
 
   // 🇮🇳 INDIA (refuerzo · antes solo The Hindu + Indian Express, ambos solo opinión)
   { source: 'The Hindu', url: 'https://www.thehindu.com/opinion/feeder/default.rss', tier: 'opinion' },
@@ -620,7 +651,7 @@ const INTERNATIONAL_OPINION_FEEDS = [
   //    documentado — incluido a petición del usuario como contrapunto anti-Pekín). General + opinión.
   { source: 'The Epoch Times', url: 'https://www.theepochtimes.com/c-china/feed', tier: 'main' },
   { source: 'The Epoch Times', url: 'https://news.google.com/rss/search?q=site:theepochtimes.com/opinion&hl=en&gl=US&ceid=US:en', tier: 'gn-opinion' },
-  // (Caixin: feed muerto)
+  // (Caixin: feed muerto Y muro duro → sustituido por East Asia Forum)
 
   // 🇰🇷 COREA DEL SUR
   { source: 'Hankyoreh', url: 'https://english.hani.co.kr/rss/', tier: 'main' },
@@ -630,7 +661,7 @@ const INTERNATIONAL_OPINION_FEEDS = [
 
   // 🇸🇬 SINGAPUR (nuevo · recuperar)
   { source: 'The Straits Times', url: 'https://www.straitstimes.com/news/world/rss.xml', tier: 'main' },
-  // (Channel News Asia, Business Times: feeds muertos; Business Times queda en set PressReader)
+  // (Channel News Asia, Business Times: feeds muertos)
 
   // 🌏 SUDESTE ASIÁTICO (refuerzo vía Google News · países sin feed nativo vivo)
   { source: 'Bangkok Post', url: 'https://www.bangkokpost.com/rss/data/most-recent.xml', tier: 'main' },
@@ -659,7 +690,7 @@ const INTERNATIONAL_OPINION_FEEDS = [
   { source: 'Clarín', url: 'https://www.clarin.com/rss/lo-ultimo/', tier: 'main' },
   { source: 'La Nación', url: 'https://servicios.lanacion.com.ar/herramientas/rss/category-id=261', tier: 'main' },
   { source: 'Folha de S.Paulo', url: 'https://feeds.folha.uol.com.br/folha/mundo/rss091.xml', tier: 'main' },
-  // (O Globo: solo en set PressReader)
+  // (O Globo: sin feed nativo accesible)
 
   // 🌎 LATAM · COLOMBIA (elecciones presidenciales 21/06/2026 → cobertura reforzada)
   // Vía Google News con ceid=CO para edición local; sortea 403/404 de feeds nativos.
@@ -705,8 +736,39 @@ async function fetchInternationalOpinionRss(allowedISODates, excludeUrls) {
   // ⚠️ DEDUP CROSS-DAY DESACTIVADO PARA OPINIÓN INTERNACIONAL
   // Aplica filtro anti-noticia (isOpinionRSSItemIntl) para que los feeds generales
   // de Der Spiegel / La Repubblica / The Times no metan noticias en la sección.
-  const result = await fetchFeedsAndFilter(INTERNATIONAL_OPINION_FEEDS, allowedISODates, 48, isOpinionRSSItemIntl, null);
-  return { candidates: result.items.slice(0, 60), diagnostic: result.diagnostic };
+  // 168h = 7 días: el internacional es un resumen SEMANAL, no un briefing de 48h.
+  const result = await fetchFeedsAndFilter(INTERNATIONAL_OPINION_FEEDS, allowedISODates, 168, isOpinionRSSItemIntl, null);
+  return { candidates: result.items.slice(0, 60), diagnostic: withRegion(result.diagnostic) };
+}
+
+// Añade la región del medio a cada entrada del diagnóstico. El frontend la usa para
+// partir el diagnóstico internacional en un panel por continente: 93 medios en una
+// sola lista no se puede revisar. Usa el mismo mapa que clasifica las piezas.
+function withRegion(diagnostic) {
+  if (!Array.isArray(diagnostic)) return [];
+  return diagnostic.map(d => ({ ...d, region: classifyRegion(d.source) }));
+}
+
+// ============ PRE-FETCH RSS NOTICIAS INTERNACIONAL ============
+// Usa la MISMA lista de ~93 medios internacionales que la opinión, con el filtro
+// invertido: se queda con lo que NO es columna firmada y descarta podcast/vídeo/
+// newsletter/deporte. Sirve para dos cosas que antes no existían en worldNews:
+//   1) el DIAGNÓSTICO DE FEEDS (worldNews iba a web_search puro, sin nada que diagnosticar)
+//   2) una RED DE SEGURIDAD si el modelo falla o agota las búsquedas
+async function fetchInternationalNewsRss(allowedISODates, excludeUrls) {
+  const result = await fetchFeedsAndFilter(INTERNATIONAL_OPINION_FEEDS, allowedISODates, 168, isNewsRSSItemIntl, null);
+  return { candidates: result.items.slice(0, 60), diagnostic: withRegion(result.diagnostic) };
+}
+
+// Inverso de isOpinionRSSItemIntl + basura no periodística, en varios idiomas.
+function isNewsRSSItemIntl(item) {
+  if (isOpinionRSSItemIntl(item)) return false;
+  const t = String(item.title || '');
+  const u = String(item.url || '').toLowerCase();
+  if (/\/(podcast|podcasts|audios?|videos?|video|live|liveblog|newsletters?|sport|sports|football|soccer)\//i.test(u)) return false;
+  if (/^\s*(podcast|watch|video|listen|live|newsletter|briefing|morning mail|in pictures|photos of)\b|\bpodcast\b/i.test(t)) return false;
+  if (/\b(football|soccer|premier league|la liga|champions league|world cup|olympics|nba|nfl|mlb|cricket|rugby|tennis|formula 1|f1|motogp|golf|transfer window)\b/i.test(t)) return false;
+  return true;
 }
 
 // Filtro de opinión para medios internacionales (patrones de URL/título distintos al español)
@@ -717,10 +779,11 @@ function isOpinionRSSItemIntl(item) {
 
   // Fuentes que son 100% opinión/análisis por naturaleza → siempre pasan
   const OPINION_ONLY_INTL = new Set([
-    'Project Syndicate', 'Foreign Affairs', 'Foreign Policy',
+    'Project Syndicate', 'Foreign Policy',
     'The Bulwark', 'UnHerd', 'The Spectator', 'National Review',
-    'Bruegel', 'PIIE', 'VoxEU',
-    'Al-Monitor', 'EUobserver', 'Voxeurop',
+    'Bruegel', 'VoxEU',
+    'Al-Monitor', 'Middle East Eye', '+972 Magazine', "L'Orient Today", 'Mada Masr',
+    'EUobserver', 'Voxeurop',
     'The Epoch Times',
   ]);
   if (OPINION_ONLY_INTL.has(item.source)) return true;
@@ -759,6 +822,7 @@ function isOpinionRSSItemIntl(item) {
 
 // ============ MAPA DE REGIONES INTERNACIONAL ============
 const SOURCE_TO_REGION = {
+  'The Straits Times': 'Asia',   // faltaba: caía en 'Otros' pese a ser de Singapur
   // USA
   'New York Times': 'USA', 'NYT': 'USA', 'The New York Times': 'USA',
   'Washington Post': 'USA', 'WaPo': 'USA', 'The Washington Post': 'USA',
@@ -813,6 +877,36 @@ const SOURCE_TO_REGION = {
   'El Economista': 'Económico Global',
   'Business Day': 'Económico Global',
   'The Edge Singapore': 'Económico Global', 'The Edge': 'Económico Global',
+  // Ampliación económico global: multilaterales, Asia y bancos centrales
+  'IMF Blog': 'Económico Global',
+  'World Bank Blogs': 'Económico Global',
+  'Caixin Global': 'Económico Global',
+  'Business Standard': 'Económico Global',
+  'Semafor Business': 'Económico Global',
+  'Rest of World': 'Económico Global',
+  'Liberty Street Economics': 'Económico Global',
+  'Bank Underground': 'Económico Global',
+  'Tagesschau Wirtschaft': 'Económico Global',
+  'La Tribune': 'Económico Global',
+  'lavoce.info': 'Económico Global', 'La Voce': 'Económico Global',
+  'Social Europe': 'Económico Global',
+  'East Asia Forum': 'Económico Global',
+  'African Business': 'Económico Global',
+  // Think tanks → bloque 'Global/Think tanks' en la app
+  'Brookings': 'Multilateral',
+  'Carnegie Endowment': 'Multilateral',
+  'Chatham House': 'Multilateral',
+  'ECFR': 'Multilateral',
+  'Crisis Group': 'Multilateral',
+  'Lowy Interpreter': 'Multilateral',
+  'ORF': 'Multilateral',
+  'ISS Africa': 'Multilateral',
+  'Middle East Institute': 'Multilateral', 'MEI': 'Multilateral',
+  'Washington Institute': 'Multilateral', 'WINEP': 'Multilateral',
+  'Latinoamérica21': 'Multilateral',
+  'Nueva Sociedad': 'Multilateral',
+  'Al Sharq Strategic Research': 'Multilateral',
+  'Arab Reform Initiative': 'Multilateral',
 
   // Europa Occidental
   'Le Figaro': 'Europa Occ', 'Figaro': 'Europa Occ',
@@ -869,6 +963,10 @@ const SOURCE_TO_REGION = {
   'Times of Oman': 'Oriente Medio',
   'Kuwait Times': 'Oriente Medio',
   'Al-Monitor': 'Oriente Medio', 'Al Monitor': 'Oriente Medio',
+  'Middle East Eye': 'Oriente Medio', 'MEE': 'Oriente Medio',
+  '+972 Magazine': 'Oriente Medio', '972 Magazine': 'Oriente Medio',
+  "L'Orient Today": 'Oriente Medio', "L'Orient-Le Jour": 'Oriente Medio',
+  'Mada Masr': 'Oriente Medio',
   'Al Jazeera Opinion': 'Oriente Medio', 'Al Jazeera': 'Oriente Medio',
   'Middle East Eye': 'Oriente Medio', 'MEE': 'Oriente Medio',
   'The National': 'Oriente Medio',  // UAE
@@ -974,7 +1072,6 @@ const SOURCE_TO_REGION = {
   // Multilateral / Análisis
   'Project Syndicate': 'Multilateral',
   'Foreign Policy': 'Multilateral',
-  'Foreign Affairs': 'Multilateral',
   'AFP': 'Multilateral', 'Agence France-Presse': 'Multilateral',
   'EFE': 'Multilateral',  // Spanish agency but multilateral coverage
   'DPA': 'Multilateral',  // German agency
@@ -993,16 +1090,20 @@ const SOURCE_TO_REGION = {
   'OECD': 'Multilateral',
 };
 
+// Mínimos alineados con el ORDEN DE BÚSQUEDA del prompt (USA · Europa · Asia · Oriente
+// Medio · África) y con el checklist. Suman 15 de 20 piezas: el resto queda libre.
+// Antes sumaban 17 con Asia 5 y LATAM 4, cifras que el reparto temático no podía
+// satisfacer, así que el panel de "faltan mínimos" salía en rojo hiciera lo que hiciera.
 const REGION_MIN = {
-  'USA': 0,          // sin mín (cap máx 6)
+  'USA': 3,          // primera búsqueda (cap máx 6)
   'UK': 0,           // sin mín (cap máx 4)
-  'Europa Occ': 2,
+  'Europa Occ': 3,
   'Europa Este': 1,
   'Oriente Medio': 2,
-  'Asia': 5,         // India + Asia Este + China + Corea + SE Asia + Singapur + Indonesia
-  'LATAM': 4,
+  'Asia': 3,         // India + Asia Este + China + Corea + SE Asia + Singapur + Indonesia
+  'LATAM': 1,        // sin búsqueda reservada: sale del bloque libre
   'África': 1,
-  'Económico Global': 2,
+  'Económico Global': 1,
   'Rusia': 0,        // opcional: solo si hay noticia
   'Australia': 0,
   'Turquía': 0,
@@ -1033,7 +1134,6 @@ const PAYWALL_SOURCES = new Set([
   // España
   'El País', 'El Mundo', 'ABC', 'El Español', 'Cinco Días',
   'El Confidencial', 'elconfidencial.com',  // tu suscripción → mostrará ✓ ACCESO
-  'La Vanguardia',                           // PressReader → mostrará 📚
   // Internacional - paywall fuerte
   'New York Times', 'NYT', 'Washington Post', 'WaPo',
   'Wall Street Journal', 'WSJ',
@@ -1043,64 +1143,18 @@ const PAYWALL_SOURCES = new Set([
   'Haaretz', 'Japan Times', 'Clarín', 'El Mercurio', 'The New Yorker',
   'South China Morning Post', 'SCMP',
   'The Business Times', 'Business Times Singapore',
+  // Muro real. Ya NO están en los feeds (sustituidos por fuentes abiertas), pero se
+  // dejan marcados para que salgan con 🔒 si el modelo los cita vía web_search.
+  'Børsen', 'Les Echos', 'Handelsblatt', 'Il Sole 24 Ore',
+  'Caixin Global', 'Business Day',
+  'Business Standard',   // parcial, sigue en los feeds
+  "L'Orient Today",      // parcial, sigue en los feeds
+  'Project Syndicate',   // medido: pocos artículos gratis al mes
 ]);
 
 function isPaywallSource(sourceName) {
   if (!sourceName) return false;
   return PAYWALL_SOURCES.has(sourceName);
-}
-
-// ============ PRESSREADER: Paywall internacionales DISPONIBLES en PressReader ============
-// Estos medios tienen sus ediciones impresas disponibles en PressReader.
-// Si el usuario tiene acceso (biblioteca o suscripción €9.99/mes), puede leerlos ahí.
-// Se marcan con flag _isPressReader para que el frontend muestre badge 📚 alternativo.
-const PRESSREADER_AVAILABLE_SOURCES = new Set([
-  // 🇬🇧 UK
-  'Financial Times', 'FT', 'FT.com',
-  'The Economist', 'Economist',
-  'The Spectator', 'Spectator',
-  'The Times', 'Times UK',
-  'The Telegraph', 'Telegraph',
-  // 🇺🇸 USA
-  'Bloomberg', 'Bloomberg.com', 'Bloomberg News',
-  'Newsweek',
-  'Wall Street Journal', 'WSJ', 'The Wall Street Journal',
-  'The Atlantic', 'Atlantic',
-  'Foreign Policy', 'FP',
-  'Foreign Affairs',
-  // 🇫🇷 Francia
-  'Le Monde',
-  'Le Figaro',
-  // 🇮🇹 Italia
-  'La Repubblica',
-  'Corriere della Sera', 'Corriere',
-  'Il Sole 24 Ore', 'Il Sole',
-  // 🇩🇪 Alemania
-  'Süddeutsche Zeitung', 'SZ',
-  'Handelsblatt',
-  'Die Welt',
-  // 🕌 Oriente Medio
-  'Haaretz', 'Haaretz English',
-  'The Jerusalem Post', 'Jerusalem Post',
-  'Arab News',
-  // 🌏 Asia
-  'Japan Times', 'The Japan Times',
-  'The Business Times', 'Business Times Singapore',
-  'South China Morning Post', 'SCMP',
-  'The Straits Times', 'Straits Times',
-  'The Korea Times', 'Korea Times',
-  // 🇪🇸 España (ediciones en PressReader)
-  'El País', 'El Mundo', 'ABC', 'La Vanguardia',
-  // 🌎 LATAM
-  'El Mercurio',
-  'La Nación',
-  'O Globo',
-  'Folha de S.Paulo', 'Folha',
-]);
-
-function isPressReaderAvailable(sourceName) {
-  if (!sourceName) return false;
-  return PRESSREADER_AVAILABLE_SOURCES.has(sourceName);
 }
 
 // ============ HELPER GLOBAL: Filtro de opinión (firmas reales) ============
@@ -1700,7 +1754,7 @@ D2. Si tu respuesta supera 12000 tokens, recórtala devolviendo menos piezas (pr
 const SECTIONS = {
   international: {
     label: 'Internacional + Energía',
-    system: `Eres mi editor de noticias personal de élite. Tu tarea es hacer un RESUMEN SEMANAL: busca en web las noticias y columnas más relevantes de los ÚLTIMOS 7 DÍAS y devuelve un briefing internacional MAL NEWS de 40 piezas en 2 secciones (20 noticias + 20 opinión). Usa SOLO medios FREE o de muro parcial (NYT, The Atlantic, The Guardian, Foreign Affairs, Foreign Policy, Le Monde, Al Jazeera, SCMP, Infobae, Kyiv Independent, Times of Israel, etc.). NO uses paywall duro (FT, WSJ, Bloomberg, The Economist, Nikkei). Al ser semanal, prioriza las historias con más recorrido y los mejores análisis/reportajes de la semana, no solo lo de hoy. Las COLUMNAS DE OPINIÓN son la parte más valiosa — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con relleno genérico.
+    system: `Eres mi editor de noticias personal de élite. Tu tarea es hacer un RESUMEN SEMANAL: busca en web las noticias y columnas más relevantes de los ÚLTIMOS 7 DÍAS y devuelve un briefing internacional MAL NEWS de 40 piezas en 2 secciones (20 noticias + 20 opinión). Usa SOLO medios FREE o de muro parcial (NYT, The Atlantic, The Guardian, Foreign Policy, Le Monde, Al Jazeera, SCMP, Infobae, Kyiv Independent, Times of Israel, etc.). NO uses paywall duro (FT, WSJ, Bloomberg, The Economist, Nikkei). Al ser semanal, prioriza las historias con más recorrido y los mejores análisis/reportajes de la semana, no solo lo de hoy. Las COLUMNAS DE OPINIÓN son la parte más valiosa — préstales atención prioritaria. Es preferible devolver menos piezas frescas y verificadas que rellenar con relleno genérico.
 
 ${RULES_BASE}
 
@@ -1740,8 +1794,10 @@ Reparto de las 20 columnas (los mínimos suman 17, dejando 3 libres para reforza
 - 📊 ECONOMÍA / IA / TECNOLOGÍA: MÍNIMO 6 columnas (análisis económico, mercados, IA, tecnología · The Atlantic, The Guardian, Noema, Project Syndicate, Rest of World, NYT)
 - 🌎 LATAM: MÍNIMO 3 columnas (Infobae, El Espectador, El Tiempo, Clarín, La Nación, Folha)
 - 🇪🇺 Europa / 🌏 Asia: MÍNIMO 4 entre ambas (Le Monde, Le Figaro, Der Spiegel, SCMP, The Hindu, Japan Times, Hankyoreh)
-- 🌍 ÁFRICA: MÍNIMO 2 columnas (Africa Report, Daily Maverick, Mail & Guardian, Premium Times, Business Day, Jeune Afrique, The EastAfrican · prioriza firmas de peso en economía/geopolítica africana)
-- 🕌 ORIENTE MEDIO: MÍNIMO 2 columnas (Al-Monitor, Arab News, Jerusalem Post, Gulf News)
+- 🌍 ÁFRICA: MÍNIMO 2 columnas (Africa Report, Daily Maverick, Mail & Guardian, Premium Times, Jeune Afrique, The EastAfrican · prioriza firmas de peso en economía/geopolítica africana)
+- 🕌 ORIENTE MEDIO: MÍNIMO 2 columnas (Al-Monitor, Arab News, Jerusalem Post, Gulf News,
+  Middle East Eye, +972 Magazine, L'Orient Today, Mada Masr, Middle East Institute,
+  Washington Institute · busca DOS PUNTOS DE VISTA opuestos, no dos del mismo lado)
 - NOTA: las grandes firmas anglo (NYT, The Atlantic, The Guardian) NO son una cuota aparte — sus columnas se clasifican por su TEMA real (economía, geopolítica, etc.). Aparecerán de forma natural, con tope de 3 por medio.
 
 HARD CAPS:
@@ -1766,7 +1822,7 @@ WORLDNEWS (EXACTAMENTE 20 piezas, organizadas POR TEMA, solo medios free/muro pa
 - 🎯 OBJETIVO: equilibrio entre PIEZAS CORTAS (noticias breaking) y PIEZAS LARGAS (reportajes, investigaciones, análisis profundos, perfiles, dossiers).
 
 ⭐⭐⭐ SOLO MEDIOS FREE O MURO PARCIAL (CRÍTICO) ⭐⭐⭐
-- 🔓 USABLES (free + muro parcial, el usuario los cuenta como free): Politico, The Hill, Project Syndicate, Reuters, MarketWatch, Quartz, The Guardian, UnHerd, Kyiv Independent, Moscow Times, Times of Israel, The Hindu, Indian Express, Jakarta Post, Bangkok Post, Premium Times, El Espectador, Infobae, El Tiempo, Mail&Guardian, National Review, Global Times, China Daily, Sixth Tone, Korea Herald, Korea Times, Hankyoreh, Channel News Asia, TODAYonline, Jakarta Globe, Tempo, Al Jazeera, NYT, The Atlantic, Foreign Affairs, Foreign Policy, Le Monde, SCMP, Noema, Rest of World, Aeon
+- 🔓 USABLES (free + muro parcial, el usuario los cuenta como free): Politico, The Hill, Project Syndicate, Reuters, MarketWatch, Quartz, The Guardian, UnHerd, Kyiv Independent, Moscow Times, Times of Israel, The Hindu, Indian Express, Jakarta Post, Bangkok Post, Premium Times, El Espectador, Infobae, El Tiempo, Mail&Guardian, National Review, Global Times, China Daily, Sixth Tone, Korea Herald, Korea Times, Hankyoreh, Channel News Asia, TODAYonline, Jakarta Globe, Tempo, Al Jazeera, Middle East Eye, +972 Magazine, Mada Masr, NYT, The Atlantic, Foreign Policy, Le Monde, SCMP, Noema, Rest of World, Aeon
 - 🚫 PAYWALL DURO — NO USAR NUNCA: WSJ, Bloomberg, FT, The Economist, Nikkei, The Business Times Singapore, WaPo (muro estricto)
 - Si el mismo tema está en una fuente free y una de pago duro, ELIGE LA FREE.
 - Solo usa pago si cubre un ángulo único no disponible en gratis ese día.
@@ -1792,13 +1848,13 @@ SÍ incluye: política internacional, economía global, conflictos geopolíticos
 Para un mismo evento o tema global (ej: "Trump aranceles", "guerra Ucrania", "elecciones México", "Israel Gaza"):
 - MÁXIMO 2 piezas del mismo tema, vengan del medio que vengan (con 20 huecos, la diversidad manda).
 - Si hay 5+ medios cubriendo lo mismo, elige las 2 que aporten ÁNGULO DIFERENTE:
-  · 1 ángulo regional afectado (Le Monde si tema europeo, SCMP si China, Haaretz/Times of Israel si OM)
-  · 1 análisis de fondo (Foreign Affairs / Project Syndicate / Atlantic / Economist)
+  · 1 ángulo regional afectado (Le Monde si tema europeo, SCMP si China, Middle East Eye/+972/Times of Israel si OM)
+  · 1 análisis de fondo (Foreign Policy / Project Syndicate / The Atlantic / Noema)
 - Prefiere DIVERSIDAD TEMÁTICA sobre repetición: mejor 12 temas distintos con 1 pieza que 6 temas con 2.
 - Especialmente crítico para Trump/USA donde 10 medios escriben sobre lo mismo: limita a 2 con ángulos distintos.
 
 ⭐⭐⭐ REGLA INELUDIBLE — MÍNIMO 3 PIEZAS LARGAS POR BRIEFING ⭐⭐⭐
-Si después de seleccionar las 20 piezas tienes menos de 5 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": al ser SEMANAL, NYT, The Atlantic, The Guardian, Foreign Affairs, Foreign Policy, Noema publican decenas de análisis profundos cada semana (todos free o muro parcial).
+Si después de seleccionar las 20 piezas tienes menos de 5 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": al ser SEMANAL, NYT, The Atlantic, The Guardian, Foreign Policy, Noema publican decenas de análisis profundos cada semana (todos free o muro parcial).
 
 ESTRATEGIA DE BÚSQUEDA DE PIEZAS LARGAS (ejecuta estas búsquedas adicionales para garantizar mínimo 5):
 - site:nytimes.com investigation OR "long read" 2026
@@ -1835,7 +1891,14 @@ CHECKLIST ANTES DE DEVOLVER JSON FINAL:
 □ Las LARGAS aportan profundidad y tiempo de lectura >3 min
 
 - HARD CAPS: Máx 7 piezas USA · Máx 3 piezas UK · Máx 4 piezas mismo medio
-⭐⭐⭐ CUPO POR TEMA — TOTAL 10 PIEZAS (organiza por TEMA, no por región · RESUMEN SEMANAL) ⭐⭐⭐
+⭐⭐⭐ CUPO POR TEMA — TOTAL 20 PIEZAS (RESUMEN SEMANAL) ⭐⭐⭐
+⚠️ TEMA y REGIÓN son ejes INDEPENDIENTES y AMBOS son obligatorios:
+  · El briefing SE PRESENTA agrupado por REGIÓN, en este orden: USA · Europa · Asia ·
+    Oriente Medio · África · LATAM · Económico global. La región se deduce del medio,
+    no hace falta que la declares.
+  · El campo "topic" de cada pieza sirve para las estadísticas por temática.
+Una pieza de Asia lleva tema Economía o Geopolítica: los mínimos por región del checklist
+se cumplen DENTRO de este cupo temático, no sumándose a él.
 Reparte las 20 piezas así (la región es criterio secundario para dar pluralidad dentro de cada tema):
   · 📊 ECONOMÍA / MERCADOS GLOBALES: 4 piezas (mercados, comercio, tipos, energía, empresas)
   · 🌐 GEOPOLÍTICA / CONFLICTOS: 5 piezas (Ucrania, Oriente Medio, tensiones) — INCLUYE mín 1-2 de ÁFRICA (elecciones, conflictos, minerales críticos, Sahel, UE/China-África · de Africa Report, Jeune Afrique, The EastAfrican, Daily Maverick, Premium Times)
@@ -1854,55 +1917,46 @@ REGLAS:
 
 🚫 NO empieces el JSON hasta confirmar mentalmente el reparto temático y que NINGUNA pieza es de paywall duro.
 
-⭐⭐⭐ PRESUPUESTO OBLIGATORIO DE BÚSQUEDAS (tienes 6 búsquedas disponibles) ⭐⭐⭐
+⭐⭐⭐ PRESUPUESTO OBLIGATORIO DE BÚSQUEDAS (tienes 8 búsquedas disponibles) ⭐⭐⭐
 
 🚨 FECHA EN LAS BÚSQUEDAS: la fecha solicitada puede ser PASADA. Al buscar y al seleccionar piezas, SOLO acepta artículos publicados en las fechas aceptadas (${allowedDates && allowedDates.length ? allowedDates.join(' o ') : 'día solicitado y anterior'}). Si una pieza encontrada es del día actual (hoy real) pero se pidió un día pasado, DESCÁRTALA. No reportes noticias posteriores a la fecha solicitada aunque el buscador las muestre como "más recientes".
 
-RESERVA EXPLÍCITAMENTE las siguientes búsquedas ANTES de hacer ninguna otra:
+ORDEN DE BÚSQUEDA OBLIGATORIO (8 búsquedas disponibles). Ejecuta las 5 primeras EN ESTE ORDEN:
 
-  BLOQUE 1 · PROTEGIDO (reservado, no negociable): 3 búsquedas
-  1. site:dailymaverick.co.za OR site:premiumtimesng.com OR site:mg.co.za 2026
-     → garantiza min 1 ÁFRICA (sin esta búsqueda, África queda en cero)
-  2. site:clarin.com OR site:infobae.com OR site:lanacion.com.ar 2026
-     → garantiza piezas Argentina LATAM
-  3. site:folha.uol.com.br OR site:oglobo.globo.com OR site:elmercurio.com OR site:eltiempo.com OR site:elfaro.net OR site:confidencial.digital 2026
-     → garantiza piezas Brasil/Chile/Colombia LATAM
+  1 · 🇺🇸 USA
+     site:nytimes.com OR site:theatlantic.com OR site:politico.com OR site:nationalreview.com 2026
+  2 · 🇪🇺 EUROPA (occidental + este en la misma búsqueda)
+     site:lemonde.fr OR site:spiegel.de OR site:politico.eu OR site:euractiv.com OR site:kyivindependent.com 2026
+  3 · 🌏 ASIA
+     site:scmp.com OR site:japantimes.co.jp OR site:thehindu.com OR site:koreaherald.com OR site:indianexpress.com 2026
+  4 · 🕌 ORIENTE MEDIO
+     site:aljazeera.com OR site:timesofisrael.com OR site:haaretz.com 2026
+  5 · 🌍 ÁFRICA
+     site:dailymaverick.co.za OR site:premiumtimesng.com OR site:mg.co.za OR site:jeuneafrique.com 2026
 
-  BLOQUE 2 · OBLIGATORIO (no opcional): 3 búsquedas
-  4. site:scmp.com OR site:globaltimes.cn OR site:chinadaily.com.cn OR site:theepochtimes.com 2026  (China · incluye contrapunto anti-PCCh)
-  5. site:koreaherald.com OR site:hankyoreh.com OR site:japantimes.co.jp OR site:thehindu.com OR site:indianexpress.com 2026  (Asia este+India)
-  6. site:haaretz.com OR site:timesofisrael.com OR site:aljazeera.com 2026  (Oriente Medio)
+  6-8 · LIBRES (3 búsquedas): repártelas según la actualidad del día entre LATAM
+  (site:clarin.com OR site:infobae.com OR site:folha.uol.com.br OR site:eltiempo.com OR site:elfaro.net 2026),
+  económico global, UK, Ucrania o el tema que domine la jornada.
 
-  BLOQUE 3 · FLEXIBLE (4 búsquedas restantes): USA, UK, Europa Occ, Económico Global, Ucrania
-  Distribúyelas según la actualidad del día.
+⚠️ Si una de las 5 primeras búsquedas no devuelve material fresco, NO la repitas: pasa a la
+siguiente y deja ese hueco vacío. Prohibido rellenarlo con piezas de USA o UK extra.
 
-  💡 SUGERENCIA para Europa Occ / instituciones UE (Bruselas):
-  - site:politico.eu OR site:euractiv.com 2026  → Politico Europe es la referencia para
-    Comisión/Parlamento/Consejo europeos. Úsalo cuando la actualidad UE lo justifique
-    (cumbres, legislación europea, política comunitaria).
+💡 Para columnas USA conservadoras heterodoxas: The Bulwark (nunca-trumpista) y National Review.
+💡 Para LATAM investigativo: Confidencial (Nicaragua, exilio en Costa Rica).
 
-  💡 SUGERENCIAS para columnas USA conservadoras heterodoxas:
-  - The Bulwark (nunca-trumpista, intelectual)
-  - National Review (conservadurismo tradicional)
-  Estos aportan voces críticas con Trump desde la derecha, no solo desde la izquierda.
+CHECKLIST antes de generar (verifica DESPUÉS de las búsquedas, en el orden de búsqueda):
+□ 🇺🇸 USA ≥3 piezas
+□ 🇪🇺 Europa Occ ≥3 · Europa Este ≥1 (Le Monde / Der Spiegel / Politico Europe / Kyiv Independent)
+□ 🌏 Asia ≥3 piezas
+□ 🕌 Oriente Medio ≥2 piezas
+□ 🌍 África ≥1 pieza
+□ 🌎 LATAM ≥1 · 💰 Económico global ≥1
 
-  💡 SUGERENCIAS para LATAM investigativo de calidad:
-  - Confidencial (Nicaragua exilio CR, Chamorro, investigativo Ortega)
+Si falta alguno Y te quedan búsquedas del bloque libre, úsalas ahí. Si no te quedan
+búsquedas, entrega el briefing con el hueco vacío y dilo en el campo "editorNote":
+NUNCA inventes piezas ni las sustituyas por más USA/UK.
 
-🔴 PROHIBIDO empezar por USA y "ya veremos si llegamos a África". Ejecuta los BLOQUES 1 y 2 PRIMERO.
-🔴 Si tras BLOQUE 1+2 (6 búsquedas usadas) ves que has cumplido los mínimos, puedes usar las 4 restantes para profundizar.
-
-CHECKLIST OBLIGATORIO antes de generar (verifica DESPUÉS de las búsquedas):
-□ ¿Tengo ≥1 pieza ÁFRICA? Si no, REJECT y vuelve a buscar
-□ ¿Tengo ≥4 piezas LATAM? Si no, REJECT y vuelve a buscar
-□ ¿Tengo ≥5 piezas Asia? Si no, REJECT y vuelve a buscar
-□ ¿Tengo ≥2 piezas Oriente Medio? Si no, REJECT y vuelve a buscar
-□ ¿He cubierto Le Monde/Le Figaro/La Repubblica? (Europa Occ ≥2)
-□ ¿He cubierto Kyiv Independent? (Europa Este ≥1)
-
-Si la respuesta a alguna es NO, EJECUTA búsquedas adicionales antes de continuar.
-
-Total mínimos: ~17 piezas garantizadas globalmente, 3 piezas flexibles para USA/UK.
+Total mínimos: 15 piezas sobre 20, 5 flexibles según la actualidad.
 - Si una región NO tiene material fresco real, deja el slot vacío (PROHIBIDO rellenar con USA/UK extras o inventar piezas)
 - Equilibrio IZQ/DER
 - Mezcla eventos concretos del día CON piezas largas de fondo
@@ -1980,7 +2034,9 @@ Búsqueda recomendada: site:[dominio]/opinion ${today} para columnas firmadas, s
 OUTPUT: solo JSON, sin texto antes ni después:
 {"date":"DD/MM/YYYY","worldOpinion":[...],"worldNews":[...]}`;
     },
-    maxUses: 4, // bajado de 6: web_search es lento; 6 búsquedas superaban 2m30s y crasheaban la función
+    maxUses: 8, // 5 búsquedas por región (USA·Europa·Asia·OM·África) + 3 libres.
+    // El 4 anterior venía de cuando maxDuration era 60s; hoy son 300s y timeoutMs 200s,
+    // así que las ~150s de 6-8 búsquedas caben. Si vuelve a dar 504, bajar a 6.
   },
   // spainNews y spainOpinion usan flujo Plan B (RSS pre-fetch + prompts inline)
   // No necesitan system/user aquí, solo label para validación de section válida
@@ -2200,7 +2256,14 @@ export default async function handler(req, res) {
   //  - NOTICIAS (spainNews / worldNews): ventana amplia de 5 días (hoy + 4 anteriores)
   //  - OPINIÓN: ventana corta (día + anterior), las columnas envejecen rápido
   const isNewsSection = (section === 'spainNews' || section === 'worldNews' || section === 'spain' || section === 'international');
-  const DAYS_BACK = isNewsSection ? 4 : 1;
+  // Ventana por sección, alineada con el diseño documentado:
+  //   internacional (worldNews/worldOpinion/international) = RESUMEN SEMANAL → 7 días
+  //   noticias España = 5 días (se ejecuta cada 4-5 días)
+  //   opinión España = 2 días
+  // Antes worldOpinion caía en el `: 1` (2 días) pese a ser semanal, y worldNews usaba
+  // 5 días mientras el prompt le repetía "últimos 7 días": dos ventanas en un mismo prompt.
+  const isInternationalSection = (section === 'worldNews' || section === 'worldOpinion' || section === 'international');
+  const DAYS_BACK = isInternationalSection ? 6 : (isNewsSection ? 4 : 1);
 
   const allowedISODates = (() => {
     try {
@@ -2368,9 +2431,6 @@ EL PAÍS:
 
 EL MUNDO:
 - Arcadi Espada, Pedro G. Cuartango, Jorge Bustos
-
-LA VANGUARDIA:
-- Enric Juliana (análisis político), Pilar Rahola
 
 EL DEBATE:
 - Francisco Rosell (director), Juan Carlos Girauta, Antonio R. Naranjo
@@ -2647,15 +2707,11 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         briefing.extraNews = extraNewsFromOpinion;
 
         // Marcar con _isPaywall las piezas de fuentes paywall (para que el frontend muestre 🔒)
-        // Marcar con _isPressReader las piezas disponibles en PressReader (para badge 📚)
         const markPaywall = (arr) => {
           if (!Array.isArray(arr)) return;
           arr.forEach(item => {
             if (item && isPaywallSource(item.source)) {
               item._isPaywall = true;
-            }
-            if (item && isPressReaderAvailable(item.source)) {
-              item._isPressReader = true;
             }
           });
         };
@@ -3364,16 +3420,12 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         }
 
         // Marcar con _isPaywall las piezas de fuentes paywall
-        // Marcar con _isPressReader las piezas disponibles en PressReader
         // Marcar con _detectedLong las piezas que son largas (incluyendo las que el modelo seleccionó)
         // Enriquecer con imagen desde candidatos
         if (Array.isArray(briefing.spainNews)) {
           briefing.spainNews.forEach(item => {
             if (item && isPaywallSource(item.source)) {
               item._isPaywall = true;
-            }
-            if (item && isPressReaderAvailable(item.source)) {
-              item._isPressReader = true;
             }
             // Marcar como larga si no estaba ya marcada por enforcement
             if (item && !item._forcedLong) {
@@ -3432,6 +3484,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
     // ============ PRE-FETCH RSS OPINIÓN INTERNACIONAL ============
     let intlOpinionCandidates = [];
     let intlOpinionDiagnostic = [];
+    let intlNewsCandidates = [];
+    let intlNewsDiagnostic = [];
     // Solo pre-fetcheamos opinión si vamos a generarla (international completo o worldOpinion)
     const willGenerateOpinion = isInternational && intlSubMode !== 'worldNews';
     const willGenerateNews = isInternational && intlSubMode !== 'worldOpinion';
@@ -3445,6 +3499,23 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         intlOpinionDiagnostic = [{ source: 'PRE-FETCH ERROR', errorMsg: e.message }];
       }
     }
+    if (willGenerateNews) {
+      try {
+        const intlNewsResult = await fetchInternationalNewsRss(allowedISODates, excludeUrlsSet);
+        intlNewsCandidates = intlNewsResult.candidates || [];
+        intlNewsDiagnostic = intlNewsResult.diagnostic || [];
+      } catch (e) {
+        intlNewsDiagnostic = [{ source: 'PRE-FETCH ERROR (noticias)', errorMsg: e.message }];
+      }
+    }
+
+    const newsCandidatesText = (willGenerateNews && intlNewsCandidates.length > 0)
+      ? `\n\n📰 CANDIDATAS DE NOTICIAS INTERNACIONALES PRE-RECOLECTADAS (RSS directos, últimos 7 días):\n${
+          intlNewsCandidates.map((c, i) =>
+            `[N${i + 1}] ${c.source} | ${c.publishedDate || 'fecha?'} | ${c.title}\n   URL: ${c.url}\n   Resumen: ${(c.description || '').slice(0, 200)}`
+          ).join('\n\n')
+        }\n\n⭐ Estas ${intlNewsCandidates.length} candidatas ya vienen con FECHA Y URL VERIFICADAS por RSS: no gastes búsquedas en comprobarlas. Úsalas como base y reserva las 8 búsquedas para las regiones que no estén cubiertas aquí.`
+      : '';
 
     const candidatesText = (willGenerateOpinion && intlOpinionCandidates.length > 0)
       ? `\n\n📰 CANDIDATAS DE OPINIÓN INTERNACIONAL PRE-RECOLECTADAS (RSS directos, últimas 48h):\n${
@@ -3459,15 +3530,39 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
     if (intlSubMode === 'worldNews') {
       subModeInstruction = '\n\n🎯 MODO SOLO-NOTICIAS: Genera ÚNICAMENTE el array "worldNews" (20 piezas). Devuelve "worldOpinion" como array VACÍO []. No pierdas tiempo ni búsquedas en columnas de opinión.';
     } else if (intlSubMode === 'worldOpinion') {
-      subModeInstruction = '\n\n🎯 MODO SOLO-OPINIÓN: Genera ÚNICAMENTE el array "worldOpinion" (8 columnas). Devuelve "worldNews" como array VACÍO []. Concentra todas las búsquedas en columnas de opinión firmadas.';
+      subModeInstruction = '\n\n🎯 MODO SOLO-OPINIÓN: Genera ÚNICAMENTE el array "worldOpinion" (20 columnas). Devuelve "worldNews" como array VACÍO []. Concentra todas las búsquedas en columnas de opinión firmadas.';
     }
 
-    // Fallback internacional: si el modelo falla pero hay candidatas de OPINIÓN pre-cargadas
-    // (worldOpinion pre-fetchea RSS), devolvemos esas columnas crudas en vez de solo error.
-    // worldNews usa solo web_search, así que ahí no hay material crudo de reserva.
+    // Fallback internacional: si el modelo falla, devolvemos el material crudo de RSS
+    // en vez de solo un error. Ahora cubre AMBAS secciones: noticias y opinión.
+    const rawPiece = (c, i) => ({
+      rank: i + 1,
+      title: c.title || '(sin título)',
+      summary: String(c.description || 'Pieza internacional. Pulsa para leer.').slice(0, 300),
+      author: c.author || '',
+      source: c.source || '',
+      url: c.url || '',
+      publishedDate: c.publishedDate || todayShort,
+      _region: classifyRegion(c.source),
+    });
     const buildIntlFallback = (reason) => {
+      // Noticias: red de seguridad nueva (antes worldNews se quedaba sin nada)
+      if (willGenerateNews && !willGenerateOpinion && intlNewsCandidates.length > 0) {
+        return res.status(200).json({
+          briefing: {
+            date: todayShort,
+            worldNews: intlNewsCandidates.slice(0, 20).map(rawPiece),
+            worldOpinion: [],
+            _fallback: true,
+            _fallbackReason: reason,
+            _note: `⚠️ Briefing de reserva: el modelo falló (${reason}) y se muestran las piezas crudas del pre-fetch RSS, sin selección ni resumen editorial.`,
+            _meta: { feedDiagnostic: intlNewsDiagnostic, allowedDates: allowedISODates, subMode: intlSubMode || 'both' },
+          },
+          section,
+        });
+      }
       if (willGenerateOpinion && intlOpinionCandidates.length > 0) {
-        const cols = intlOpinionCandidates.slice(0, 8).map((c, i) => ({
+        const cols = intlOpinionCandidates.slice(0, 20).map((c, i) => ({
           rank: i + 1,
           title: c.title || '(sin título)',
           summary: String(c.description || 'Columna de opinión internacional. Pulsa para leer.').slice(0, 300),
@@ -3500,7 +3595,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: cfg.maxUses }],
         messages: [{
           role: 'user',
-          content: cfg.user(todayShort, todayFull, nowTime, allowedISODates) + candidatesText + subModeInstruction,
+          content: cfg.user(todayShort, todayFull, nowTime, allowedISODates) + newsCandidatesText + candidatesText + subModeInstruction,
         }],
       }, apiKey, { timeoutMs: 200000, maxRetries: 0 });
     } catch (e) {
@@ -3548,26 +3643,6 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         if (summaryLen > 250) return true;
         return false;
       };
-
-      // ⭐ MARCADO PRESSREADER: marcar piezas cuyo medio está en PressReader
-      // El frontend mostrará badge 📚 cuando el usuario tenga PressReader activado.
-      let pressReaderMarkedCount = 0;
-      if (Array.isArray(briefing.worldNews)) {
-        briefing.worldNews.forEach(p => {
-          if (p && isPressReaderAvailable(p.source)) {
-            p._isPressReader = true;
-            pressReaderMarkedCount++;
-          }
-        });
-      }
-      if (Array.isArray(briefing.worldOpinion)) {
-        briefing.worldOpinion.forEach(p => {
-          if (p && isPressReaderAvailable(p.source)) {
-            p._isPressReader = true;
-            pressReaderMarkedCount++;
-          }
-        });
-      }
 
       const worldNewsArr = Array.isArray(briefing.worldNews) ? briefing.worldNews : [];
       const worldOpinionArr = Array.isArray(briefing.worldOpinion) ? briefing.worldOpinion : [];
@@ -3647,10 +3722,13 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
 
       briefing._meta = {
         ...briefing._meta,
-        sectionTarget: { worldNews: 10, worldOpinion: 8 },
+        sectionTarget: { worldNews: 20, worldOpinion: 20 },
         subMode: intlSubMode || 'both',
         intlOpinionCandidatesCount: intlOpinionCandidates.length,
-        feedDiagnostic: intlOpinionDiagnostic,
+        intlNewsCandidatesCount: intlNewsCandidates.length,
+        // Antes solo viajaba el de opinión, así que al pedir "Noticias Mundo" el panel
+        // de diagnóstico no aparecía (array vacío → condición length > 0 falsa).
+        feedDiagnostic: (intlNewsDiagnostic.length > 0 ? intlNewsDiagnostic : intlOpinionDiagnostic),
         allowedDates: allowedISODates,
         worldNewsLongCount: longCount,
         worldNewsLongTarget: targetLongIntl,
