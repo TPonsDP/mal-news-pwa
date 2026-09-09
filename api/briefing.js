@@ -194,13 +194,13 @@ const SPAIN_NEWS_FEEDS = [
 ];
 
 async function fetchOneFeed(feed, timeoutMs = 12000) {
-  // Primer intento. Timeout 12s: con maxDuration:60 hay margen para dar a los
+  // Primer intento. Timeout 12s: con maxDuration:300 hay margen para dar a los
   // feeds lentos (Google News desde Vercel) más oportunidad de responder.
   const r1 = await fetchOneFeedAttempt(feed, timeoutMs);
   if (r1.items.length > 0) return r1;
   // Reintento ÚNICO solo para errores de red/timeout (NO empty), con timeout CORTO
   // (3s): si el feed ya colgó una vez, no le damos otros 12s. Evita que un solo
-  // feed lento consuma 24s. Con maxDuration:60 esto es red de seguridad.
+  // feed lento consuma 24s. Con maxDuration:300 esto es red de seguridad.
   if (r1.status === 'timeout' || r1.status === 'fetch_error') {
     const r2 = await fetchOneFeedAttempt(feed, 3000);
     if (r2.items.length > 0) return r2;
@@ -729,7 +729,11 @@ async function fetchSpainOpinionRss(allowedISODates, excludeUrls) {
 async function fetchSpainNewsRss(allowedISODates, excludeUrls) {
   // Dedup cross-day SÍ activo para noticias (evita repetir titulares ya vistos)
   const result = await fetchFeedsAndFilter(SPAIN_NEWS_FEEDS, allowedISODates, 120, null, excludeUrls);
-  return { candidates: result.items.slice(0, 80), diagnostic: result.diagnostic };
+  // 220, no 80: con ventana de 5 días y 29 fuentes, el corte de 80 se agotaba antes de
+  // llegar a Libertad Digital, elDiario.es, OK Diario, Cinco Días, Invertia, El Economista
+  // y los dos de Baleares, porque el orden es el de la lista de feeds y no hay ordenación
+  // por fecha. Con 40 piezas de objetivo, el pool tiene que ser ancho.
+  return { candidates: result.items.slice(0, 220), diagnostic: result.diagnostic };
 }
 
 async function fetchInternationalOpinionRss(allowedISODates, excludeUrls) {
@@ -747,6 +751,28 @@ async function fetchInternationalOpinionRss(allowedISODates, excludeUrls) {
 function withRegion(diagnostic) {
   if (!Array.isArray(diagnostic)) return [];
   return diagnostic.map(d => ({ ...d, region: classifyRegion(d.source) }));
+}
+
+// ============ FILTRO ANTI-BASURA · NOTICIAS ESPAÑA ============
+// Un solo sitio para las tres capas que lo necesitan: pre-filtro de candidatas,
+// prompt y fallback. Antes cada una tenía su propia lista y el fallback se quedaba
+// corto, así que en un briefing degradado entraban sucesos y autopromoción.
+function isJunkNewsTitle(title, description) {
+  const t = String(title || '');
+  const d = String(description || '');
+  const both = t + ' ' + d;
+  // Deporte y famoseo
+  if (/\b(f[uú]tbol|laliga|la liga|champions|copa del rey|copa del mundo|mundial|selecci[oó]n|goleó|gol\b|messi|cristiano|cucurella|dani olmo|baloncesto|nba|tenis|f1|f[oó]rmula 1|motogp|ciclismo|vuelta a espa[ñn]a|jugador|entrenador|fichaje|traspaso|delantero|centrocampista)\b/i.test(t)) return true;
+  if (/\b(eurovisi[oó]n|gran hermano|supervivientes|isla de las tentaciones|operaci[oó]n triunfo|masterchef|concursante|cr[oó]nica rosa|famoseo|influencer)\b/i.test(t)) return true;
+  // Pódcast, radio y TV: episodios y autopromoción del propio medio
+  if (/\b(podcast|p[oó]dcast|episodio \d|escucha (aqu[ií]|el)|en directo desde|vive en directo|sigue en directo|programa completo|[uú]ltimo programa|temporada \d|en abierto|streaming)\b/i.test(both)) return true;
+  // Clips virales de televisión
+  if (/\b(el minuto de|se oye un|se comparte en masa|se hace viral|as[ií] reaccion|el zasca|la cara de|el gesto de|no da cr[eé]dito|se queda sin palabras)\b/i.test(t)) return true;
+  // Sucesos y accidentes
+  if (/\b(robo|robos|robado|robats|hurto|atraco|detenido|detenidos|detingut|arrestado|apu[ñn]ala|tiroteo|disparo|asesinat|asesinado|homicidio|cad[aá]ver|accidente|atropell|colisi[oó]n|choque de|vuelco|incendio|desaparecid|ahogad|rescatad|herido|heridos|ferit|sucesos)\b/i.test(t)) return true;
+  // Servicio y utilidades
+  if (/\b(horóscopo|loter[ií]a|el gordo|bonoloto|euromillones|primitiva|la quiniela|el tiempo para|previsi[oó]n meteorol|as[ií] queda el tiempo)\b/i.test(t)) return true;
+  return false;
 }
 
 // ============ PRE-FETCH RSS NOTICIAS INTERNACIONAL ============
@@ -1366,7 +1392,7 @@ async function fetchFeedsAndFilter(feedList, allowedISODates, maxHoursAgo, opini
   // ⏱️ PRESUPUESTO DE TIEMPO para toda la fase de feeds. Si se agota, dejamos de
   // pedir feeds y seguimos con LO QUE YA TENGAMOS recogido (degradación elegante):
   // un feed que no llegó a tiempo no aporta piezas ese día, pero NO tumba el
-  // briefing con un 504. Deja holgura dentro de maxDuration:60 para que el modelo
+  // briefing con un 504. Deja holgura dentro de maxDuration:300 para que el modelo
   // genere después.
   const FEED_BUDGET_MS = 30000;
   const feedPhaseStart = Date.now();
@@ -1801,7 +1827,7 @@ Reparto de las 20 columnas (los mínimos suman 17, dejando 3 libres para reforza
 - NOTA: las grandes firmas anglo (NYT, The Atlantic, The Guardian) NO son una cuota aparte — sus columnas se clasifican por su TEMA real (economía, geopolítica, etc.). Aparecerán de forma natural, con tope de 3 por medio.
 
 HARD CAPS:
-- Máx 8 columnas USA · Máx 3 columnas mismo medio · Máx 3 de Project Syndicate
+- Máx 6 columnas USA · Máx 3 columnas mismo medio · Máx 3 de Project Syndicate
 - Mín 12 medios distintos
 - Solo firmadas (autor real, no editoriales institucionales)
 - Solo medios internacionales no españoles, FREE o muro parcial (NO FT/WSJ/Bloomberg/Economist/Nikkei)
@@ -1836,13 +1862,17 @@ NUNCA incluyas:
 - 🚫 Catástrofes naturales puras sin matiz político/humanitario importante.
 SÍ incluye: política internacional, economía global, conflictos geopolíticos, diplomacia, instituciones multilaterales, ciencia/tecnología con impacto político, cultura/sociedad con relevancia estructural.
 
-⭐⭐⭐ REPARTO POR TEMAS de las 20 piezas (orientativo, prioriza calidad sobre cuadrar exacto) ⭐⭐⭐
-- 📊 ECONOMÍA: 3-4 piezas (mercados, macro, comercio, energía, empresas globales)
-- 🌐 GEOPOLÍTICA: 4-5 piezas — DENTRO de geopolítica, INCLUYE SIEMPRE un apartado de ÁFRICA (mín 1-2 piezas: elecciones, conflictos, recursos/minerales críticos, Sahel, relaciones UE-África/China-África · de Africa Report, Jeune Afrique, The EastAfrican, Daily Maverick, Premium Times)
-- 💻 TECNOLOGÍA: 2-3 piezas (IA, semiconductores, big tech, regulación digital)
-- 🎭 SOCIEDAD/CULTURA: 2-3 piezas — noticias (no columnas) de sociedad y cultura con relevancia estructural: grandes tendencias sociales, debates culturales de calado, ciencia social, educación, demografía, religión. NO farándula, NO lifestyle (moda, dietas, horóscopos, trucos), NO sucesos.
-- 📚 LECTURAS (reportajes largos) + 🎙️ ENTREVISTAS: 2-3 piezas
-- 🌏 ASIA + 🌎 LATAM/EUROPA: reparto natural del resto, garantizando que ninguna región quede sin voz.
+⭐⭐⭐ QUÉ ENTRA EN CADA TEMA (los números están abajo, en el CUPO POR TEMA) ⭐⭐⭐
+- 📊 ECONOMÍA: mercados, macro, comercio, energía, empresas globales
+- 🌐 GEOPOLÍTICA: incluye SIEMPRE África (elecciones, conflictos, minerales críticos, Sahel,
+  relaciones UE-África y China-África · de Africa Report, Jeune Afrique, The EastAfrican,
+  Daily Maverick, Premium Times)
+- 💻 TECNOLOGÍA: IA, semiconductores, big tech, regulación digital
+- 🎭 SOCIEDAD/CULTURA: noticias (no columnas) con relevancia estructural: tendencias sociales,
+  debates culturales de calado, ciencia social, educación, demografía, religión.
+  NO farándula, NO lifestyle (moda, dietas, horóscopos, trucos), NO sucesos.
+- 📚 LECTURAS: reportajes largos · 🎙️ ENTREVISTAS: entrevistas de fondo
+⚠️ Un solo reparto manda: el CUPO POR TEMA de más abajo. Aquí solo se define qué es cada tema.
 
 ⭐⭐ REGLA ANTI-REDUNDANCIA TEMÁTICA INTERNACIONAL ⭐⭐
 Para un mismo evento o tema global (ej: "Trump aranceles", "guerra Ucrania", "elecciones México", "Israel Gaza"):
@@ -1853,18 +1883,17 @@ Para un mismo evento o tema global (ej: "Trump aranceles", "guerra Ucrania", "el
 - Prefiere DIVERSIDAD TEMÁTICA sobre repetición: mejor 12 temas distintos con 1 pieza que 6 temas con 2.
 - Especialmente crítico para Trump/USA donde 10 medios escriben sobre lo mismo: limita a 2 con ángulos distintos.
 
-⭐⭐⭐ REGLA INELUDIBLE — MÍNIMO 3 PIEZAS LARGAS POR BRIEFING ⭐⭐⭐
-Si después de seleccionar las 20 piezas tienes menos de 5 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": al ser SEMANAL, NYT, The Atlantic, The Guardian, Foreign Policy, Noema publican decenas de análisis profundos cada semana (todos free o muro parcial).
+⭐⭐⭐ REGLA INELUDIBLE — MÍNIMO 4 PIEZAS LARGAS POR BRIEFING ⭐⭐⭐
+Si después de seleccionar las 20 piezas tienes menos de 4 LARGAS, RECHAZA noticias breves redundantes y BUSCA EXPLÍCITAMENTE más reportajes/análisis con queries específicas. No se admite excusa "no había material": al ser SEMANAL, NYT, The Atlantic, The Guardian, Foreign Policy, Noema publican decenas de análisis profundos cada semana (todos free o muro parcial).
 
-ESTRATEGIA DE BÚSQUEDA DE PIEZAS LARGAS (ejecuta estas búsquedas adicionales para garantizar mínimo 5):
+ESTRATEGIA DE BÚSQUEDA DE PIEZAS LARGAS (para garantizar el mínimo de 4).
+⚠️ NINGUNA apunta a FT, WSJ, Bloomberg, Economist, Nikkei ni Washington Post: están
+prohibidos por muro duro y no tiene sentido gastar una búsqueda en ellos.
 - site:nytimes.com investigation OR "long read" 2026
-- site:washingtonpost.com investigation OR feature 2026
 - site:theatlantic.com essay OR feature 2026
 - site:newyorker.com 2026
-- site:bloomberg.com "big take" OR features 2026
-- site:ft.com "the big read" OR investigation 2026
-- site:economist.com "essay" OR "briefing" 2026
-- site:foreignaffairs.com 2026
+- site:noemamag.com 2026
+- site:restofworld.org 2026
 - site:foreignpolicy.com 2026
 - site:theguardian.com "long read" 2026
 - site:project-syndicate.org 2026
@@ -1961,26 +1990,23 @@ Total mínimos: 15 piezas sobre 20, 5 flexibles según la actualidad.
 - Equilibrio IZQ/DER
 - Mezcla eventos concretos del día CON piezas largas de fondo
 - Mejor 16 piezas reales (incluyendo 5+ reportajes profundos) que 20 todas breves o todas anglo
-- LEGAL EMBEBIDO: si hay sentencias internacionales relevantes del día (TJUE, CIJ, TPI, Supreme Court USA, antitrust CE/FTC, etc.), inclúyelas como pieza más en worldNews con la región del tribunal. Busca en: site:law360.com, site:mlex.com, site:reuters.com/legal, site:bloomberg.com/law
+- LEGAL EMBEBIDO: si hay sentencias internacionales relevantes del día (TJUE, CIJ, TPI, Supreme Court USA, antitrust CE/FTC, etc.), inclúyelas como pieza más en worldNews con la región del tribunal. Busca en: site:law360.com, site:mlex.com, site:reuters.com/legal
 
 CAMPO ADICIONAL EN CADA PIEZA: añade un campo opcional "pieceType" con valor "long" o "short" para que el sistema pueda contar las largas. Ejemplo: {"rank":7,"title":"...","pieceType":"long",...}
 
 ⭐ MEDIOS PRIORIZADOS POR REGIÓN (50+ medios con cobertura global plural):
 
-🇺🇸 EEUU (6):
-- nytimes.com (centro-izq) · washingtonpost.com (centro-izq) · theatlantic.com (centro-izq intelectual)
-- wsj.com (centro-der financiero) · nationalreview.com (derecha intelectual) · politico.com (centro)
+🇺🇸 EEUU (5):
+- nytimes.com (centro-izq) · theatlantic.com (centro-izq intelectual)
+- nationalreview.com (derecha intelectual) · politico.com (centro) · semafor.com (centro)
 
-🇬🇧 UK (5):
-- ft.com (centro financiero) · economist.com (centro liberal) · theguardian.com (izquierda)
-- spectator.co.uk (derecha tradicional) · unherd.com (heterodoxo)
+🇬🇧 UK (3):
+- theguardian.com (izquierda) · spectator.co.uk (derecha tradicional) · unherd.com (heterodoxo)
 
-💰 ECONÓMICO GLOBAL (5):
-- bloomberg.com / bloomberg.com/opinion (centro financiero, EEUU)
-- reuters.com (centro factual)
-- forbes.com (centro-der business)
-- marketwatch.com (mercados EEUU)
-- qz.com / quartz.com (centro tech/business)
+💰 ECONÓMICO GLOBAL (6):
+- imf.org/Blogs (FMI) · blogs.worldbank.org (Banco Mundial)
+- libertystreeteconomics.newyorkfed.org (Fed NY) · bankunderground.co.uk (Banco de Inglaterra)
+- socialeurope.eu (heterodoxo europeo) · lavoce.info (economistas italianos)
 
 🇪🇺 EUROPA OCCIDENTAL (3):
 - lefigaro.fr (centro-der) · lemonde.fr (centro-izq) · faz.net (centro-der alemán)
@@ -1994,8 +2020,8 @@ CAMPO ADICIONAL EN CADA PIEZA: añade un campo opcional "pieceType" con valor "l
 🇮🇳 INDIA (3):
 - thehindu.com (centro-izq intelectual) · indianexpress.com (centro) · timesofindia.com (popular)
 
-🌏 ASIA ESTE (4):
-- asia.nikkei.com (Japón financiero) · scmp.com (Hong Kong) · japantimes.co.jp (Japón centrista) · koreaherald.com (Corea Sur centro)
+🌏 ASIA ESTE (3):
+- scmp.com (Hong Kong) · japantimes.co.jp (Japón centrista) · koreaherald.com (Corea Sur centro)
 
 🌏 SUDESTE ASIÁTICO (4):
 - straitstimes.com (Singapur centrista) · thejakartapost.com (Indonesia centro) · bangkokpost.com (Tailandia centro) · manilatimes.net (Filipinas)
@@ -3017,6 +3043,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         if (EDITORIAL_TITLE_RE.test(t)) return true;
         if (SPORT_RE.test(t)) return true;
         if (LOCAL_TRIVIAL_RE.test(t)) return true;
+        // Capa compartida con el fallback: sucesos, autopromoción de radio/TV y clips virales
+        if (isJunkNewsTitle(t, c.description)) return true;
         return false;
       };
       const droppedJunk = candidates.filter(isJunkForNews);
@@ -3119,29 +3147,35 @@ REGLAS DE SELECCIÓN:
      · ÚNICA excepción: corrupción política/judicial GRAVE de Estado donde el deporte es secundario. Si dudas, EXCLUYE.
    - 🚫 CELEBRITIES/FARÁNDULA: prensa rosa, divorcios famosos, GH, Eurovisión, gala/alfombra roja, OT, MasterChef.
    - 🚫 PODCAST / AUDIO / VÍDEO: títulos con "Podcast", "Audio", "Vídeo", "Escucha", "En directo", "Streaming", "Newsletter", "Boletín", "El Salón de", "#N Lo que hay que leer". Si es episodio/programa y no artículo, FUERA.
+   - 🚫 AUTOPROMOCIÓN DEL MEDIO: anuncios de sus propios actos, programas o giras
+     ("Vive en directo X desde Almería el 11 de septiembre", "sigue en directo", "temporada 3").
+     No es noticia, es publicidad del propio medio. FUERA sin excepción.
+   - 🚫 CLIPS VIRALES DE TELEVISIÓN: "el minuto de X", "se oye un...", "se comparte en masa",
+     "el zasca de", "así reacciona", "la cara de". Comentar un corte de un programa no es
+     una noticia. FUERA aunque el tema de fondo sí sea relevante.
    - 🚫 EDITORIALES E INSTITUCIONALES: editoriales sin firma, "Editorial", "Sumario", "Portadas", "La foto del día". En NOTICIAS solo hechos, NO opinión ni editorial.
    - 🚫 OPINIÓN DEPORTIVA: crónicas/columnas de fútbol aunque firmadas. Si el tema es deporte, FUERA.
    - 🚫 Catástrofes naturales sin matiz político importante.
 5. MÁX 3 piezas del mismo medio. MÍN 6 medios distintos (si hay corpus).
 
-6. ⭐⭐ CUPO POR TEMA — TOTAL 25 PIEZAS ⭐⭐
-   Clasifica cada pieza por su TEMA (no por el medio). Cupos objetivo:
+6. ⭐⭐ CUPO POR TEMA — TOTAL 40 PIEZAS ⭐⭐
+   Clasifica cada pieza por su TEMA (no por el medio). Cupos objetivo (suman 40):
 
-   💰 ECONOMÍA — 6 (macro/mercados/Ibex/tipos/BCE, empleo, vivienda, precios, empresas, banca, fiscalidad)
-      · Fuentes: Cinco Días, Invertia, El Economista, y economía de El País / elDiario.es / Crónica Global
-      · EQUILIBRIO IDEOLÓGICO: no todas del mismo sesgo. Mezcla económico puro con izq (El País/elDiario) y centro/der (Libertad Digital/The Objective económico).
-   🎤 ENTREVISTAS — 5 (FLEXIBLE) entrevistas de fondo: políticas, económicas, culturales, empresariales
+   💰 ECONOMÍA — 9 (macro/mercados/Ibex/tipos/BCE, empleo, vivienda, precios, empresas, banca, fiscalidad)
+      · Fuentes: Cinco Días, Invertia, El Economista, Economía de Mallorca, y economía de El País / elDiario.es / Crónica Global
+      · EQUILIBRIO IDEOLÓGICO: no todas del mismo sesgo. Mezcla económico puro con izq (El País/elDiario) y centro/der (Libertad Digital/El Debate).
+   🎤 ENTREVISTAS — 6 (FLEXIBLE) entrevistas de fondo: políticas, económicas, culturales, empresariales
       · Fuentes: cualquier medio. Detecta formato entrevista (título tipo «Nombre: "declaración"», "Entrevista a", "habla con", pregunta-respuesta).
-      · ⚠️ SI NO HAY 5 ENTREVISTAS FRESCAS, deja las que haya y AUMENTA el cupo de TECNOLOGÍA con las restantes (no rellenes con más política/economía).
-   🇪🇸 PAÍS / SOCIEDAD — 5 (demografía, migración, vivienda, sanidad, educación, territorio, seguridad como fenómeno)
-      · Fuentes: El País, elDiario.es, El Mundo, Crónica Global, Huffington Post.
-   🏛️ POLÍTICA — 4 (Gobierno, oposición, Congreso, justicia/corrupción con relevancia política, autonomías)
-      · EQUILIBRIO IDEOLÓGICO OBLIGATORIO: mín 1 IZQUIERDA (El País/elDiario/HuffPost), mín 1 CENTRO (Libertad Digital/The Objective/Vozpópuli), mín 1 DERECHA (La Gaceta/OK Diario/El Debate). La 4ª libre.
-   🔬 CIENCIA / TECNOLOGÍA — 2 (IA, investigación, energía, ciencia, innovación) · sube si faltan entrevistas
-      · Fuentes: The Objective, El País, elDiario.es.
-   🎭 CULTURA / IDEAS — 1 (libros, cine, ensayo, pensamiento, patrimonio)
-      · Fuentes: El País, El Mundo.
-   🏝️ BALEARES — 2 (Mallorca/Baleares, local relevante)
+      · ⚠️ SI NO HAY 6 ENTREVISTAS FRESCAS, deja las que haya y AUMENTA el cupo de TECNOLOGÍA con las restantes (no rellenes con más política/economía).
+   🇪🇸 PAÍS / SOCIEDAD — 8 (demografía, migración, vivienda, sanidad, educación, territorio, seguridad como fenómeno)
+      · Fuentes: El País, elDiario.es, Crónica Global, Huffington Post, Demócrata, y los regionales (Galicia Confidencial, Valencia Plaza, Diario de Sevilla, Gara, El Faro de Ceuta, El Faro de Melilla).
+   🏛️ POLÍTICA — 7 (Gobierno, oposición, Congreso, justicia/corrupción con relevancia política, autonomías)
+      · EQUILIBRIO IDEOLÓGICO OBLIGATORIO: mín 2 IZQUIERDA (El País/elDiario/HuffPost), mín 2 DERECHA (La Gaceta/OK Diario/El Debate/Libertad Digital), mín 1 REGIONAL o ECONÓMICO. Las demás libres.
+   🔬 CIENCIA / TECNOLOGÍA — 4 (IA, investigación, energía, ciencia, innovación) · sube si faltan entrevistas
+      · Fuentes: El País, elDiario.es, El Debate.
+   🎭 CULTURA / IDEAS — 2 (libros, cine, ensayo, pensamiento, patrimonio)
+      · Fuentes: El País, El Debate.
+   🏝️ BALEARES — 4 (Mallorca/Baleares, local relevante)
       · Fuentes: OK Diario Baleares, elDiario.es Baleares, Economía de Mallorca.
 
    REGLAS:
@@ -3151,11 +3185,11 @@ REGLAS DE SELECCIÓN:
    - En ECONOMÍA y POLÍTICA respeta el equilibrio ideológico indicado.
 
 7. ⭐⭐ ANTI-REDUNDANCIA ⭐⭐ Máx 2 piezas del mismo tema-noticia (norma: 1). Prohibido 2 titulares del
-   mismo hecho. Prioridad ABSOLUTA a diversidad: mejor 25 asuntos distintos que 10 repetidos.
+   mismo hecho. Prioridad ABSOLUTA a diversidad: mejor 40 asuntos distintos que 15 repetidos.
 8. Mejor pocas piezas relevantes y frescas que muchas mediocres o forzadas.
 
 CHEQUEO PRE-RESPUESTA OBLIGATORIO:
-- ¿Suman ~25? ¿Economía ≈6 con equilibrio ideológico? ¿Política 4 con izq+centro+der?
+- ¿Suman ~40? ¿Economía ≈9 con equilibrio ideológico? ¿Política 7 con izq+der+regional?
 - ¿Entrevistas: incluí las frescas que había? ¿El resto del cupo fue a Tecnología?
 - ¿Máx 3 por medio? ¿Sin deporte/podcast/editorial? ¿Sin temas duplicados?
 Si falta algún mínimo y HAY items disponibles en CANDIDATAS de ese bloque, reemplaza piezas de relleno por las que faltan. Si NO hay material fresco de un bloque, déjalo corto — no inventes.
@@ -3176,23 +3210,42 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
       // maxDuration (5 min) → evita el 504 FUNCTION_INVOCATION_TIMEOUT.
       // Reintenta 529 (overloaded) / 429 (rate limit) con backoff antes de rendirse.
       const buildFallback = (reason) => {
-        // Filtro anti-basura reforzado también en el fallback (deporte/podcast/farándula)
-        const FB_JUNK = /\b(f[uú]tbol|copa del mundo|mundial|laliga|la liga|champions|selecci[oó]n|goleó|gol|messi|cucurella|dani olmo|baloncesto|nba|tenis|f1|motogp|ciclismo|jugador|entrenador|fichaje|podcast|eurovisi[oó]n|gran hermano)\b/i;
-        const clean = candidates.filter(c => !FB_JUNK.test(String(c.title || '')));
-        const fallbackItems = clean.slice(0, 40).map((c, i) => ({
-          rank: i + 1,
-          title: c.title || '(sin título)',
-          summary: String(c.description || '').slice(0, 300),
-          source: c.source || '',
-          topic: 'País', // genérico: evita que el fallback caiga todo en "Otros"
-          url: c.url || '',
-          publishedDate: c.publishedDate || todayShort,
-        }));
+        // Filtro anti-basura del fallback. El anterior solo cubría deporte y farándula,
+        // así que se colaban SUCESOS (robos, accidentes), PROMOCIÓN de radio/TV del propio
+        // medio ("vive en directo...") y CLIPS VIRALES de televisión ("el minuto de...").
+        const clean = candidates.filter(c => !isJunkNewsTitle(c.title, c.description));
+
+        // El fallback no aplicaba tope por medio, de ahí los 7 seguidos de un mismo diario.
+        // Y metía las piezas de los VECINOS dentro de las noticias de España, porque
+        // comparten la lista de feeds: ahora se separan en su propio array.
+        const capPorMedio = 3, capPorPais = 3;
+        const usados = {};
+        const spainItems = [], vecinosItems = [];
+        for (const c of clean) {
+          const src = String(c.source || '');
+          const esVecino = src.startsWith('Vecinos:');
+          const tope = esVecino ? capPorPais : capPorMedio;
+          usados[src] = (usados[src] || 0);
+          if (usados[src] >= tope) continue;
+          if (!esVecino && spainItems.length >= 40) continue;
+          if (esVecino && vecinosItems.length >= 20) continue;
+          usados[src]++;
+          const base = {
+            title: c.title || '(sin título)',
+            summary: String(c.description || '').slice(0, 300),
+            source: src,
+            url: c.url || '',
+            publishedDate: c.publishedDate || todayShort,
+          };
+          if (esVecino) vecinosItems.push({ ...base, topic: 'Política' });
+          else spainItems.push({ ...base, rank: spainItems.length + 1, topic: 'País' });
+        }
         return res.status(200).json({
           briefing: {
             date: todayShort,
-            editorNote: '⚠️ Briefing de emergencia: la API estaba sobrecargada o tardó demasiado. Estas son las piezas recogidas de los feeds sin curación editorial. Recarga en 1-2 minutos para el briefing completo.',
-            spainNews: fallbackItems,
+            editorNote: '⚠️ BRIEFING DE EMERGENCIA (no es el briefing normal): la API estaba sobrecargada o tardó demasiado. Estas son las piezas crudas de los feeds, sin selección editorial, sin resúmenes propios, sin reparto por temas y sin traducir los vecinos. Vuelve a pedirlo en 1-2 minutos.',
+            spainNews: spainItems,
+            vecinos: vecinosItems,
             _fallback: true,
             _fallbackReason: reason,
             _meta: { candidatesFound: candidates.length, degraded: true, feedDiagnostic: diagnostic },
