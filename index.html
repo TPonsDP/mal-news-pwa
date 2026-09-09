@@ -8,10 +8,8 @@
     <meta name="description" content="Briefing diario: internacional, opinión España, noticias España." />
 
     <!-- PWA -->
-   <link rel="icon" href="/mal-news-logo.svg" type="image/svg+xml" />
-   <link rel="icon" href="/favicon-32.png" sizes="32x32" />
-   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-   <meta name="theme-color" content="#063850" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#063850" />
 
     <!-- iOS / Safari -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -19,15 +17,14 @@
     <meta name="apple-mobile-web-app-title" content="MAL NEWS" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <!-- Icons -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <!-- Icons: primero el SVG (Chrome y Firefox lo prefieren), el .ico como respaldo -->
+    <link rel="icon" href="/mal-news-logo.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
 
     <style>
       html, body, #root { margin: 0; padding: 0; width: 100%; min-height: 100%; }
-      body { background: #F0F4F8; -webkit-font-smoothing: antialiased; }
+      body { background: #E0EBF0; -webkit-font-smoothing: antialiased; }
     </style>
   </head>
   <body>
