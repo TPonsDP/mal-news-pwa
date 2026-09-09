@@ -67,6 +67,10 @@ function formatCacheAge(timestamp) {
 // Panel buscable dentro de la PWA. Para añadir un cambio nuevo, agrega un objeto
 // al principio del array (los más recientes arriba). Campos: fecha, área, texto.
 const CHANGELOG = [
+  { fecha: '2026-09', area: 'Noticias España · cupo', texto: 'El cupo por tema decía 25 piezas mientras la regla pedía 40: escalado a 40 (Economía 9, País 8, Política 7, Entrevistas 6, Tecnología 4, Baleares 4, Cultura 2). Chequeo y regla anti-redundancia actualizados.' },
+  { fecha: '2026-09', area: 'Noticias España · pool', texto: 'El corte de candidatas sube de 80 a 220. Con ventana de 5 días y 29 fuentes, el corte anterior se agotaba antes de llegar a Cinco Días, Invertia, El Economista, Baleares y elDiario.es, porque el orden es el de la lista de feeds. Techo real del pool: 145 piezas.' },
+  { fecha: '2026-09', area: 'Vecinos · correo', texto: 'El bloque Vecinos no aparecía en el HTML ni en el texto plano del correo, solo dentro de la app, y no se contaba en los totales. Ahora sale como sección propia en esmeralda tras España.' },
+  { fecha: '2026-09', area: 'Internacional · coherencia', texto: 'Quitadas las búsquedas a Washington Post, Bloomberg, FT y Economist, prohibidos en el mismo prompt. Lista de medios priorizados limpia de WSJ, FT, Economist, Bloomberg y Nikkei. Tope USA unificado en 6. Piezas largas unificadas en 4 (decía 3 en el título y 5 en el cuerpo). Eliminado el reparto temático duplicado que contradecía al cupo.' },
   { fecha: '2026-09', area: 'Opinión · La Vanguardia', texto: 'La Vanguardia eliminada como medio: fuera de los paywall, del set de disponibilidad y de la lista de columnistas favoritos (Enric Juliana, Pilar Rahola).' },
   { fecha: '2026-09', area: 'UI · PressReader', texto: 'Retirado el toggle "Tengo PressReader" y el badge 📚. Los medios de pago vuelven a mostrar solo ✓ ACCESO (suscripción propia) o 🔒 PAGO.' },
   { fecha: '2026-09', area: 'UI · Contraste', texto: 'Píldoras Internacional del panel: degradado #2A9DB8→#6FD0DC sustituido por #0B6B62→#0F8074. El texto blanco sobre el turquesa claro anterior daba 1.9:1, ilegible al sol; ahora 4.8:1.' },
@@ -302,22 +306,26 @@ function getDailyTotals(section, days = 30) {
 
 // Fecha del último "añadido manual" (Vozpópuli, Artículo 14, Crónica Global, El Debate).
 // La marca el usuario con el botón, porque la app no puede saber cuándo lo hace.
-const MANUAL_KEY = 'mal-news-manual-date-v1';
-function getManualDate() {
+// Dos claves: la prensa y la emisión (radio/TV/YouTube) se hacen por separado, así que
+// cada una lleva su propia fecha. MANUAL_KEY conserva el nombre original para no perder
+// la fecha ya guardada en los dispositivos.
+const MANUAL_KEY = 'mal-news-manual-date-v1';        // prensa
+const BROADCAST_KEY = 'mal-news-broadcast-date-v1';  // radio y TV
+const YOUTUBE_KEY = 'mal-news-youtube-date-v1';      // YouTube
+function getMarkedDate(key) {
   try {
-    const v = localStorage.getItem(MANUAL_KEY);
-    return v || '2026-08-10'; // preinicializado al 10 de agosto
-  } catch (_) { return '2026-08-10'; }
+    return localStorage.getItem(key) || null;
+  } catch (_) { return null; }
 }
 function todayISO() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 // Guarda cualquier fecha marcada por el usuario (hoy o un día pasado, vía calendario).
-function saveManualDate(iso) {
+function saveMarkedDate(key, iso) {
   try {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return null;
-    localStorage.setItem(MANUAL_KEY, iso);
+    localStorage.setItem(key, iso);
     return iso;
   } catch (_) { return null; }
 }
@@ -427,29 +435,6 @@ function DiagonalHeader({ dateObj }) {
           <stop offset="45%" stopColor="#0D2340" />
           <stop offset="100%" stopColor="#04101F" />
         </radialGradient>
-        {/* Anillo arcoíris */}
-        <linearGradient id="malRing" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FA4E3F" />
-          <stop offset="25%" stopColor="#FFCD00" />
-          <stop offset="50%" stopColor="#00FA8C" />
-          <stop offset="75%" stopColor="#2DD4FF" />
-          <stop offset="100%" stopColor="#B14BFF" />
-        </linearGradient>
-        {/* Disco verde radial (fondo del logo B) */}
-        <radialGradient id="malDisc" cx="35%" cy="30%" r="85%">
-          <stop offset="0%" stopColor="#5EFFB0" />
-          <stop offset="45%" stopColor="#00E88C" />
-          <stop offset="100%" stopColor="#0AA890" />
-        </radialGradient>
-        {/* Picos de la M (montañas de colores) */}
-        <linearGradient id="malPeakL" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#1A6FE0" />
-          <stop offset="100%" stopColor="#0D2340" />
-        </linearGradient>
-        <linearGradient id="malPeakR" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#FA4E3F" />
-          <stop offset="100%" stopColor="#B31500" />
-        </linearGradient>
         {/* Degradado océano→turquesa de la cabecera */}
         <linearGradient id="hdrGrad" x1="0%" y1="0%" x2="100%" y2="0%">
           <stop offset="0%" stopColor="#0A4B6E" />
@@ -461,16 +446,14 @@ function DiagonalHeader({ dateObj }) {
       {/* Fondo con degradado naranja→teal */}
       <rect x="0" y="0" width="600" height="210" fill="url(#hdrGrad)" rx="10" />
 
-      {/* Logo B centrado arriba */}
-      <g transform="translate(300, 58)">
-        <circle r="42" fill="none" stroke="url(#malRing)" strokeWidth="4" strokeLinecap="round" />
-        <circle r="37" fill="url(#malDisc)" />
-        <g transform="scale(0.125) translate(-256, -256)">
-          <polygon points="150,300 150,120 256,300" fill="url(#malPeakL)" />
-          <polygon points="256,300 256,120 362,300" fill="url(#malPeakR)" />
-          <polygon points="150,120 256,300 256,120" fill="#0D2340" opacity="0.9" />
-        </g>
-        <circle cx="-24" cy="-21" r="6" fill="#FFCD00" />
+      {/* Logo M facetado, centrado arriba · octágono nocturno con lila al centro */}
+      <g transform="translate(300, 58) scale(0.86) translate(-50, -50)">
+        <polygon points="30,8 70,8 92,30 92,70 70,92 30,92 8,70 8,30" fill="#063850" />
+        <polygon points="36,18 64,18 82,36 82,64 64,82 36,82 18,64 18,36" fill="#0A4B6E" />
+        <polygon points="26,26 36,26 36,76 26,76" fill="#9EE8D4" />
+        <polygon points="36,26 47,26 56,69 45,69" fill="#6FD0DC" />
+        <polygon points="53,26 64,26 55,69 44,69" fill="#A855F7" />
+        <polygon points="64,26 74,26 74,76 64,76" fill="#D6FF00" />
       </g>
 
       {/* Día en serif Georgia, centrado */}
@@ -1733,7 +1716,9 @@ export default function App() {
   const [showStats, setShowStats] = useState(false);
   const [statsSection, setStatsSection] = useState('spainOpinion');
   const [statsView, setStatsView] = useState('medio'); // 'medio' | 'tematica' | 'dia'
-  const [manualDate, setManualDate] = useState(getManualDate());
+  const [manualDate, setManualDate] = useState(getMarkedDate(MANUAL_KEY));
+  const [broadcastDate, setBroadcastDate] = useState(getMarkedDate(BROADCAST_KEY));
+  const [youtubeDate, setYoutubeDate] = useState(getMarkedDate(YOUTUBE_KEY));
 
   // Sembrar el histórico con los datos de junio ya recopilados (solo si está vacío)
   useEffect(() => {
@@ -2180,6 +2165,7 @@ export default function App() {
       worldNews:    { color: '#DB2777', gradient: 'linear-gradient(90deg, #DB2777, #9D174D)' },
       spainOpinion: { color: '#D6FF00', gradient: 'linear-gradient(90deg, #D6FF00, #A8CC00)' },
       spainNews:    { color: '#F86040', gradient: 'linear-gradient(90deg, #F86040, #D63E1E)' },
+      vecinos:      { color: '#0F8074', gradient: 'linear-gradient(90deg, #0F8074, #0B5C54)' },
     };
 
     const getDay = (iso) => {
@@ -2283,7 +2269,8 @@ export default function App() {
       headerTitle = 'MAL NEWS · ESPAÑA';
       pageSubtitle = 'Noticias nacionales';
       sectionsHtml =
-        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimos 5 días', false);
+        section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimos 5 días', false) +
+        section('Vecinos', '🌍', b.vecinos, 'vecinos', 'Portugal · Francia · Andorra · Marruecos · Argelia · Gibraltar · Italia · economía, tecnología y política', false);
     } else if (mode === 'spainOpinion') {
       total = (b.spainOpinion?.length || 0);
       headerTitle = 'MAL NEWS · OPINIÓN ESPAÑA';
@@ -2303,11 +2290,12 @@ export default function App() {
       sectionsHtml =
         section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · resumen semanal (7 días)', true);
     } else if (mode === 'spain') {
-      total = (b.spainNews?.length || 0) + (b.spainOpinion?.length || 0);
+      total = (b.spainNews?.length || 0) + (b.vecinos?.length || 0) + (b.spainOpinion?.length || 0);
       headerTitle = 'MAL NEWS · ESPAÑA';
       pageSubtitle = 'Noticias y opinión nacional';
       sectionsHtml =
         section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimos 5 días', false) +
+        section('Vecinos', '🌍', b.vecinos, 'vecinos', 'Portugal · Francia · Andorra · Marruecos · Argelia · Gibraltar · Italia · economía, tecnología y política', false) +
         section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true);
     } else if (mode === 'international') {
       total = (b.worldNews?.length || 0) + (b.worldOpinion?.length || 0);
@@ -2319,11 +2307,13 @@ export default function App() {
     } else {
       // mode = 'all' (briefing completo - solo para Vista HTML)
       total = (b.worldOpinion?.length || 0) + (b.worldNews?.length || 0)
-            + (b.spainOpinion?.length || 0) + (b.spainNews?.length || 0);
+            + (b.spainOpinion?.length || 0) + (b.spainNews?.length || 0)
+            + (b.vecinos?.length || 0);
       headerTitle = 'MAL NEWS';
       pageSubtitle = 'Briefing completo del día';
       sectionsHtml =
         section('España', '🇪🇸', b.spainNews, 'spainNews', 'Eventos concretos · prensa española · publicadas últimos 5 días', false) +
+        section('Vecinos', '🌍', b.vecinos, 'vecinos', 'Portugal · Francia · Andorra · Marruecos · Argelia · Gibraltar · Italia · economía, tecnología y política', false) +
         section('Opinión España', '✍️', b.spainOpinion, 'spainOpinion', 'Columnas firmadas · sin editoriales · 4+ medios · publicadas hoy o ayer', true) +
         sectionByRegion('Mundo', '🌍', b.worldNews, 'worldNews', 'Por regiones · USA · Europa · Asia · Oriente Medio · África · resumen semanal (7 días)') +
         section('Opinión Internacional', '✍️', b.worldOpinion, 'worldOpinion', 'Columnas firmadas · medios internacionales · resumen semanal (7 días)', true);
@@ -2504,6 +2494,7 @@ export default function App() {
       `Tu briefing diario · ${totalPieces} piezas`,
       dsep,
       section('🇪🇸 España', b.spainNews),
+      section('🌍 Vecinos', b.vecinos),
       section('✒️ Opinión España', b.spainOpinion),
       section('🌍 Mundo', b.worldNews),
       section('✍️ Opinión Internacional', b.worldOpinion),
@@ -2516,9 +2507,10 @@ export default function App() {
   const merged = mergeBriefings();
   const totalPieces =
     (merged.worldNews?.length || 0) + (merged.worldOpinion?.length || 0) +
-    (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0);
+    (merged.spainNews?.length || 0) + (merged.spainOpinion?.length || 0) +
+    (merged.vecinos?.length || 0);
 
-  // ============ COLORES POR SECCIÓN (paleta actual: teal + lima-dorado + naranja) ============
+  // ============ COLORES POR SECCIÓN ============
   const SECTION_COLORS = {
     worldOpinion: BRAND.worldOpinionColor, // Violeta
     worldNews:    BRAND.intlColor,         // Teal
@@ -3141,7 +3133,7 @@ export default function App() {
         {hasAnyData && (
           <div style={{ textAlign: 'center', margin: '0 0 24px', padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <span style={{ fontSize: '11px', color: BRAND.orange, letterSpacing: '0.15em', fontWeight: '700' }}>
-              {totalPieces} / 75 PIEZAS
+              {totalPieces} / 125 PIEZAS
             </span>
             <span style={{ fontSize: '10px', color: 'rgba(30,58,138,0.55)', marginLeft: '12px', fontStyle: 'italic' }}>
               {merged.date}
@@ -3209,7 +3201,7 @@ export default function App() {
               Pulsa los botones para generar cada sección
             </p>
             <p style={{ fontSize: '14px', margin: '12px 0 0', color: '#011142', fontWeight: '700', letterSpacing: '0.02em', fontFamily: "'Verdana', 'Geneva', sans-serif" }}>
-              Noticias España 25 · Opinión España 25 · Noticias Mundo 10 · Opinión Mundo 8
+              Noticias España 40 · Vecinos 20 · Opinión España 25 · Noticias Mundo 20 · Opinión Mundo 20
             </p>
           </div>
         )}
@@ -3222,6 +3214,8 @@ export default function App() {
           const TRICOLOR = 'linear-gradient(90deg, #063850 0%, #10658A 50%, #0F8074 100%)';
           const NAVY = '#063850';
           const LIMA = '#D6FF00';
+          const NARANJA = '#F97316';  // radio y TV
+          const ROSA = '#F45BFF';     // YouTube · rosa lila vivo, el que más salta
           return (
             <div style={{
               marginTop: '32px',
@@ -3280,55 +3274,93 @@ export default function App() {
                 {/* Añadir a mano · degradado océano oscuro + texto lima (paleta D2) */}
                 <div style={{ background: TRICOLOR, borderRadius: '28px', padding: '13px 20px', textAlign: 'center' }}>
                   <div style={{ fontSize: '11px', fontWeight: '800', letterSpacing: '0.06em', color: LIMA, marginBottom: '4px' }}>📌 AÑADIR A MANO</div>
-                  <div style={{ fontSize: '11px', color: LIMA, fontWeight: '700', lineHeight: 1.4 }}>
-                    Vozpópuli · Artículo 14 · Crónica Global · El Debate
-                  </div>
-                  {/* Fechas: últimos manuales vs último briefing ejecutado */}
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', marginTop: '8px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '10px', color: NAVY, fontWeight: '700', background: 'rgba(255,255,255,0.55)', borderRadius: '10px', padding: '2px 9px' }}>
-                      ✍️ Manuales: {fmtDayDate(manualDate)}{manualDate ? ` · ${fmtDaysAgo(manualDate)}` : ''}
-                    </span>
+                  {/* Dos tareas distintas, cada una con su color y su propia fecha:
+                      la prensa se copia por enlace (lima), la radio/TV/YouTube hay que
+                      escucharla y recortar el momento (lila, el del logo). */}
+                  {[
+                    {
+                      etiqueta: '📰 PRENSA · ARTÍCULOS Y OPINIÓN',
+                      detalle: 'Vozpópuli · Artículo 14 · Crónica Global · El Debate · Libertad Digital',
+                      color: LIMA,
+                      fecha: manualDate,
+                      set: setManualDate,
+                      clave: MANUAL_KEY,
+                    },
+                    {
+                      etiqueta: '📻 RADIO Y TV',
+                      detalle: 'Tertulias y entrevistas · el corte, no el programa',
+                      color: NARANJA,
+                      fecha: broadcastDate,
+                      set: setBroadcastDate,
+                      clave: BROADCAST_KEY,
+                    },
+                    {
+                      etiqueta: '▶️ YOUTUBE',
+                      detalle: 'Canales y directos · cadencia irregular, revisar por canal',
+                      color: ROSA,
+                      fecha: youtubeDate,
+                      set: setYoutubeDate,
+                      clave: YOUTUBE_KEY,
+                    },
+                  ].map((t) => (
+                    <div key={t.clave} style={{
+                      background: 'rgba(0,0,0,0.18)',
+                      borderLeft: `4px solid ${t.color}`,
+                      borderRadius: '4px 10px 10px 4px',
+                      padding: '7px 11px',
+                      marginTop: '7px',
+                      textAlign: 'left',
+                    }}>
+                      <div style={{ fontSize: '9px', fontWeight: '800', letterSpacing: '0.1em', color: t.color }}>{t.etiqueta}</div>
+                      <div style={{ fontSize: '11px', color: '#FFF', fontWeight: '700', lineHeight: 1.35, margin: '3px 0 6px' }}>
+                        {t.detalle}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '10px', color: NAVY, fontWeight: '700', background: t.color, borderRadius: '10px', padding: '2px 9px' }}>
+                          {t.fecha ? `${fmtDayDate(t.fecha)} · ${fmtDaysAgo(t.fecha)}` : 'sin marcar'}
+                        </span>
+                        <input
+                          type="date"
+                          value={t.fecha || ''}
+                          max={todayISO()}
+                          onChange={(e) => { const iso = saveMarkedDate(t.clave, e.target.value); if (iso) t.set(iso); }}
+                          style={{
+                            background: 'rgba(255,255,255,0.88)',
+                            color: NAVY,
+                            border: `2px solid ${t.color}`,
+                            borderRadius: '11px',
+                            padding: '3px 8px',
+                            fontSize: '10.5px',
+                            fontWeight: '700',
+                            fontFamily: "'Verdana', sans-serif",
+                            cursor: 'pointer',
+                          }}
+                        />
+                        <button
+                          onClick={() => { const iso = saveMarkedDate(t.clave, todayISO()); if (iso) t.set(iso); }}
+                          style={{
+                            background: t.color,
+                            color: NAVY,
+                            border: 'none',
+                            borderRadius: '11px',
+                            padding: '5px 12px',
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            letterSpacing: '0.04em',
+                            cursor: 'pointer',
+                            fontFamily: "'Verdana', sans-serif",
+                          }}
+                        >
+                          ✓ Hoy
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Último briefing automático, común a las dos tareas */}
+                  <div style={{ marginTop: '9px' }}>
                     <span style={{ fontSize: '10px', color: NAVY, fontWeight: '700', background: 'rgba(255,255,255,0.55)', borderRadius: '10px', padding: '2px 9px' }}>
                       🤖 Último briefing: {fmtShortDate(getLastExecutedDate())}
                     </span>
-                  </div>
-                  {/* Marcar la fecha en la que se hicieron los manuales (calendario, no solo hoy) */}
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '9px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '10px', color: LIMA, fontWeight: '700' }}>✍️ Marcar día:</span>
-                    <input
-                      type="date"
-                      value={manualDate || ''}
-                      max={todayISO()}
-                      onChange={(e) => { const iso = saveManualDate(e.target.value); if (iso) setManualDate(iso); }}
-                      style={{
-                        background: 'rgba(255,255,255,0.85)',
-                        color: NAVY,
-                        border: `2px solid ${LIMA}`,
-                        borderRadius: '12px',
-                        padding: '4px 9px',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        fontFamily: "'Verdana', sans-serif",
-                        cursor: 'pointer',
-                      }}
-                    />
-                    <button
-                      onClick={() => { const iso = saveManualDate(todayISO()); if (iso) setManualDate(iso); }}
-                      style={{
-                        background: LIMA,
-                        color: NAVY,
-                        border: 'none',
-                        borderRadius: '12px',
-                        padding: '6px 14px',
-                        fontSize: '10px',
-                        fontWeight: '800',
-                        letterSpacing: '0.04em',
-                        cursor: 'pointer',
-                        fontFamily: "'Verdana', sans-serif",
-                      }}
-                    >
-                      ✓ Hoy
-                    </button>
                   </div>
                 </div>
               </div>
