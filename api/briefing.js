@@ -109,9 +109,11 @@ const SPAIN_NEWS_FEEDS = [
   // El Debate - derecha nacional, en abierto (refuerza la derecha tras salir Vozpópuli/The Objective)
   { source: 'El Debate', url: 'https://www.eldebate.com/rss/home.xml' },
   { source: 'El Debate', url: 'https://news.google.com/rss/search?q=site:eldebate.com&hl=es-ES&gl=ES&ceid=ES:es' },
-  // Galicia Confidencial - regional gallego, en abierto sin muro (nativo + GN)
-  { source: 'Galicia Confidencial', url: 'https://www.galiciaconfidencial.com/rss' },
-  { source: 'Galicia Confidencial', url: 'https://news.google.com/rss/search?q=site:galiciaconfidencial.com&hl=es-ES&gl=ES&ceid=ES:es' },
+  // Galicia: regional gallego en abierto
+  // Galicia Confidencial retirada: su feed respondía pero llevaba ~10 meses congelado.
+  { source: 'Praza Pública', url: 'https://praza.gal/rss/' },
+  { source: 'Praza Pública', url: 'https://news.google.com/rss/search?q=site:praza.gal&hl=gl&gl=ES&ceid=ES:gl' },
+  { source: 'Galicia', url: 'https://news.google.com/rss/search?q=Xunta+OR+Galicia+pol%C3%ADtica+OR+econom%C3%ADa&hl=es-ES&gl=ES&ceid=ES:es' },
   // Valencia Plaza - regional valenciano, digital puro, enfoque económico (nativo + GN)
   { source: 'Valencia Plaza', url: 'https://valenciaplaza.com/rss' },
   { source: 'Valencia Plaza', url: 'https://news.google.com/rss/search?q=site:valenciaplaza.com&hl=es-ES&gl=ES&ceid=ES:es' },
@@ -140,11 +142,17 @@ const SPAIN_NEWS_FEEDS = [
   { source: 'Vecinos: Andorra', url: 'https://www.diariandorra.ad/rss' },
   { source: 'Vecinos: Andorra', url: 'https://news.google.com/rss/search?q=site:diariandorra.ad&hl=ca&gl=AD&ceid=AD:ca' },
   // 🇲🇦 Marruecos (Hespress edición español)
-  { source: 'Vecinos: Marruecos', url: 'https://es.hespress.com/feed' },
-  { source: 'Vecinos: Marruecos', url: 'https://news.google.com/rss/search?q=site:es.hespress.com&hl=es-ES&gl=ES&ceid=ES:es' },
+  // Hespress ESPAÑOL retirado: fallaban su URL nativa Y el respaldo de Google News.
+  // (El Hespress árabe, hespress.com/feed, sí funciona, pero no sirve sin traducir.)
+  // Aujourd'hui le Maroc: COMPROBADO en vivo el 13/09/2026, WordPress, actualizado a diario,
+  // con categorías Economie / Société / Culture, que encajan con el filtro de vecinos.
+  { source: 'Vecinos: Marruecos', url: 'https://aujourdhui.ma/feed' },
+  { source: 'Vecinos: Marruecos', url: 'https://www.lavieeco.com/feed/' },
+  { source: 'Vecinos: Marruecos', url: 'https://news.google.com/rss/search?q=Marruecos+econom%C3%ADa+OR+pol%C3%ADtica+OR+tecnolog%C3%ADa&hl=es-ES&gl=ES&ceid=ES:es' },
   // 🇩🇿 Argelia (El Watan)
-  { source: 'Vecinos: Argelia', url: 'https://elwatan-dz.com/feed' },
-  { source: 'Vecinos: Argelia', url: 'https://news.google.com/rss/search?q=site:elwatan-dz.com&hl=fr&gl=DZ&ceid=DZ:fr' },
+  // El Watan retirado: fallaban la URL nativa Y el respaldo de Google News.
+  { source: 'Vecinos: Argelia', url: 'https://www.tsa-algerie.com/feed/' },
+  { source: 'Vecinos: Argelia', url: 'https://news.google.com/rss/search?q=Argelia+econom%C3%ADa+OR+pol%C3%ADtica+OR+gas&hl=es-ES&gl=ES&ceid=ES:es' },
   // 🇬🇮 Gibraltar (Gibraltar Chronicle)
   { source: 'Vecinos: Gibraltar', url: 'https://www.chronicle.gi/feed/' },
   { source: 'Vecinos: Gibraltar', url: 'https://news.google.com/rss/search?q=site:chronicle.gi&hl=en-GB&gl=GB&ceid=GB:en' },
@@ -722,7 +730,8 @@ async function fetchSpainOpinionRss(allowedISODates, excludeUrls) {
   // Razón: el usuario quiere ver TODAS las columnas frescas aunque algunas hayan
   // aparecido en briefings recientes (las columnas de opinión se leen aunque sean
   // del mismo columnista días seguidos).
-  const result = await fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48, isOpinionRSSItem, null);
+  const filtroOpinion = (item) => isOpinionRSSItem(item) && !isJunkOpinionItem(item);
+  const result = await fetchFeedsAndFilter(SPAIN_OPINION_FEEDS, allowedISODates, 48, filtroOpinion, null);
   return { candidates: result.items.slice(0, 120), diagnostic: result.diagnostic };
 }
 
@@ -757,21 +766,65 @@ function withRegion(diagnostic) {
 // Un solo sitio para las tres capas que lo necesitan: pre-filtro de candidatas,
 // prompt y fallback. Antes cada una tenía su propia lista y el fallback se quedaba
 // corto, así que en un briefing degradado entraban sucesos y autopromoción.
-function isJunkNewsTitle(title, description) {
+function isJunkNewsTitle(title, description, url) {
   const t = String(title || '');
   const d = String(description || '');
+  const item_url = url;
   const both = t + ' ' + d;
-  // Deporte y famoseo
-  if (/\b(f[uú]tbol|laliga|la liga|champions|copa del rey|copa del mundo|mundial|selecci[oó]n|goleó|gol\b|messi|cristiano|cucurella|dani olmo|baloncesto|nba|tenis|f1|f[oó]rmula 1|motogp|ciclismo|vuelta a espa[ñn]a|jugador|entrenador|fichaje|traspaso|delantero|centrocampista)\b/i.test(t)) return true;
-  if (/\b(eurovisi[oó]n|gran hermano|supervivientes|isla de las tentaciones|operaci[oó]n triunfo|masterchef|concursante|cr[oó]nica rosa|famoseo|influencer)\b/i.test(t)) return true;
-  // Pódcast, radio y TV: episodios y autopromoción del propio medio
-  if (/\b(podcast|p[oó]dcast|episodio \d|escucha (aqu[ií]|el)|en directo desde|vive en directo|sigue en directo|programa completo|[uú]ltimo programa|temporada \d|en abierto|streaming)\b/i.test(both)) return true;
-  // Clips virales de televisión
-  if (/\b(el minuto de|se oye un|se comparte en masa|se hace viral|as[ií] reaccion|el zasca|la cara de|el gesto de|no da cr[eé]dito|se queda sin palabras)\b/i.test(t)) return true;
-  // Sucesos y accidentes
-  if (/\b(robo|robos|robado|robats|hurto|atraco|detenido|detenidos|detingut|arrestado|apu[ñn]ala|tiroteo|disparo|asesinat|asesinado|homicidio|cad[aá]ver|accidente|atropell|colisi[oó]n|choque de|vuelco|incendio|desaparecid|ahogad|rescatad|herido|heridos|ferit|sucesos)\b/i.test(t)) return true;
-  // Servicio y utilidades
-  if (/\b(horóscopo|loter[ií]a|el gordo|bonoloto|euromillones|primitiva|la quiniela|el tiempo para|previsi[oó]n meteorol|as[ií] queda el tiempo)\b/i.test(t)) return true;
+
+  // ⚠️ Las raíces van SIN \b final. Con `\b(ahogad)\b` la palabra "ahogada" NO casa,
+  // porque después de la "d" viene una letra. Ese error dejaba pasar todos los sucesos.
+  const raiz = (re) => re.test(t);
+
+  // 0 · NO ES NOTICIA POR ORIGEN: columnas de opinión coladas en la sección de noticias.
+  // Pasa sobre todo con los vecinos, cuyos feeds son de portada y mezclan todo.
+  const u = String(item_url || '');
+  if (/\/(opinion|opini[oó]|opini[oó]n|firmes|firmas|tribuna|editorial|blogs?)\//i.test(u)) return true;
+  // "Carlos Cuesta analiza...", "Fulano repasa...": es opinión, aunque el título no lo diga
+  if (/^[A-ZÁÉÍÓÚÑ][\wáéíóúñ.'-]+(\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñ.'-]+){0,3}\s+(analiza|repasa|opina|reflexiona|comenta|desgrana)\b/.test(d.trim())) return true;
+  // VOCES DE PROGRAMA: presentadores cuyas piezas en la web son el comentario de su
+  // programa de radio o televisión, no periodismo escrito. Fuera de NOTICIAS.
+  if (/\b(carlos cuesta|la noche de cuesta|federico jim[eé]nez losantos|es la ma[ñn]ana de federico|dieter brandau|es la noche de dieter)\b/i.test(both)) return true;
+  // Titular con formato «Nombre Apellido: frase» sin verbo: columna, no noticia
+  if (/^[A-ZÁÉÍÓÚÑ][\wáéíóúñ'-]+\s+[A-ZÁÉÍÓÚÑ][\wáéíóúñ'-]+:\s+[^¿?]{3,40}$/.test(t) && !/\b(dice|afirma|asegura|advierte|anuncia|denuncia|admite|niega|pide|exige)\b/i.test(t)) return true;
+
+  // 1 · DEPORTE. Además de los términos genéricos, la señal fuerte es el lenguaje
+  // de resultados y lesiones: "baja frente al X", "avanza", "cae", "se lesiona".
+  if (raiz(/\b(f[uú]tbol|futbol|laliga|la liga|champions|europa league|copa del rey|copa del mundo|mundial de|selecci[oó]n espa[ñn]ola|baloncesto|nba|acb|tenis|atp|wta|golf|f[oó]rmula 1|formula 1|motogp|ciclismo|vuelta a espa[ñn]a|giro|tour de francia|balonmano|waterpolo|atletismo)\b/i)) return true;
+  if (raiz(/\b(jugador|jugadora|entrenador|entrenadora|fichaje|fichar|traspaso|delantero|centrocampista|portero del|canterano|árbitro|arbitro|gol de|goles|penalti|derbi|alineaci[oó]n|convocatoria de)\b/i)) return true;
+  if (raiz(/\b(lesi[oó]n|lesionad)/i) && raiz(/\b(baja|partido|jornada|club|temporada|frente al|ante el)\b/i)) return true;
+  if (raiz(/\b(copa|torneo|open|gran premio|campeonato)\b/i) && raiz(/\b(avanza|cae|elimina|gana|pierde|semifinal|cuartos|final|ronda|set)\b/i)) return true;
+  // Marcador entre paréntesis: "(1-0)", "(3-2)". Señal inequívoca de crónica deportiva.
+  if (/\(\s*\d{1,2}\s*-\s*\d{1,2}\s*\)/.test(t)) return true;
+  // Catalán y otras lenguas de los vecinos
+  if (raiz(/\b(derrota de|victòria|victoria de l|empat|empate ante|golejada|partit|jornada liguera)\b/i)) return true;
+
+  // 1b · CONVOCATORIAS Y CONCURSOS DEL PROPIO MEDIO (también en catalán)
+  if (raiz(/\b(concurs|concurso) de (fotos|fotograf|relats|relatos|dibuix|dibujos)\b/i)) return true;
+  if (raiz(/\b(sorteo|sorteig|participa y gana|bases del concurso|env[ií]a tu foto)\b/i)) return true;
+
+  // 2 · FARÁNDULA Y REALEZA SOCIAL
+  if (raiz(/\b(eurovisi[oó]n|gran hermano|supervivientes|isla de las tentaciones|operaci[oó]n triunfo|masterchef|concursante|cr[oó]nica rosa|famoseo|influencer|posado|alfombra roja|photocall)\b/i)) return true;
+  if (raiz(/\b(look|estilismo|vestido de|outfit|el bolso de|la reina luce|luce un)\b/i)) return true;
+
+  // 3 · PÓDCAST, RADIO, TV Y AUTOPROMOCIÓN DEL MEDIO
+  if (/\b(podcast|p[oó]dcast|episodio \d|escucha (aqu[ií]|el)|en directo desde|vive en directo|sigue en directo|programa completo|[uú]ltimo programa|temporada \d|en abierto|streaming|videoan[aá]lisis)\b/i.test(both)) return true;
+
+  // 4 · EVENTOS DEL PROPIO MEDIO. "Entrada gratuita", "aforo", "inscripciones":
+  // es publicidad de un acto, no una noticia.
+  if (/\b(entrada gratuita|hasta completar aforo|aforo limitado|inscr[ií]bete|inscripciones|encuentro exclusivo|para socios y socias|presenta su (libro|nuevo libro)|firma de libros|coloquio|mesa redonda|webinar|jornada organizada)\b/i.test(both)) return true;
+
+  // 5 · CLIPS VIRALES DE TELEVISIÓN
+  if (raiz(/\b(el minuto de|se oye un|se comparte en masa|se hace viral|as[ií] reaccion|el zasca|la cara de|no da cr[eé]dito|se queda sin palabras|el v[ií]deo de)\b/i)) return true;
+
+  // 6 · SUCESOS Y ACCIDENTES. Raíces sin \b final, en castellano y catalán.
+  if (raiz(/\b(robo|robos|robad|robat|hurto|atraco|butr[oó]n|detenid|detingut|arrestad|apu[ñn]al|tiroteo|disparo|balazo|asesinat|homicidio|cad[aá]ver|cuerpo sin vida|accidente|siniestro vial|atropell|colisi[oó]n|choque de|vuelco|incendio|desaparecid|ahogad|rescatad|herid|ferit|mor[ií]a?\s|muere|muerto en|fallece en|se precipita|resbala|sucesos|violaci[oó]n|agresi[oó]n sexual)/i)) return true;
+
+  // 7 · SERVICIO, CONSULTORIO Y ESTILO DE VIDA
+  if (raiz(/\b(hor[oó]scopo|loter[ií]a|el gordo|bonoloto|euromillones|primitiva|la quiniela|el tiempo para|previsi[oó]n meteorol|as[ií] queda el tiempo)\b/i)) return true;
+  if (raiz(/\b(rutina de|ponerte en forma|ponerse en forma|adelgazar|perder peso|dieta para|trucos? para|c[oó]mo limpiar|recetas? de|consultorio|¿qu[eé] puedo hacer|los lectores env[ií]an)\b/i)) return true;
+  if (/\b(consultorio|los lectores env[ií]an sus preguntas)\b/i.test(d)) return true;
+
   return false;
 }
 
@@ -1287,6 +1340,40 @@ const NEWS_TITLE_PATTERNS = [
   /\b(influencer|creador[a]? de contenido|youtuber|tiktoker|reality|realiti|concursante|supervivientes|gran hermano)\b/i,
   /\b(confiesa|desvela|revela|presume de|reaparece|rompe su silencio|habla por primera vez)\b.*\b(supermercado|instagram|redes|boda|novi[oa]|embarazo)\b/i,
 ];
+
+// ============ FILTRO ANTI-BASURA · OPINIÓN ============
+// Tres cosas que se colaban pese a las reglas del prompt:
+//   · contenido de marca ("elDiario Brands", publirreportajes de producto)
+//   · crónica rosa y famoseo
+//   · piezas cuyo AUTOR es el propio medio → es redacción, no columna firmada
+function isJunkOpinionItem(item) {
+  const t = String(item.title || '');
+  const d = String(item.description || '');
+  const a = String(item.author || '').trim();
+  const src = String(item.source || '').trim();
+  const both = t + ' ' + d;
+
+  // 1 · CONTENIDO DE MARCA Y PUBLIRREPORTAJE
+  if (/\b(brands?|marcas|branded|contenido patrocinado|patrocinad|publirreportaje|espacio de marca|en colaboraci[oó]n con)\b/i.test(a + ' ' + both)) return true;
+  // Producto y consumo disfrazado de artículo
+  if (/\b(el secreto mejor guardado|la mejor oferta|las mejores ofertas|chollo|descuento|precio m[ií]nimo|comprar en amazon|mantas? t[eé]rmicas?|rob[oó]t? aspirador|los mejores \w+ para)\b/i.test(t)) return true;
+
+  // 2 · CRÓNICA ROSA Y FAMOSEO
+  if (/\b(cr[oó]nica rosa|prensa rosa|famoseo|corazón|salseo|exclusiva de|ruptura de|boda de|posado|paparazzi)\b/i.test(t)) return true;
+  // El famoseo suele delatarse en la entradilla, no en el titular
+  if (/\b(su novio|su novia|el que fuera novio|la que fuera novia|su exmujer|su exmarido|su ex pareja|pareja de|viuda de|hija de la cantante|colaborador de televisi[oó]n|tertuliano del coraz[oó]n)\b/i.test(both)) return true;
+  if (/\b(gran hermano|supervivientes|isla de las tentaciones|masterchef|operaci[oó]n triunfo|eurovisi[oó]n)\b/i.test(t)) return true;
+
+  // 3 · AUTOR = MEDIO. El prompt ya lo prohíbe, pero el modelo lo incumple, así que
+  // se comprueba en código: nombre igual a la fuente, o un dominio, o "Redacción".
+  if (a) {
+    const norm = (x) => x.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (norm(a) === norm(src)) return true;
+    if (/\.(es|com|cat|org|info)$/i.test(a)) return true;
+    if (/^(redacci[oó]n|la redacci[oó]n|agencias?|efe|europa press|editorial)$/i.test(a)) return true;
+  }
+  return false;
+}
 
 function isOpinionRSSItem(item) {
   // ⭐ MODO LENIENT para feeds/sources que SON 100% opinión:
@@ -3044,7 +3131,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después. RECUERDA: 
         if (SPORT_RE.test(t)) return true;
         if (LOCAL_TRIVIAL_RE.test(t)) return true;
         // Capa compartida con el fallback: sucesos, autopromoción de radio/TV y clips virales
-        if (isJunkNewsTitle(t, c.description)) return true;
+        if (isJunkNewsTitle(t, c.description, u)) return true;
         return false;
       };
       const droppedJunk = candidates.filter(isJunkForNews);
@@ -3168,7 +3255,7 @@ REGLAS DE SELECCIÓN:
       · Fuentes: cualquier medio. Detecta formato entrevista (título tipo «Nombre: "declaración"», "Entrevista a", "habla con", pregunta-respuesta).
       · ⚠️ SI NO HAY 6 ENTREVISTAS FRESCAS, deja las que haya y AUMENTA el cupo de TECNOLOGÍA con las restantes (no rellenes con más política/economía).
    🇪🇸 PAÍS / SOCIEDAD — 8 (demografía, migración, vivienda, sanidad, educación, territorio, seguridad como fenómeno)
-      · Fuentes: El País, elDiario.es, Crónica Global, Huffington Post, Demócrata, y los regionales (Galicia Confidencial, Valencia Plaza, Diario de Sevilla, Gara, El Faro de Ceuta, El Faro de Melilla).
+      · Fuentes: El País, elDiario.es, Crónica Global, Huffington Post, Demócrata, y los regionales (Praza Pública, Valencia Plaza, Diario de Sevilla, Gara, El Faro de Ceuta, El Faro de Melilla).
    🏛️ POLÍTICA — 7 (Gobierno, oposición, Congreso, justicia/corrupción con relevancia política, autonomías)
       · EQUILIBRIO IDEOLÓGICO OBLIGATORIO: mín 2 IZQUIERDA (El País/elDiario/HuffPost), mín 2 DERECHA (La Gaceta/OK Diario/El Debate/Libertad Digital), mín 1 REGIONAL o ECONÓMICO. Las demás libres.
    🔬 CIENCIA / TECNOLOGÍA — 4 (IA, investigación, energía, ciencia, innovación) · sube si faltan entrevistas
@@ -3209,11 +3296,34 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
       // devolvemos un error limpio en vez de dejar la función colgada hasta el
       // maxDuration (5 min) → evita el 504 FUNCTION_INVOCATION_TIMEOUT.
       // Reintenta 529 (overloaded) / 429 (rate limit) con backoff antes de rendirse.
+      // El fallback no puede pedirle el tema al modelo, así que lo deduce del medio y de
+      // la ruta de la URL. Imperfecto, pero mejor que meter las 40 piezas en "País" y
+      // dejar el agrupado por temas y las estadísticas inservibles.
+      // Diagnóstico partido: los vecinos comparten la lista de feeds con España, pero son
+      // dos secciones distintas y conviene revisarlas por separado.
+      const esFuenteVecino = (d) => String(d?.source || '').startsWith('Vecinos:');
+      const diagnosticoEspana = (diagnostic || []).filter(d => !esFuenteVecino(d));
+      const diagnosticoVecinos = (diagnostic || []).filter(esFuenteVecino);
+
+      const temaPorFuente = (src, url) => {
+        const u = String(url || '').toLowerCase();
+        if (/\/(economia|empresas|mercados|vivienda|empleo|fiscalidad)\//.test(u)) return 'Economía';
+        if (/\/(tecnologia|ciencia|innovacion|digital)\//.test(u)) return 'Tecnología';
+        if (/\/(cultura|libros|cine|arte|musica)\//.test(u)) return 'Cultura';
+        if (/\/(politica|espana\/politica|gobierno|congreso)\//.test(u)) return 'Política';
+        if (/baleares|mallorca|ibiza|menorca/.test(u)) return 'Baleares';
+        const ECON = new Set(['Cinco Días', 'Invertia', 'El Economista (ES)', 'Economía de Mallorca']);
+        const BAL = new Set(['OK Diario Baleares', 'elDiario.es Baleares', 'Economía de Mallorca']);
+        if (BAL.has(src)) return 'Baleares';
+        if (ECON.has(src)) return 'Economía';
+        return 'País';
+      };
+
       const buildFallback = (reason) => {
         // Filtro anti-basura del fallback. El anterior solo cubría deporte y farándula,
         // así que se colaban SUCESOS (robos, accidentes), PROMOCIÓN de radio/TV del propio
         // medio ("vive en directo...") y CLIPS VIRALES de televisión ("el minuto de...").
-        const clean = candidates.filter(c => !isJunkNewsTitle(c.title, c.description));
+        const clean = candidates.filter(c => !isJunkNewsTitle(c.title, c.description, c.url));
 
         // El fallback no aplicaba tope por medio, de ahí los 7 seguidos de un mismo diario.
         // Y metía las piezas de los VECINOS dentro de las noticias de España, porque
@@ -3237,8 +3347,11 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
             url: c.url || '',
             publishedDate: c.publishedDate || todayShort,
           };
-          if (esVecino) vecinosItems.push({ ...base, topic: 'Política' });
-          else spainItems.push({ ...base, rank: spainItems.length + 1, topic: 'País' });
+          if (esVecino) {
+            vecinosItems.push({ ...base, topic: temaPorFuente(src, c.url) });
+          } else {
+            spainItems.push({ ...base, rank: spainItems.length + 1, topic: temaPorFuente(src, c.url) });
+          }
         }
         return res.status(200).json({
           briefing: {
@@ -3248,7 +3361,7 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
             vecinos: vecinosItems,
             _fallback: true,
             _fallbackReason: reason,
-            _meta: { candidatesFound: candidates.length, degraded: true, feedDiagnostic: diagnostic },
+            _meta: { candidatesFound: candidates.length, degraded: true, feedDiagnostic: diagnosticoEspana, feedDiagnosticVecinos: diagnosticoVecinos },
           },
           section,
         });
@@ -3325,7 +3438,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
         const REQUIRED_MIN_NEWS = {
           'El País': 2,
           'El Debate': 2,
-          'Galicia Confidencial': 1,
+          'Praza Pública': 1,
+          'Galicia': 1,
           'Valencia Plaza': 1,
           'Diario de Sevilla': 1,
           'Gara': 1,
@@ -3469,7 +3583,39 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           picked.forEach((it, i) => { it.rank = i + 1; });
           const cutCount = briefing.spainNews.length - picked.length;
           briefing.spainNews = picked;
-          if (cutCount > 0) console.log(`✂️ Recorte a 25 (tope 3/medio): ${cutCount} fuera de ${briefing.spainNews.length + cutCount}`);
+          if (cutCount > 0) console.log(`✂️ Recorte a 40 (tope 3/medio): ${cutCount} fuera de ${briefing.spainNews.length + cutCount}`);
+        }
+
+        // ⭐⭐ RECORTE FINAL DE OPINIÓN — 25 columnas, cap por medio ⭐⭐
+        // El prompt ya pide los topes, pero el modelo los incumple: en el último briefing
+        // salieron El Mundo 6 y OK Diario 6 con cap 4, y Libertad Digital 4 con cap 3.
+        // Además se colaban contenido de marca y crónica rosa. Se comprueba en código.
+        const OPINION_TARGET = 25;
+        const OPINION_CAPS = {
+          'Vozpópuli': 5, 'The Objective': 4, 'El Mundo': 4, 'El País': 4,
+          'elDiario.es': 4, 'Artículo 14': 3, 'infoLibre': 3,
+          'Libertad Digital': 3, 'La Gaceta': 3, 'OK Diario': 3,
+          'El Debate': 2, 'Cinco Días': 2, 'Huffington Post': 1, 'Público': 1,
+        };
+        const OPINION_CAP_DEFAULT = 2;
+        if (Array.isArray(briefing.spainOpinion) && briefing.spainOpinion.length > 0) {
+          const antes = briefing.spainOpinion.length;
+          const limpio = briefing.spainOpinion.filter(c => !isJunkOpinionItem(c));
+          const porMedio = {};
+          const elegidas = [];
+          for (const c of limpio) {
+            if (elegidas.length >= OPINION_TARGET) break;
+            const src = c.source || '';
+            const cap = OPINION_CAPS[src] ?? OPINION_CAP_DEFAULT;
+            const n = porMedio[src] || 0;
+            if (n >= cap) continue;
+            porMedio[src] = n + 1;
+            elegidas.push(c);
+          }
+          elegidas.forEach((c, i) => { c.rank = i + 1; });
+          briefing.spainOpinion = elegidas;
+          const fuera = antes - elegidas.length;
+          if (fuera > 0) console.log(`✂️ Opinión: ${fuera} descartadas (basura o tope por medio) de ${antes}`);
         }
 
         // Marcar con _isPaywall las piezas de fuentes paywall
@@ -3511,7 +3657,8 @@ OUTPUT: SOLO JSON válido, sin markdown, sin texto antes ni después:
           paywallCount,
           freeCount,
           allowedDates: allowedISODates,
-          feedDiagnostic: diagnostic,
+          feedDiagnostic: diagnosticoEspana,
+          feedDiagnosticVecinos: diagnosticoVecinos,
           enforcementLog,
         };
 
