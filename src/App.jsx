@@ -376,10 +376,33 @@ function fmtDaysAgo(iso) {
 
 // ============ FIN CACHE LOCALSTORAGE ============
 
-// ============ PARRILLA DE TERTULIAS DE TV ============
-// Once programas en siete cadenas. d = días de emisión (0 domingo … 6 sábado).
-// La columna que se resalta es la de la fecha marcada en RADIO Y TV, así que
-// eligiendo un día anterior en ese calendario se ve lo que echaron ese día.
+// ============ PLEGADO DE SECCIONES ============
+// Guarda qué secciones y medios quedaron abiertos. Todo abierto por defecto:
+// así el briefing se lee igual que antes hasta que uno decide cerrar algo.
+const FOLD_KEY = 'mal-news-fold-v1';
+function getFold(id, porDefecto = true) {
+  try {
+    const o = JSON.parse(localStorage.getItem(FOLD_KEY) || '{}');
+    return o[id] === undefined ? porDefecto : !!o[id];
+  } catch (_) { return porDefecto; }
+}
+function setFold(id, abierto) {
+  try {
+    const o = JSON.parse(localStorage.getItem(FOLD_KEY) || '{}');
+    o[id] = abierto;
+    localStorage.setItem(FOLD_KEY, JSON.stringify(o));
+  } catch (_) {}
+}
+// Abre o cierra de golpe todo lo plegable. Avisa a los componentes por evento,
+// porque el estado vive en cada Section/MediaGroup y no en un padre común.
+function setFoldAll(abierto) {
+  window.dispatchEvent(new CustomEvent('mal-news-fold-all', { detail: { abierto } }));
+}
+
+// ============ PARRILLA DE EMISIÓN ============
+// d = días de emisión (0 domingo … 6 sábado). Lo que se lista es lo que toca
+// en la fecha marcada en cada tarjeta, así que eligiendo un día anterior en
+// ese calendario se ve lo que hubo ese día.
 const LV_TV = [1, 2, 3, 4, 5];
 const TV_PARRILLA = [
   { cadena: 'Telecinco', progs: [{ t: 'El Programa de Ana Rosa', f: 'Mañana', d: LV_TV }] },
@@ -389,7 +412,10 @@ const TV_PARRILLA = [
     { t: 'Horizonte · Iker Jiménez', f: 'Noche', d: LV_TV },
     { t: 'Código 10 · Nacho Abad', f: 'Noche', d: [3] },
   ] },
-  { cadena: 'Antena 3', progs: [{ t: 'Espejo Público', f: 'Mañana', d: LV_TV }] },
+  { cadena: 'Antena 3', progs: [
+    { t: 'Espejo Público', f: 'Mañana', d: LV_TV },
+    { t: 'La Mesa · Cristina Pardo', f: 'Noche', d: [3] },
+  ] },
   { cadena: 'laSexta', progs: [
     { t: 'Al Rojo Vivo · Ferreras', f: 'Mañana', d: LV_TV },
     { t: 'laSexta Xplica', f: 'Noche', d: [6] },
@@ -398,8 +424,27 @@ const TV_PARRILLA = [
   { cadena: 'Canal Sur', progs: [{ t: 'Mesa de análisis · León Gross', f: 'Mañana', d: LV_TV }] },
   { cadena: 'TVE', progs: [{ t: 'La Noche en 24 Horas', f: 'Noche', d: LV_TV }] },
 ];
-const TV_ORDEN_DIAS = [1, 2, 3, 4, 5, 6, 0];
-const TV_NOMBRE_DIA = { 0: 'Dom', 1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb' };
+
+// Radio: solo lo que se escucha por radio. Lo que se ve en YouTube está abajo.
+const RADIO_PARRILLA = [
+  { cadena: 'esRadio', progs: [{ t: 'En casa de Herrero', f: 'Tarde', d: LV_TV }] },
+  { cadena: 'COPE', progs: [
+    { t: 'Herrera en COPE', f: 'Mañana', d: LV_TV },
+    { t: 'La Linterna', f: 'Tarde', d: LV_TV },
+  ] },
+  { cadena: 'RNE', progs: [{ t: 'Las Mañanas de RNE', f: 'Mañana', d: LV_TV }] },
+];
+
+// YouTube: los mismos programas, pero vistos en canal y no escuchados en directo.
+const YOUTUBE_PARRILLA = [
+  { cadena: 'esRadio', progs: [{ t: 'Es la Mañana de Federico', f: 'Mañana', d: LV_TV }] },
+  { cadena: 'Onda Cero', progs: [
+    { t: 'Más de Uno · Rafa Latorre', f: 'Mañana', d: LV_TV },
+    { t: 'La Brújula', f: 'Noche', d: LV_TV },
+  ] },
+  { cadena: 'Cadena SER', progs: [{ t: 'Hoy por Hoy', f: 'Mañana', d: LV_TV }] },
+];
+
 const TV_ORDEN_FRANJA = { 'Mañana': 0, 'Tarde': 1, 'Noche': 2 };
 
 function diaDeISO(iso) {
@@ -409,26 +454,19 @@ function diaDeISO(iso) {
   return new Date(p[0], p[1] - 1, p[2]).getDay();
 }
 
-// Parrilla semanal de TV. Se dibuja dentro de la tarjeta de RADIO Y TV y
-// depende sólo de la fecha que ya se marca ahí: no guarda estado propio.
-function ParrillaTV({ fechaISO, color, navy }) {
+// Lista lo que toca el día marcado. Se dibuja dentro de la tarjeta que la use
+// y depende sólo de la fecha que ya se marca ahí: no guarda estado propio.
+function ParrillaDia({ fechaISO, color, navy, bloques }) {
   const dow = diaDeISO(fechaISO);
   const esHoy = !fechaISO || fechaISO === todayISO();
 
   const delDia = [];
-  TV_PARRILLA.forEach((c) => {
+  (bloques || []).forEach((c) => {
     c.progs.forEach((p) => {
       if (p.d.includes(dow)) delDia.push({ cadena: c.cadena, ...p });
     });
   });
   delDia.sort((a, b) => (TV_ORDEN_FRANJA[a.f] ?? 9) - (TV_ORDEN_FRANJA[b.f] ?? 9));
-
-  const cel = {
-    border: '1px solid rgba(1,17,66,0.12)',
-    padding: '3px',
-    verticalAlign: 'top',
-    background: '#FFF',
-  };
 
   return (
     <div style={{ marginTop: '10px' }}>
@@ -458,69 +496,10 @@ function ParrillaTV({ fechaISO, color, navy }) {
         </div>
       )}
 
-      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <table style={{
-          borderCollapse: 'collapse', width: '100%', minWidth: '640px',
-          tableLayout: 'fixed', fontFamily: "'Verdana', sans-serif",
-        }}>
-          <thead>
-            <tr>
-              <th style={{ ...cel, width: '92px', background: color, color: navy, fontSize: '8.5px', textAlign: 'left', padding: '5px 6px' }} />
-              {TV_ORDEN_DIAS.map((d) => (
-                <th key={d} style={{
-                  ...cel,
-                  padding: '5px 3px',
-                  fontSize: '8.5px',
-                  fontWeight: '800',
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
-                  textAlign: 'center',
-                  background: d === dow ? color : '#FFF',
-                  color: navy,
-                }}>{TV_NOMBRE_DIA[d]}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {TV_PARRILLA.map((c) => (
-              <tr key={c.cadena}>
-                <th style={{
-                  ...cel, background: color, color: navy,
-                  fontSize: '8.5px', fontWeight: '800', textAlign: 'left', padding: '5px 6px',
-                }}>{c.cadena}</th>
-                {TV_ORDEN_DIAS.map((d) => {
-                  const aqui = c.progs.filter((p) => p.d.includes(d));
-                  const activo = d === dow;
-                  return (
-                    <td key={d} style={{
-                      ...cel,
-                      background: activo ? `${color}26` : (aqui.length ? '#FFF' : 'rgba(1,17,66,0.05)'),
-                      boxShadow: activo ? `inset 0 0 0 2px ${color}` : 'none',
-                    }}>
-                      {aqui.map((p, i) => (
-                        <span key={i} style={{
-                          display: 'block',
-                          borderLeft: `3px solid ${color}`,
-                          padding: '2px 4px',
-                          marginBottom: '2px',
-                          lineHeight: 1.25,
-                        }}>
-                          <b style={{ display: 'block', fontSize: '8.5px', color: navy }}>{p.t}</b>
-                          <i style={{ display: 'block', fontSize: '7.5px', color: 'rgba(1,17,66,0.6)' }}>{p.f}</i>
-                        </span>
-                      ))}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }
-// ============ FIN PARRILLA DE TV ============
+// ============ FIN PARRILLA DE EMISIÓN ============
 
 const RECIPIENT = 'tonipons91@gmail.com';
 const COOLDOWN_MS = 180 * 1000; // 180 segundos entre llamadas para no saturar el rate limit de Anthropic
@@ -1096,27 +1075,52 @@ function MediaGroup({ source, items, sectionColor, type, groupIndex }) {
     ? (pieceCount === 1 ? 'COLUMNA' : 'COLUMNAS')
     : (pieceCount === 1 ? 'PIEZA' : 'PIEZAS');
 
+  // Segundo nivel de plegado: cada medio se abre y se cierra por su cuenta.
+  const foldId = `medio:${type || 'news'}:${source}`;
+  const [abierto, setAbierto] = useState(() => getFold(foldId));
+  useEffect(() => {
+    const alTodas = (e) => {
+      const v = !!e.detail.abierto;
+      setAbierto(v);
+      setFold(foldId, v);
+    };
+    window.addEventListener('mal-news-fold-all', alTodas);
+    return () => window.removeEventListener('mal-news-fold-all', alTodas);
+  }, [foldId]);
+  const alternar = () => {
+    setAbierto((prev) => { setFold(foldId, !prev); return !prev; });
+  };
+
   return (
     <div style={{
       borderLeft: `5px solid ${sectionColor}`,
       paddingLeft: '14px',
-      marginBottom: '22px',
+      marginBottom: abierto ? '22px' : '8px',
       animation: `fadeSlide 0.35s ease ${Math.min(groupIndex * 0.05, 0.4)}s both`,
     }}>
       {/* HEADER del medio: fondo en su color de identidad + texto legible */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        background: sourceColor,
-        color: textColor,
-        padding: '5px 10px',
-        marginBottom: '12px',
-        marginLeft: '-2px',
-        borderRadius: '3px',
-        fontFamily: "'Helvetica Neue', Arial, sans-serif",
-        boxShadow: textColor === '#1A1A1A' ? 'inset 0 0 0 1px rgba(0,0,0,0.1)' : 'none',
-      }}>
+      <div
+        onClick={alternar}
+        role="button"
+        tabIndex={0}
+        aria-expanded={abierto}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } }}
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '8px',
+          background: sourceColor,
+          color: textColor,
+          padding: '5px 10px',
+          marginBottom: abierto ? '12px' : '0',
+          marginLeft: '-2px',
+          borderRadius: '3px',
+          fontFamily: "'Helvetica Neue', Arial, sans-serif",
+          boxShadow: textColor === '#1A1A1A' ? 'inset 0 0 0 1px rgba(0,0,0,0.1)' : 'none',
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}>
         <span style={{
           fontSize: '11px',
           fontWeight: '800',
@@ -1130,13 +1134,22 @@ function MediaGroup({ source, items, sectionColor, type, groupIndex }) {
           fontWeight: '600',
           opacity: textColor === '#1A1A1A' ? 0.7 : 0.9,
           letterSpacing: '0.05em',
+          marginLeft: 'auto',
         }}>
           {pieceCount} {pieceLabel}
         </span>
+        <span style={{
+          fontSize: '11px',
+          lineHeight: 1,
+          display: 'inline-block',
+          transition: 'transform 0.18s ease',
+          transform: abierto ? 'rotate(180deg)' : 'none',
+          opacity: textColor === '#1A1A1A' ? 0.7 : 0.9,
+        }}>▾</span>
       </div>
 
       {/* LISTA de piezas del medio */}
-      {items.map((item, i) => {
+      {abierto && items.map((item, i) => {
         const dateBadge = formatDateBadge(item.publishedDate);
         const readTime = calculateReadTime(item);
         const isLastItem = i === items.length - 1;
@@ -1501,6 +1514,22 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
   const realCount = items?.length || 0;
   const itemLabel = type === 'opinion' ? (realCount === 1 ? 'COLUMNA' : 'COLUMNAS') : (realCount === 1 ? 'PIEZA' : 'PIEZAS');
 
+  // Plegado de la sección entera. Se recuerda entre visitas.
+  const foldId = `sec:${title}`;
+  const [abierto, setAbierto] = useState(() => getFold(foldId));
+  useEffect(() => {
+    const alTodas = (e) => {
+      const v = !!e.detail.abierto;
+      setAbierto(v);
+      setFold(foldId, v);
+    };
+    window.addEventListener('mal-news-fold-all', alTodas);
+    return () => window.removeEventListener('mal-news-fold-all', alTodas);
+  }, [foldId]);
+  const alternar = () => {
+    setAbierto((prev) => { setFold(foldId, !prev); return !prev; });
+  };
+
   // Agrupar por bloque regional si procede (ver REGION_BLOCK_ORDER arriba)
   const groupedItems = groupByRegion && realCount > 0 ? groupByRegionBlock(items) : null;
 
@@ -1511,20 +1540,34 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
         background: gradient || color,
         color: 'white',
         padding: '14px 18px',
-        borderRadius: '12px 12px 0 0',
+        borderRadius: abierto ? '12px 12px 0 0' : '12px',
         boxShadow: BRAND.shadow,
       }}>
-        <div style={{
-          display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap',
-          fontFamily: "'Verdana', 'Geneva', sans-serif",
-          fontSize: '15px', fontWeight: '800',
-          letterSpacing: '0.05em', textTransform: 'uppercase',
-        }}>
+        <div
+          onClick={alternar}
+          role="button"
+          tabIndex={0}
+          aria-expanded={abierto}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } }}
+          style={{
+            display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap',
+            fontFamily: "'Verdana', 'Geneva', sans-serif",
+            fontSize: '15px', fontWeight: '800',
+            letterSpacing: '0.05em', textTransform: 'uppercase',
+            cursor: 'pointer', userSelect: 'none',
+          }}
+        >
           <span style={{ fontSize: '17px' }}>{icon}</span>
           <span>{title}</span>
           <span style={{ opacity: 0.85 }}>· {realCount} {itemLabel}</span>
+          <span style={{
+            marginLeft: 'auto', fontSize: '13px', opacity: 0.9,
+            transition: 'transform 0.18s ease',
+            transform: abierto ? 'rotate(180deg)' : 'none',
+            display: 'inline-block', lineHeight: 1,
+          }}>▾</span>
         </div>
-        {descriptor && (
+        {abierto && descriptor && (
           <p style={{
             margin: '6px 0 0', fontSize: '11px', opacity: 0.92,
             fontFamily: "'Verdana', 'Geneva', sans-serif",
@@ -1535,7 +1578,7 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
         )}
 
         {/* Apunte del editor: análisis de los temas clave del día */}
-        {editorNote && (
+        {abierto && editorNote && (
           <div style={{
             marginTop: '12px',
             padding: '12px 14px',
@@ -1560,7 +1603,7 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
         )}
 
         {/* Panel CONTADOR POR REGIÓN (solo si meta tiene regionCounts) */}
-        {meta?.regionCounts && Object.keys(meta.regionCounts).length > 0 && (
+        {abierto && meta?.regionCounts && Object.keys(meta.regionCounts).length > 0 && (
           <div style={{
             marginTop: '10px',
             padding: '8px 12px',
@@ -1623,7 +1666,7 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
         )}
 
         {/* Media histórica local (localStorage) */}
-        {historyKey && (() => {
+        {abierto && historyKey && (() => {
           const stats = getHistoryStats(historyKey);
           if (!stats || stats.count < 2) return null;
           return (
@@ -1643,7 +1686,7 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
         })()}
 
         {/* Panel de diagnóstico de feeds DENTRO de la cabecera — visible inmediatamente al cargar */}
-        {meta?.feedDiagnostic && meta.feedDiagnostic.length > 0 && (
+        {abierto && meta?.feedDiagnostic && meta.feedDiagnostic.length > 0 && (
           <details style={{
             marginTop: '12px',
             padding: '10px 14px',
@@ -1726,6 +1769,7 @@ function Section({ title, icon, items, color, gradient, count, descriptor, type,
         borderRadius: '0 0 8px 8px',
         border: `1px solid ${color}30`,
         borderTop: 'none',
+        display: abierto ? 'block' : 'none',
       }}>
         {realCount === 0 ? (
           <div style={{ margin: '12px', color: BRAND.inkSoft, fontSize: '11px', fontStyle: 'italic', textAlign: 'center' }}>
@@ -3351,6 +3395,30 @@ export default function App() {
         {/* Render de las secciones disponibles - orden: internacional, opinión España, noticias España */}
         {hasAnyData && (
           <div style={{ animation: 'fadeSlide 0.5s ease both' }}>
+            {/* Abrir y cerrar de golpe todas las secciones y todos los medios */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              {[{ t: 'Abrir todo', v: true }, { t: 'Cerrar todo', v: false }].map((b) => (
+                <button
+                  key={b.t}
+                  onClick={() => setFoldAll(b.v)}
+                  style={{
+                    fontFamily: "'Verdana', 'Geneva', sans-serif",
+                    fontSize: '10px',
+                    fontWeight: '800',
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    padding: '8px 13px',
+                    borderRadius: '8px',
+                    border: '2px solid rgba(30,58,138,0.28)',
+                    background: 'rgba(255,255,255,0.75)',
+                    color: '#1E3A8A',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {b.t}
+                </button>
+              ))}
+            </div>
             {[...spainNewsSections, ...spainOpinionSections, ...intlSections].map((s, i) => (
               <Section key={i} title={s.title} icon={s.icon} items={s.items} color={s.color} gradient={s.gradient} count={s.count} descriptor={s.descriptor} type={s.type} note={s.note} meta={s.meta} groupByRegion={s.groupByRegion} historyKey={s.historyKey} editorNote={s.editorNote} />
             ))}
@@ -3500,14 +3568,16 @@ export default function App() {
                       fecha: broadcastDate,
                       set: setBroadcastDate,
                       clave: BROADCAST_KEY,
+                      parrilla: [...TV_PARRILLA, ...RADIO_PARRILLA],
                     },
                     {
                       etiqueta: '▶️ YOUTUBE',
-                      detalle: 'Canales y directos · cadencia irregular, revisar por canal',
+                      detalle: 'Canales y directos · las tertulias de radio que se ven en vídeo',
                       color: ROSA,
                       fecha: youtubeDate,
                       set: setYoutubeDate,
                       clave: YOUTUBE_KEY,
+                      parrilla: YOUTUBE_PARRILLA,
                     },
                   ].map((t) => (
                     <div key={t.clave} style={{
@@ -3561,8 +3631,8 @@ export default function App() {
                           ✓ Hoy
                         </button>
                       </div>
-                      {t.clave === BROADCAST_KEY && (
-                        <ParrillaTV fechaISO={t.fecha} color={t.color} navy={NAVY} />
+                      {t.parrilla && t.parrilla.length > 0 && (
+                        <ParrillaDia fechaISO={t.fecha} color={t.color} navy={NAVY} bloques={t.parrilla} />
                       )}
                     </div>
                   ))}
