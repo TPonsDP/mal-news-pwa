@@ -376,6 +376,152 @@ function fmtDaysAgo(iso) {
 
 // ============ FIN CACHE LOCALSTORAGE ============
 
+// ============ PARRILLA DE TERTULIAS DE TV ============
+// Once programas en siete cadenas. d = días de emisión (0 domingo … 6 sábado).
+// La columna que se resalta es la de la fecha marcada en RADIO Y TV, así que
+// eligiendo un día anterior en ese calendario se ve lo que echaron ese día.
+const LV_TV = [1, 2, 3, 4, 5];
+const TV_PARRILLA = [
+  { cadena: 'Telecinco', progs: [{ t: 'El Programa de Ana Rosa', f: 'Mañana', d: LV_TV }] },
+  { cadena: 'Cuatro', progs: [
+    { t: 'En boca de todos · Nacho Abad', f: 'Mañana', d: LV_TV },
+    { t: 'Todo es Mentira', f: 'Tarde', d: LV_TV },
+    { t: 'Horizonte · Iker Jiménez', f: 'Noche', d: LV_TV },
+    { t: 'Código 10 · Nacho Abad', f: 'Noche', d: [3] },
+  ] },
+  { cadena: 'Antena 3', progs: [{ t: 'Espejo Público', f: 'Mañana', d: LV_TV }] },
+  { cadena: 'laSexta', progs: [
+    { t: 'Al Rojo Vivo · Ferreras', f: 'Mañana', d: LV_TV },
+    { t: 'laSexta Xplica', f: 'Noche', d: [6] },
+  ] },
+  { cadena: 'Telemadrid', progs: [{ t: 'Diario de la Noche', f: 'Noche', d: LV_TV }] },
+  { cadena: 'Canal Sur', progs: [{ t: 'Mesa de análisis · León Gross', f: 'Mañana', d: LV_TV }] },
+  { cadena: 'TVE', progs: [{ t: 'La Noche en 24 Horas', f: 'Noche', d: LV_TV }] },
+];
+const TV_ORDEN_DIAS = [1, 2, 3, 4, 5, 6, 0];
+const TV_NOMBRE_DIA = { 0: 'Dom', 1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb' };
+const TV_ORDEN_FRANJA = { 'Mañana': 0, 'Tarde': 1, 'Noche': 2 };
+
+function diaDeISO(iso) {
+  if (!iso) return new Date().getDay();
+  const p = String(iso).split('-').map(Number);
+  if (p.length !== 3 || p.some(isNaN)) return new Date().getDay();
+  return new Date(p[0], p[1] - 1, p[2]).getDay();
+}
+
+// Parrilla semanal de TV. Se dibuja dentro de la tarjeta de RADIO Y TV y
+// depende sólo de la fecha que ya se marca ahí: no guarda estado propio.
+function ParrillaTV({ fechaISO, color, navy }) {
+  const dow = diaDeISO(fechaISO);
+  const esHoy = !fechaISO || fechaISO === todayISO();
+
+  const delDia = [];
+  TV_PARRILLA.forEach((c) => {
+    c.progs.forEach((p) => {
+      if (p.d.includes(dow)) delDia.push({ cadena: c.cadena, ...p });
+    });
+  });
+  delDia.sort((a, b) => (TV_ORDEN_FRANJA[a.f] ?? 9) - (TV_ORDEN_FRANJA[b.f] ?? 9));
+
+  const cel = {
+    border: '1px solid rgba(1,17,66,0.12)',
+    padding: '3px',
+    verticalAlign: 'top',
+    background: '#FFF',
+  };
+
+  return (
+    <div style={{ marginTop: '10px' }}>
+      <div style={{
+        fontSize: '9.5px', fontWeight: '800', letterSpacing: '0.1em',
+        color, marginBottom: '6px', textTransform: 'uppercase',
+      }}>
+        {esHoy ? 'Hoy' : fmtDayDate(fechaISO)} · {delDia.length} {delDia.length === 1 ? 'programa' : 'programas'}
+        {!esHoy && <span style={{
+          marginLeft: '7px', background: color, color: navy,
+          borderRadius: '8px', padding: '1px 7px', letterSpacing: '0.04em',
+        }}>otro día</span>}
+      </div>
+
+      {delDia.length > 0 && (
+        <div style={{ marginBottom: '9px' }}>
+          {delDia.map((p, i) => (
+            <div key={i} style={{
+              fontSize: '10.5px', color: '#FFF', lineHeight: 1.45,
+              padding: '1px 0',
+            }}>
+              <span style={{ color, fontWeight: '800' }}>·</span>{' '}
+              <strong>{p.t}</strong>{' '}
+              <span style={{ opacity: 0.75, fontStyle: 'italic' }}>{p.cadena} · {p.f}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <table style={{
+          borderCollapse: 'collapse', width: '100%', minWidth: '640px',
+          tableLayout: 'fixed', fontFamily: "'Verdana', sans-serif",
+        }}>
+          <thead>
+            <tr>
+              <th style={{ ...cel, width: '92px', background: color, color: navy, fontSize: '8.5px', textAlign: 'left', padding: '5px 6px' }} />
+              {TV_ORDEN_DIAS.map((d) => (
+                <th key={d} style={{
+                  ...cel,
+                  padding: '5px 3px',
+                  fontSize: '8.5px',
+                  fontWeight: '800',
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  textAlign: 'center',
+                  background: d === dow ? color : '#FFF',
+                  color: navy,
+                }}>{TV_NOMBRE_DIA[d]}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {TV_PARRILLA.map((c) => (
+              <tr key={c.cadena}>
+                <th style={{
+                  ...cel, background: color, color: navy,
+                  fontSize: '8.5px', fontWeight: '800', textAlign: 'left', padding: '5px 6px',
+                }}>{c.cadena}</th>
+                {TV_ORDEN_DIAS.map((d) => {
+                  const aqui = c.progs.filter((p) => p.d.includes(d));
+                  const activo = d === dow;
+                  return (
+                    <td key={d} style={{
+                      ...cel,
+                      background: activo ? `${color}26` : (aqui.length ? '#FFF' : 'rgba(1,17,66,0.05)'),
+                      boxShadow: activo ? `inset 0 0 0 2px ${color}` : 'none',
+                    }}>
+                      {aqui.map((p, i) => (
+                        <span key={i} style={{
+                          display: 'block',
+                          borderLeft: `3px solid ${color}`,
+                          padding: '2px 4px',
+                          marginBottom: '2px',
+                          lineHeight: 1.25,
+                        }}>
+                          <b style={{ display: 'block', fontSize: '8.5px', color: navy }}>{p.t}</b>
+                          <i style={{ display: 'block', fontSize: '7.5px', color: 'rgba(1,17,66,0.6)' }}>{p.f}</i>
+                        </span>
+                      ))}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+// ============ FIN PARRILLA DE TV ============
+
 const RECIPIENT = 'tonipons91@gmail.com';
 const COOLDOWN_MS = 180 * 1000; // 180 segundos entre llamadas para no saturar el rate limit de Anthropic
 
@@ -2217,17 +2363,20 @@ export default function App() {
       const itemLabel = isOpinion ? (items.length === 1 ? 'COLUMNA' : 'COLUMNAS') : (items.length === 1 ? 'PIEZA' : 'PIEZAS');
       const itemsHtml = items.map(i => card(i, color, isOpinion)).join('');
       return `
-        <div style="margin-bottom:28px;">
-          <div style="background:${color};color:#011142;padding:16px 20px;border:3px solid #011142;border-radius:0;box-shadow:5px 5px 0 #011142;font-family:'Space Mono',monospace;">
-            <div style="font-size:15px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">
-              ${icon} ${escape(title)} &middot; ${items.length} ${itemLabel}
+        <details class="sec" open>
+          <summary>
+            <div class="sec-head" style="background:${color};">
+              <div class="sec-head-txt">
+                <div class="sec-title">${icon} ${escape(title)} &middot; ${items.length} ${itemLabel}</div>
+                <div class="sec-desc">${escape(descriptor)}</div>
+              </div>
+              <div class="sec-caret"><span class="sec-caret-open">&#9650;</span><span class="sec-caret-shut">&#9660;</span></div>
             </div>
-            <div style="font-size:11px;opacity:0.95;margin-top:6px;font-weight:400;">${escape(descriptor)}</div>
-          </div>
-          <div style="padding:18px 4px 4px;">
+          </summary>
+          <div class="sec-body">
             ${itemsHtml}
           </div>
-        </div>`;
+        </details>`;
     };
 
     // Igual que section() pero partiendo las piezas en bloques regionales
@@ -2239,23 +2388,31 @@ export default function App() {
       const blocksHtml = groupByRegionBlock(items).map(group => {
         const bc = REGION_BLOCK_COLORS[group.block] || color;
         return `
-            <div style="margin:14px 0 8px;padding:6px 12px;border-left:4px solid ${bc};background:${bc}1A;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${bc};">
-              ${REGION_BLOCK_ICONS[group.block] || '🌐'} ${escape(group.block)} &middot; ${group.items.length}
-            </div>
-            ${group.items.map(i => card(i, bc, false)).join('')}`;
+            <details class="grp" open>
+              <summary>
+                <div class="grp-head" style="border-left:4px solid ${bc};background:${bc}1A;color:${bc};">
+                  <span>${REGION_BLOCK_ICONS[group.block] || '🌐'} ${escape(group.block)} &middot; ${group.items.length}</span>
+                  <span class="grp-caret"><span class="sec-caret-open">&#9650;</span><span class="sec-caret-shut">&#9660;</span></span>
+                </div>
+              </summary>
+              <div>${group.items.map(i => card(i, bc, false)).join('')}</div>
+            </details>`;
       }).join('');
       return `
-        <div style="margin-bottom:28px;">
-          <div style="background:${color};color:#011142;padding:16px 20px;border:3px solid #011142;border-radius:0;box-shadow:5px 5px 0 #011142;font-family:'Space Mono',monospace;">
-            <div style="font-size:15px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;">
-              ${icon} ${escape(title)} &middot; ${items.length} ${itemLabel}
+        <details class="sec" open>
+          <summary>
+            <div class="sec-head" style="background:${color};">
+              <div class="sec-head-txt">
+                <div class="sec-title">${icon} ${escape(title)} &middot; ${items.length} ${itemLabel}</div>
+                <div class="sec-desc">${escape(descriptor)}</div>
+              </div>
+              <div class="sec-caret"><span class="sec-caret-open">&#9650;</span><span class="sec-caret-shut">&#9660;</span></div>
             </div>
-            <div style="font-size:11px;opacity:0.95;margin-top:6px;font-weight:400;">${escape(descriptor)}</div>
-          </div>
-          <div style="padding:18px 4px 4px;">
+          </summary>
+          <div class="sec-body">
             ${blocksHtml}
           </div>
-        </div>`;
+        </details>`;
     };
 
     // Calcular total según modo
@@ -2386,7 +2543,35 @@ export default function App() {
   ${W} .next-brief-reason { font-size:13px; color:rgba(1,17,66,0.7); font-style:italic; line-height:1.5; }
   ${W} .next-brief-table { margin-top:16px; padding-top:14px; border-top:2px dashed rgba(248,96,64,0.4); font-family:'Space Mono',monospace; font-size:10px; color:rgba(1,17,66,0.65); line-height:1.7; }
   ${W} .next-brief-table strong { color:#011142; font-weight:700; letter-spacing:0.05em; }
-  @media print { ${W} .copy-hint { display:none; } ${W} { background:white; } }
+  /* --- secciones plegables --- */
+  ${W} details.sec { margin-bottom:28px; }
+  ${W} details.sec > summary { list-style:none; cursor:pointer; display:block; }
+  ${W} details.sec > summary::-webkit-details-marker { display:none; }
+  ${W} details.sec > summary::marker { content:''; }
+  ${W} .sec-head { display:flex; align-items:flex-start; gap:12px; padding:16px 20px; border:3px solid #011142; box-shadow:5px 5px 0 #011142; font-family:'Space Mono',monospace; color:#011142; }
+  ${W} .sec-head-txt { flex:1; }
+  ${W} .sec-title { font-size:15px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; }
+  ${W} .sec-desc { font-size:11px; margin-top:6px; font-weight:400; opacity:0.95; }
+  ${W} .sec-caret { font-size:13px; font-weight:700; line-height:1.2; flex-shrink:0; }
+  ${W} details.sec[open] > summary .sec-caret-open { display:inline; }
+  ${W} details.sec[open] > summary .sec-caret-shut { display:none; }
+  ${W} details.sec > summary .sec-caret-open { display:none; }
+  ${W} details.sec > summary .sec-caret-shut { display:inline; }
+  ${W} .sec-body { padding:18px 4px 4px; }
+  ${W} details.grp { margin:14px 0 8px; }
+  ${W} details.grp > summary { list-style:none; cursor:pointer; display:block; }
+  ${W} details.grp > summary::-webkit-details-marker { display:none; }
+  ${W} details.grp > summary::marker { content:''; }
+  ${W} .grp-head { display:flex; align-items:center; gap:8px; padding:6px 12px; font-family:'Space Mono',monospace; font-size:12px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+  ${W} .grp-caret { margin-left:auto; font-size:11px; }
+  ${W} details.grp[open] > summary .sec-caret-open { display:inline; }
+  ${W} details.grp[open] > summary .sec-caret-shut { display:none; }
+  ${W} details.grp > summary .sec-caret-open { display:none; }
+  ${W} details.grp > summary .sec-caret-shut { display:inline; }
+  ${W} .fold-bar { display:none; gap:8px; margin-bottom:18px; }
+  ${W} .fold-bar button { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:9px 14px; background:#FFFCF2; color:#011142; border:3px solid #011142; box-shadow:3px 3px 0 #011142; cursor:pointer; }
+  ${W} .fold-bar button:active { box-shadow:1px 1px 0 #011142; transform:translate(2px,2px); }
+  @media print { ${W} .copy-hint, ${W} .fold-bar { display:none; } ${W} { background:white; } ${W} details.sec, ${W} details.grp { break-inside:avoid; } }
 </style>
 </head>
 <body style="margin:0;padding:0;">
@@ -2400,6 +2585,10 @@ export default function App() {
       <p class="subtitle">${escape(pageSubtitle)}</p>
       <p class="date">${escape(todayShort)}</p>
       <p class="total">${total} PIEZAS</p>
+    </div>
+    <div class="fold-bar" id="${wrapperId}-fold">
+      <button type="button" data-fold="open">Abrir todo</button>
+      <button type="button" data-fold="shut">Cerrar todo</button>
     </div>
     ${sectionsHtml}
     ${(() => {
@@ -2464,6 +2653,24 @@ export default function App() {
     </div>
   </div>
 </div>
+<script>
+(function(){
+  // Los botones solo existen si hay JS: en Gmail no se ven y las secciones
+  // llegan abiertas, que es como se leía el briefing hasta ahora.
+  var raiz = document.getElementById(${JSON.stringify(wrapperId)});
+  if (!raiz) return;
+  var barra = document.getElementById(${JSON.stringify(wrapperId + '-fold')});
+  if (!barra) return;
+  barra.style.display = 'flex';
+  barra.addEventListener('click', function(ev){
+    var b = ev.target.closest('button[data-fold]');
+    if (!b) return;
+    var abrir = b.dataset.fold === 'open';
+    var ds = raiz.querySelectorAll('details.sec, details.grp');
+    for (var i = 0; i < ds.length; i++) ds[i].open = abrir;
+  });
+})();
+</script>
 </body>
 </html>`;
   }
@@ -3354,6 +3561,9 @@ export default function App() {
                           ✓ Hoy
                         </button>
                       </div>
+                      {t.clave === BROADCAST_KEY && (
+                        <ParrillaTV fechaISO={t.fecha} color={t.color} navy={NAVY} />
+                      )}
                     </div>
                   ))}
                   {/* Último briefing automático, común a las dos tareas */}
