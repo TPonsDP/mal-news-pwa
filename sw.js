@@ -1,7 +1,7 @@
 // ============ MAL NEWS · SERVICE WORKER ============
 // Sube CACHE_VERSION cada vez que despliegues algo que deba llegar sí o sí al móvil.
 // Ese número es lo único que invalida la caché anterior.
-const CACHE_VERSION = 'mal-news-v4';
+const CACHE_VERSION = 'mal-news-v5';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
 
